@@ -34,6 +34,7 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --cache-dir experiments/hemibrain_cx_bpu/outputs \
   --signed-policy auto|force_unsigned|force_signed \
   --seeds 0 1 2 \
+  --models cx_bpu no_recurrence weight_shuffle \
   --epochs 20 \
   --batch-size 128 \
   --num-workers 2
@@ -41,6 +42,20 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
 
 Add `--include-gru` to run the optional stretch GRU baseline after the frozen
 benchmark suite.
+
+For a quick sanity run after `download` and `prepare`, train one seed with three
+models:
+
+```bash
+python experiments/hemibrain_cx_bpu/run_benchmark.py \
+  --mode train \
+  --device cuda \
+  --seeds 0 \
+  --models cx_bpu no_recurrence weight_shuffle \
+  --epochs 1 \
+  --batch-size 64 \
+  --num-workers 2
+```
 
 ## Output Layout
 

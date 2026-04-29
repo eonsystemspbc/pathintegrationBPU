@@ -47,10 +47,10 @@ def create_client(
 def _flatten_roi_tree(tree: Any) -> set[str]:
     names: set[str] = set()
     if isinstance(tree, str):
-        names.add(tree)
+        names.add(_clean_roi_name(tree))
     elif isinstance(tree, dict):
         for key, value in tree.items():
-            names.add(str(key))
+            names.add(_clean_roi_name(str(key)))
             names.update(_flatten_roi_tree(value))
     elif isinstance(tree, (list, tuple, set)):
         for item in tree:
@@ -58,9 +58,18 @@ def _flatten_roi_tree(tree: Any) -> set[str]:
     return names
 
 
+def _clean_roi_name(name: str) -> str:
+    return name.strip().removesuffix("*")
+
+
 def fetch_roi_hierarchy(client: Any) -> Any:
     if hasattr(client, "fetch_roi_hierarchy"):
-        for kwargs in ({"include_subprimary": True}, {}):
+        for kwargs in (
+            {"include_subprimary": True, "mark_primary": False, "format": "dict"},
+            {"include_subprimary": True, "mark_primary": False},
+            {"include_subprimary": True},
+            {},
+        ):
             try:
                 return client.fetch_roi_hierarchy(**kwargs)
             except TypeError:
@@ -69,7 +78,15 @@ def fetch_roi_hierarchy(client: Any) -> Any:
         from neuprint import fetch_roi_hierarchy as fetch_hierarchy
     except ImportError as exc:
         raise NeuprintAcquisitionError("Could not access neuPrint ROI hierarchy API.") from exc
-    return fetch_hierarchy(client=client)
+    try:
+        return fetch_hierarchy(
+            include_subprimary=True,
+            mark_primary=False,
+            format="dict",
+            client=client,
+        )
+    except TypeError:
+        return fetch_hierarchy(client=client)
 
 
 def resolve_cx_primary_rois(
@@ -80,10 +97,11 @@ def resolve_cx_primary_rois(
     resolved: list[str] = []
     missing: list[str] = []
     for label in requested:
-        if label in all_names:
-            resolved.append(label)
-        elif label.lower() in lowered:
-            resolved.append(lowered[label.lower()])
+        clean_label = _clean_roi_name(label)
+        if clean_label in all_names:
+            resolved.append(clean_label)
+        elif clean_label.lower() in lowered:
+            resolved.append(lowered[clean_label.lower()])
         else:
             missing.append(label)
     if missing:
@@ -194,4 +212,3 @@ def require_raw_exports(paths: OutputPaths) -> None:
             + ", ".join(str(path) for path in missing)
             + ". Run --mode download first, or provide cached exports in --output-dir."
         )
-

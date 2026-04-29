@@ -13,7 +13,15 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from tqdm.auto import tqdm
 
-from .config import OUTPUT_DIM, RHO_TARGET, OutputPaths, TaskSpec, TrainConfig, resolve_device
+from .config import (
+    DEFAULT_BPU_MODELS,
+    OUTPUT_DIM,
+    RHO_TARGET,
+    OutputPaths,
+    TaskSpec,
+    TrainConfig,
+    resolve_device,
+)
 from .connectome import (
     PreparedGraph,
     degree_preserving_shuffle_matrix,
@@ -302,8 +310,8 @@ def run_training(
         device=device,
     )
     eval_splits = [split for split in splits if split.name in {"test", "test_noise"}]
-    model_names = ["cx_bpu", "no_recurrence", "random", "degree_shuffle", "weight_shuffle"]
-    if train_config.include_gru:
+    model_names = list(train_config.models or DEFAULT_BPU_MODELS)
+    if train_config.include_gru and "gru" not in model_names:
         model_names.append("gru")
 
     rows: list[dict[str, object]] = []

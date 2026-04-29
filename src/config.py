@@ -21,6 +21,14 @@ DEFAULT_SEEDS = (0, 1, 2)
 DEFAULT_TRAIN_T = 50
 DEFAULT_TEST_T = (50, 100, 200)
 DEFAULT_NOISE_STDS = (0.0, 0.05, 0.10, 0.20)
+DEFAULT_BPU_MODELS = (
+    "cx_bpu",
+    "no_recurrence",
+    "random",
+    "degree_shuffle",
+    "weight_shuffle",
+)
+ALL_MODEL_NAMES = DEFAULT_BPU_MODELS + ("gru",)
 
 
 @dataclass(frozen=True)
@@ -119,6 +127,7 @@ class TrainConfig:
     grad_clip: float = 1.0
     include_gru: bool = False
     device: str = "auto"
+    models: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -159,6 +168,13 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=2)
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        choices=ALL_MODEL_NAMES,
+        default=None,
+        help="Optional subset of models to train for quick sanity checks.",
+    )
     parser.add_argument("--include-gru", action="store_true")
     args = parser.parse_args(argv)
 
@@ -171,6 +187,7 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         num_workers=args.num_workers,
         include_gru=args.include_gru,
         device=args.device,
+        models=tuple(args.models) if args.models is not None else None,
     )
     return CliConfig(
         mode=args.mode,
@@ -199,4 +216,3 @@ def resolve_device(requested: str) -> torch.device:
     if requested == "cpu":
         return torch.device("cpu")
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
