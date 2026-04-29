@@ -76,9 +76,47 @@ def plot_error_vs_noise(metrics: pd.DataFrame, out_path: Path) -> None:
     plt.close(fig)
 
 
+def plot_loss_curve(loss_history: pd.DataFrame, out_path: Path) -> None:
+    if loss_history.empty:
+        return
+    required = {"model", "epoch", "train_mse", "val_mse"}
+    if not required.issubset(loss_history.columns):
+        return
+    fig, ax = plt.subplots(figsize=(7.0, 4.5), dpi=150)
+    for model, group in loss_history.groupby("model"):
+        group = group.sort_values("epoch")
+        ax.plot(
+            group["epoch"],
+            group["train_mse"],
+            marker="o",
+            linewidth=1.6,
+            linestyle="-",
+            label=f"{model} train",
+        )
+        ax.plot(
+            group["epoch"],
+            group["val_mse"],
+            marker="s",
+            linewidth=1.6,
+            linestyle="--",
+            label=f"{model} val",
+        )
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("MSE loss")
+    ax.set_title("Training and validation loss")
+    ax.grid(True, alpha=0.25)
+    ax.legend(frameon=False, fontsize=8)
+    fig.tight_layout()
+    fig.savefig(out_path)
+    plt.close(fig)
+
+
 def write_plots(paths: OutputPaths) -> None:
     if not paths.metrics_by_seed_csv.exists():
         return
     metrics = pd.read_csv(paths.metrics_by_seed_csv)
     plot_error_vs_sequence_length(metrics, paths.error_vs_sequence_length_png)
     plot_error_vs_noise(metrics, paths.error_vs_noise_png)
+    if paths.loss_history_csv.exists():
+        loss_history = pd.read_csv(paths.loss_history_csv)
+        plot_loss_curve(loss_history, paths.loss_curve_png)

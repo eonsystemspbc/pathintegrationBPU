@@ -129,12 +129,15 @@ def train_one_model(
     val_loader: DataLoader,
     config: TrainConfig,
     device: torch.device,
-) -> dict[str, float]:
+    model_name: str,
+    seed: int,
+) -> dict[str, object]:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     best_state = copy.deepcopy(model.state_dict())
     best_val = float("inf")
     epochs_without_improvement = 0
-    history: dict[str, float] = {"epochs_ran": 0, "best_val_loss": best_val}
+    epoch_rows: list[dict[str, object]] = []
+    history: dict[str, object] = {"epochs_ran": 0, "best_val_loss": best_val}
     for epoch in range(config.epochs):
         model.train()
         train_losses: list[float] = []
@@ -147,20 +150,37 @@ def train_one_model(
             optimizer.step()
             train_losses.append(float(loss.detach().cpu()))
         val_loss = evaluate_loss(model, val_loader, device)
+        train_loss = float(np.mean(train_losses)) if train_losses else float("nan")
         history["epochs_ran"] = epoch + 1
-        history["train_loss"] = float(np.mean(train_losses)) if train_losses else float("nan")
-        history["best_val_loss"] = float(best_val)
+        history["train_loss"] = train_loss
         if val_loss < best_val - 1e-7:
             best_val = val_loss
             best_state = copy.deepcopy(model.state_dict())
             epochs_without_improvement = 0
-            history["best_val_loss"] = float(best_val)
         else:
             epochs_without_improvement += 1
+        history["best_val_loss"] = float(best_val)
+        row = {
+            "seed": int(seed),
+            "model": model_name,
+            "epoch": int(epoch + 1),
+            "train_mse": train_loss,
+            "val_mse": float(val_loss),
+            "best_val_mse": float(best_val),
+            "patience_wait": int(epochs_without_improvement),
+        }
+        epoch_rows.append(row)
+        tqdm.write(
+            "loss "
+            f"model={model_name} seed={seed} epoch={epoch + 1}/{config.epochs} "
+            f"train_mse={train_loss:.6g} val_mse={val_loss:.6g} "
+            f"best_val_mse={best_val:.6g} patience_wait={epochs_without_improvement}"
+        )
         if epochs_without_improvement >= config.patience:
             break
     model.load_state_dict(best_state)
     history["best_val_loss"] = float(best_val)
+    history["epoch_rows"] = epoch_rows
     return history
 
 
@@ -261,6 +281,8 @@ def _summarize_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
         "final_displacement_error",
         "drift_slope_vs_T",
         "latency_ms_per_sequence",
+        "final_train_loss",
+        "best_val_loss",
     ]
     grouped = metrics.groupby(["model", "split", "T", "noise_std"], dropna=False)
     summary = grouped[metric_cols].agg(["mean", "std"]).reset_index()
@@ -315,6 +337,7 @@ def run_training(
         model_names.append("gru")
 
     rows: list[dict[str, object]] = []
+    loss_rows: list[dict[str, object]] = []
     iterator = tqdm(
         [(seed, name) for seed in train_config.seeds for name in model_names],
         desc="training benchmark models",
@@ -324,7 +347,17 @@ def run_training(
         torch.manual_seed(seed)
         np.random.seed(seed)
         model = _make_model(graph, model_name, seed, device)
-        history = train_one_model(model, train_loader, val_loader, train_config, device)
+        history = train_one_model(
+            model,
+            train_loader,
+            val_loader,
+            train_config,
+            device,
+            model_name=model_name,
+            seed=seed,
+        )
+        loss_rows.extend(history["epoch_rows"])
+        pd.DataFrame(loss_rows).to_csv(paths.loss_history_csv, index=False)
         latency_loader = _loader(
             val_split.path,
             min(train_config.batch_size, 64),
@@ -353,6 +386,7 @@ def run_training(
                     "T": int(split.T),
                     "noise_std": float(split.noise_std),
                     "epochs_ran": int(history["epochs_ran"]),
+                    "final_train_loss": float(history["train_loss"]),
                     "best_val_loss": float(history["best_val_loss"]),
                     "trainable_parameter_count": trainable_params,
                     "frozen_edge_count": frozen_edges,

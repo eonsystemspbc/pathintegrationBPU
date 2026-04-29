@@ -67,9 +67,9 @@ All required artifacts are stable under the chosen `--output-dir`:
   `adjacency_signed.npz`
 - Reports: `data_validation.md`, `bpu_validation.md`,
   `control_validation.md`, `summary.md`
-- Metrics: `metrics_by_seed.csv`, `metrics_summary.csv`
-- Figures: `error_vs_sequence_length.png`, optional `error_vs_noise.png`,
-  optional `sample_efficiency.png`
+- Metrics: `metrics_by_seed.csv`, `metrics_summary.csv`, `loss_history.csv`
+- Figures: `error_vs_sequence_length.png`, `loss_curve.png`, optional
+  `error_vs_noise.png`, optional `sample_efficiency.png`
 
 Task split `.npz` files are cached under `--cache-dir/sequences` so training can
 be rerun without regenerating synthetic trajectories.

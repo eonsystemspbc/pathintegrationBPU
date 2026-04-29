@@ -65,7 +65,9 @@ def test_mocked_end_to_end_cpu(tmp_path: Path) -> None:
         "summary.md",
         "metrics_by_seed.csv",
         "metrics_summary.csv",
+        "loss_history.csv",
         "error_vs_sequence_length.png",
+        "loss_curve.png",
     ]:
         assert (tmp_path / name).exists(), name
     with (tmp_path / "graph_metadata.json").open("r", encoding="utf-8") as f:
@@ -98,4 +100,3 @@ def test_cuda_path_smoke_conditionally(tmp_path: Path) -> None:
     )
     metrics = run_training(paths, cfg, smoke_task_spec())
     assert not metrics.empty
-

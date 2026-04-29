@@ -89,12 +89,20 @@ class OutputPaths:
         return self.output_dir / "metrics_summary.csv"
 
     @property
+    def loss_history_csv(self) -> Path:
+        return self.output_dir / "loss_history.csv"
+
+    @property
     def error_vs_sequence_length_png(self) -> Path:
         return self.output_dir / "error_vs_sequence_length.png"
 
     @property
     def error_vs_noise_png(self) -> Path:
         return self.output_dir / "error_vs_noise.png"
+
+    @property
+    def loss_curve_png(self) -> Path:
+        return self.output_dir / "loss_curve.png"
 
     @property
     def sample_efficiency_png(self) -> Path:
