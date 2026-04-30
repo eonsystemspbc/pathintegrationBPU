@@ -49,6 +49,17 @@ class SequenceDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         return self.inputs[index], self.targets[index]
 
 
+def _format_duration(seconds: float) -> str:
+    seconds = max(0.0, float(seconds))
+    minutes, sec = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours:d}h{minutes:02d}m{sec:02d}s"
+    if minutes:
+        return f"{minutes:d}m{sec:02d}s"
+    return f"{sec:d}s"
+
+
 def _loader(
     path: Path,
     batch_size: int,
@@ -138,18 +149,59 @@ def train_one_model(
     epochs_without_improvement = 0
     epoch_rows: list[dict[str, object]] = []
     history: dict[str, object] = {"epochs_ran": 0, "best_val_loss": best_val}
+    total_train_batches = len(train_loader)
+    total_val_batches = len(val_loader)
+    tqdm.write(
+        "model-start "
+        f"model={model_name} seed={seed} epochs={config.epochs} "
+        f"train_batches={total_train_batches} val_batches={total_val_batches} "
+        f"batch_size={config.batch_size}"
+    )
     for epoch in range(config.epochs):
+        epoch_start = time.perf_counter()
+        last_log = epoch_start
         model.train()
         train_losses: list[float] = []
-        for batch in train_loader:
+        tqdm.write(
+            "epoch-start "
+            f"model={model_name} seed={seed} epoch={epoch + 1}/{config.epochs}"
+        )
+        for batch_index, batch in enumerate(train_loader, start=1):
             inputs, targets = _to_device(batch, device)
             optimizer.zero_grad(set_to_none=True)
             loss = _loss_fn(model(inputs), targets)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
             optimizer.step()
-            train_losses.append(float(loss.detach().cpu()))
-        val_loss = evaluate_loss(model, val_loader, device)
+            batch_loss = float(loss.detach().cpu())
+            train_losses.append(batch_loss)
+            now = time.perf_counter()
+            should_log = (
+                config.log_every_seconds > 0
+                and (now - last_log >= config.log_every_seconds)
+            )
+            if should_log:
+                tqdm.write(
+                    "progress "
+                    f"phase=train model={model_name} seed={seed} "
+                    f"epoch={epoch + 1}/{config.epochs} "
+                    f"batch={batch_index}/{total_train_batches} "
+                    f"batch_mse={batch_loss:.6g} "
+                    f"running_train_mse={float(np.mean(train_losses)):.6g} "
+                    f"elapsed={_format_duration(now - epoch_start)}"
+                )
+                last_log = now
+        tqdm.write(
+            "val-start "
+            f"model={model_name} seed={seed} epoch={epoch + 1}/{config.epochs}"
+        )
+        val_loss = evaluate_loss(
+            model,
+            val_loader,
+            device,
+            log_context=f"model={model_name} seed={seed} epoch={epoch + 1}/{config.epochs}",
+            log_every_seconds=config.log_every_seconds,
+        )
         train_loss = float(np.mean(train_losses)) if train_losses else float("nan")
         history["epochs_ran"] = epoch + 1
         history["train_loss"] = train_loss
@@ -181,16 +233,43 @@ def train_one_model(
     model.load_state_dict(best_state)
     history["best_val_loss"] = float(best_val)
     history["epoch_rows"] = epoch_rows
+    tqdm.write(
+        "model-done "
+        f"model={model_name} seed={seed} epochs_ran={history['epochs_ran']} "
+        f"best_val_mse={best_val:.6g}"
+    )
     return history
 
 
 @torch.no_grad()
-def evaluate_loss(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
+def evaluate_loss(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    log_context: str | None = None,
+    log_every_seconds: float = 60.0,
+) -> float:
     model.eval()
     losses: list[float] = []
-    for batch in loader:
+    total_batches = len(loader)
+    start = time.perf_counter()
+    last_log = start
+    for batch_index, batch in enumerate(loader, start=1):
         inputs, targets = _to_device(batch, device)
         losses.append(float(_loss_fn(model(inputs), targets).detach().cpu()))
+        now = time.perf_counter()
+        if (
+            log_context is not None
+            and log_every_seconds > 0
+            and now - last_log >= log_every_seconds
+        ):
+            tqdm.write(
+                "progress "
+                f"phase=val {log_context} batch={batch_index}/{total_batches} "
+                f"running_val_mse={float(np.mean(losses)):.6g} "
+                f"elapsed={_format_duration(now - start)}"
+            )
+            last_log = now
     return float(np.mean(losses)) if losses else float("nan")
 
 
@@ -227,17 +306,35 @@ def evaluate_metrics(
     model: nn.Module,
     loader: DataLoader,
     device: torch.device,
+    log_context: str | None = None,
+    log_every_seconds: float = 60.0,
 ) -> dict[str, float]:
     model.eval()
     preds: list[np.ndarray] = []
     targets_all: list[np.ndarray] = []
     losses: list[float] = []
-    for batch in loader:
+    total_batches = len(loader)
+    start = time.perf_counter()
+    last_log = start
+    for batch_index, batch in enumerate(loader, start=1):
         inputs, targets = _to_device(batch, device)
         pred = model(inputs)
         losses.append(float(_loss_fn(pred, targets).detach().cpu()))
         preds.append(pred.detach().cpu().numpy())
         targets_all.append(targets.detach().cpu().numpy())
+        now = time.perf_counter()
+        if (
+            log_context is not None
+            and log_every_seconds > 0
+            and now - last_log >= log_every_seconds
+        ):
+            tqdm.write(
+                "progress "
+                f"phase=eval {log_context} batch={batch_index}/{total_batches} "
+                f"running_eval_mse={float(np.mean(losses)):.6g} "
+                f"elapsed={_format_duration(now - start)}"
+            )
+            last_log = now
     pred_np = np.concatenate(preds, axis=0)
     target_np = np.concatenate(targets_all, axis=0)
     return {
@@ -312,9 +409,13 @@ def run_training(
     train_config: TrainConfig,
     task_spec: TaskSpec,
 ) -> pd.DataFrame:
+    tqdm.write(f"run-start output_dir={paths.output_dir} cache_dir={paths.cache_dir}")
     graph = load_prepared_graph(paths)
     device = resolve_device(train_config.device)
+    tqdm.write(f"device-selected device={device}")
+    tqdm.write("data-start ensuring cached synthetic splits")
     splits = ensure_splits(paths.sequence_dir, task_spec)
+    tqdm.write(f"data-ready splits={len(splits)} sequence_dir={paths.sequence_dir}")
     train_split = next(split for split in splits if split.name == "train")
     val_split = next(split for split in splits if split.name == "val")
     train_loader = _loader(
@@ -335,6 +436,12 @@ def run_training(
     model_names = list(train_config.models or DEFAULT_BPU_MODELS)
     if train_config.include_gru and "gru" not in model_names:
         model_names.append("gru")
+    tqdm.write(
+        "run-config "
+        f"models={','.join(model_names)} seeds={','.join(map(str, train_config.seeds))} "
+        f"epochs={train_config.epochs} batch_size={train_config.batch_size} "
+        f"log_every_seconds={train_config.log_every_seconds:g}"
+    )
 
     rows: list[dict[str, object]] = []
     loss_rows: list[dict[str, object]] = []
@@ -346,6 +453,7 @@ def run_training(
         iterator.set_postfix(seed=seed, model=model_name)
         torch.manual_seed(seed)
         np.random.seed(seed)
+        tqdm.write(f"build-model model={model_name} seed={seed}")
         model = _make_model(graph, model_name, seed, device)
         history = train_one_model(
             model,
@@ -370,6 +478,11 @@ def run_training(
         frozen_edges = int(getattr(model, "W_rec", torch.empty(0)).count_nonzero().item()) if hasattr(model, "W_rec") else 0
         trainable_params = count_trainable_parameters(model)
         for split in eval_splits:
+            tqdm.write(
+                "eval-start "
+                f"model={model_name} seed={seed} split={split.name} "
+                f"T={split.T} noise_std={split.noise_std}"
+            )
             loader = _loader(
                 split.path,
                 train_config.batch_size,
@@ -377,7 +490,16 @@ def run_training(
                 shuffle=False,
                 device=device,
             )
-            metric = evaluate_metrics(model, loader, device)
+            metric = evaluate_metrics(
+                model,
+                loader,
+                device,
+                log_context=(
+                    f"model={model_name} seed={seed} split={split.name} "
+                    f"T={split.T} noise_std={split.noise_std}"
+                ),
+                log_every_seconds=train_config.log_every_seconds,
+            )
             rows.append(
                 {
                     "seed": int(seed),

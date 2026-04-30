@@ -145,6 +145,7 @@ class TrainConfig:
     include_gru: bool = False
     device: str = "auto"
     models: tuple[str, ...] | None = None
+    log_every_seconds: float = 60.0
 
 
 @dataclass(frozen=True)
@@ -186,6 +187,12 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument(
+        "--log-every-seconds",
+        type=float,
+        default=60.0,
+        help="Emit batch-level training/evaluation progress at this time interval. Use 0 to disable.",
+    )
+    parser.add_argument(
         "--comparison",
         choices=("default", "structure"),
         default="default",
@@ -217,6 +224,7 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         include_gru=args.include_gru,
         device=args.device,
         models=models,
+        log_every_seconds=args.log_every_seconds,
     )
     return CliConfig(
         mode=args.mode,

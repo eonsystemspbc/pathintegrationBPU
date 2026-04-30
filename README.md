@@ -38,7 +38,8 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --models cx_bpu no_recurrence weight_shuffle \
   --epochs 20 \
   --batch-size 128 \
-  --num-workers 2
+  --num-workers 2 \
+  --log-every-seconds 60
 ```
 
 Add `--include-gru` to run the optional stretch GRU baseline after the frozen
