@@ -18,6 +18,12 @@ TASK_CACHE_VERSION = 2
 DT = 1.0
 INPUT_DIM = 2
 OUTPUT_DIM = 4
+TASK_CARTESIAN = "cartesian"
+TASK_CX_POLAR_BUMP = "cx_polar_bump"
+TASK_CHOICES = (TASK_CARTESIAN, TASK_CX_POLAR_BUMP)
+DEFAULT_HEADING_BINS = 32
+DEFAULT_HOME_DISTANCE_SCALE = 25.0
+DEFAULT_BUMP_KAPPA = 8.0
 DEFAULT_SEEDS = (0, 1, 2)
 DEFAULT_TRAIN_T = 50
 DEFAULT_TEST_T = (50, 100, 200)
@@ -131,6 +137,10 @@ class TaskSpec:
     noise_stds: tuple[float, ...] = DEFAULT_NOISE_STDS
     data_seed: int = DATA_SEED
     cache_version: int = TASK_CACHE_VERSION
+    kind: str = TASK_CARTESIAN
+    heading_bins: int = DEFAULT_HEADING_BINS
+    home_distance_scale: float = DEFAULT_HOME_DISTANCE_SCALE
+    bump_kappa: float = DEFAULT_BUMP_KAPPA
 
 
 @dataclass(frozen=True)
@@ -183,6 +193,33 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         default="auto",
     )
     parser.add_argument("--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS))
+    parser.add_argument(
+        "--task",
+        choices=TASK_CHOICES,
+        default=TASK_CARTESIAN,
+        help=(
+            "Training target. 'cartesian' predicts [cos(theta), sin(theta), x, y]. "
+            "'cx_polar_bump' predicts a heading bump plus home-vector polar readout."
+        ),
+    )
+    parser.add_argument(
+        "--heading-bins",
+        type=int,
+        default=DEFAULT_HEADING_BINS,
+        help="Heading bump bins for --task cx_polar_bump.",
+    )
+    parser.add_argument(
+        "--home-distance-scale",
+        type=float,
+        default=DEFAULT_HOME_DISTANCE_SCALE,
+        help="Distance divisor for the cx_polar_bump home-distance target.",
+    )
+    parser.add_argument(
+        "--bump-kappa",
+        type=float,
+        default=DEFAULT_BUMP_KAPPA,
+        help="Concentration of the circular heading bump for --task cx_polar_bump.",
+    )
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=2)
@@ -210,6 +247,12 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
     )
     parser.add_argument("--include-gru", action="store_true")
     args = parser.parse_args(argv)
+    if args.heading_bins < 4:
+        parser.error("--heading-bins must be at least 4.")
+    if args.home_distance_scale <= 0:
+        parser.error("--home-distance-scale must be positive.")
+    if args.bump_kappa <= 0:
+        parser.error("--bump-kappa must be positive.")
 
     output_dir = args.output_dir.resolve()
     cache_dir = (args.cache_dir.resolve() if args.cache_dir else output_dir)
@@ -233,7 +276,12 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         cache_dir=cache_dir,
         signed_policy=args.signed_policy,
         train=train,
-        task=TaskSpec(),
+        task=TaskSpec(
+            kind=args.task,
+            heading_bins=args.heading_bins,
+            home_distance_scale=args.home_distance_scale,
+            bump_kappa=args.bump_kappa,
+        ),
     )
 
 
@@ -253,3 +301,11 @@ def resolve_device(requested: str) -> torch.device:
     if requested == "cpu":
         return torch.device("cpu")
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def output_dim_for_task(task: TaskSpec) -> int:
+    if task.kind == TASK_CARTESIAN:
+        return OUTPUT_DIM
+    if task.kind == TASK_CX_POLAR_BUMP:
+        return int(task.heading_bins) + 3
+    raise ValueError(f"Unknown task kind: {task.kind}")

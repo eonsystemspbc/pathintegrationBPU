@@ -17,9 +17,12 @@ from .config import (
     DEFAULT_BPU_MODELS,
     OUTPUT_DIM,
     RHO_TARGET,
+    TASK_CARTESIAN,
+    TASK_CX_POLAR_BUMP,
     OutputPaths,
     TaskSpec,
     TrainConfig,
+    output_dim_for_task,
     resolve_device,
 )
 from .connectome import (
@@ -27,8 +30,8 @@ from .connectome import (
     degree_preserving_shuffle_matrix,
     load_prepared_graph,
     pool_indices,
+    power_iteration_radius,
     random_control_matrix,
-    spectral_radius,
     weight_shuffled_control_matrix,
 )
 from .models import CXBPU, GRUBaseline, assert_bpu_trainable_surface, count_trainable_parameters
@@ -83,21 +86,56 @@ def _to_device(batch: tuple[torch.Tensor, torch.Tensor], device: torch.device) -
 
 
 def _scale_control(matrix: sparse.csr_matrix) -> sparse.csr_matrix:
-    rho = spectral_radius(matrix)
+    start = time.perf_counter()
+    tqdm.write(f"control-scale-start edges={matrix.nnz}")
+    rho = power_iteration_radius(matrix, iters=120)
     if rho <= 0:
+        tqdm.write(
+            f"control-scale-done rho={rho:.6g} scale=1 elapsed={_format_duration(time.perf_counter() - start)}"
+        )
         return matrix.astype(np.float32).tocsr()
-    return (matrix * (RHO_TARGET / rho)).astype(np.float32).tocsr()
+    scale = RHO_TARGET / rho
+    scaled = (matrix * scale).astype(np.float32).tocsr()
+    tqdm.write(
+        f"control-scale-done rho={rho:.6g} scale={scale:.6g} elapsed={_format_duration(time.perf_counter() - start)}"
+    )
+    return scaled
 
 
 def _control_matrix(primary: sparse.csr_matrix, name: str, seed: int) -> sparse.csr_matrix:
     if name in {"cx_bpu", "no_recurrence"}:
+        tqdm.write(f"control-build-reuse model={name} edges={primary.nnz}")
         return primary
     if name == "random":
-        return _scale_control(random_control_matrix(primary, seed=10_000 + seed))
+        start = time.perf_counter()
+        tqdm.write(
+            f"control-build-start model=random seed={seed} N={primary.shape[0]} edges={primary.nnz}"
+        )
+        matrix = random_control_matrix(primary, seed=10_000 + seed)
+        tqdm.write(
+            f"control-build-done model=random edges={matrix.nnz} elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return _scale_control(matrix)
     if name == "degree_shuffle":
-        return _scale_control(degree_preserving_shuffle_matrix(primary, seed=20_000 + seed))
+        start = time.perf_counter()
+        tqdm.write(
+            f"control-build-start model=degree_shuffle seed={seed} N={primary.shape[0]} edges={primary.nnz}"
+        )
+        matrix = degree_preserving_shuffle_matrix(primary, seed=20_000 + seed)
+        tqdm.write(
+            f"control-build-done model=degree_shuffle edges={matrix.nnz} elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return _scale_control(matrix)
     if name == "weight_shuffle":
-        return _scale_control(weight_shuffled_control_matrix(primary, seed=30_000 + seed))
+        start = time.perf_counter()
+        tqdm.write(
+            f"control-build-start model=weight_shuffle seed={seed} N={primary.shape[0]} edges={primary.nnz}"
+        )
+        matrix = weight_shuffled_control_matrix(primary, seed=30_000 + seed)
+        tqdm.write(
+            f"control-build-done model=weight_shuffle edges={matrix.nnz} elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return _scale_control(matrix)
     raise ValueError(f"Unknown control: {name}")
 
 
@@ -106,14 +144,16 @@ def _make_model(
     model_name: str,
     seed: int,
     device: torch.device,
+    task_spec: TaskSpec,
     include_gru_hidden: int | None = None,
 ) -> nn.Module:
     torch.manual_seed(seed)
     if device.type == "cuda":
         torch.cuda.manual_seed_all(seed)
+    output_dim = output_dim_for_task(task_spec)
     if model_name == "gru":
         hidden = include_gru_hidden or min(256, int(graph.metadata["N"]))
-        return GRUBaseline(hidden_size=hidden).to(device)
+        return GRUBaseline(hidden_size=hidden, output_dim=output_dim).to(device)
     indices = pool_indices(graph.pools)
     matrix = _control_matrix(graph.matrix.astype(np.float32).tocsr(), model_name, seed)
     K = int(graph.metadata["estimated_K"])
@@ -123,15 +163,30 @@ def _make_model(
         output_indices=indices["output"],
         K=K,
         reset_each_timestep=(model_name == "no_recurrence"),
+        output_dim=output_dim,
     ).to(device)
     assert_bpu_trainable_surface(model)
     return model
 
 
-def _loss_fn(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    if pred.shape[-1] != OUTPUT_DIM:
-        raise ValueError("model output dimension mismatch")
-    return torch.mean((pred - target) ** 2)
+def _loss_fn(pred: torch.Tensor, target: torch.Tensor, task_spec: TaskSpec) -> torch.Tensor:
+    expected_dim = output_dim_for_task(task_spec)
+    if pred.shape[-1] != expected_dim or target.shape[-1] != expected_dim:
+        raise ValueError(
+            f"model/target output dimension mismatch for {task_spec.kind}: "
+            f"pred={pred.shape[-1]}, target={target.shape[-1]}, expected={expected_dim}"
+        )
+    if task_spec.kind == TASK_CARTESIAN:
+        return torch.mean((pred - target) ** 2)
+    if task_spec.kind == TASK_CX_POLAR_BUMP:
+        bins = task_spec.heading_bins
+        pred_bump = torch.sigmoid(pred[..., :bins])
+        target_bump = target[..., :bins]
+        bump_loss = torch.mean((pred_bump - target_bump) ** 2)
+        bearing_loss = torch.mean((pred[..., bins : bins + 2] - target[..., bins : bins + 2]) ** 2)
+        distance_loss = torch.mean((pred[..., bins + 2] - target[..., bins + 2]) ** 2)
+        return bump_loss + bearing_loss + 0.5 * distance_loss
+    raise ValueError(f"Unknown task kind: {task_spec.kind}")
 
 
 def train_one_model(
@@ -142,6 +197,7 @@ def train_one_model(
     device: torch.device,
     model_name: str,
     seed: int,
+    task_spec: TaskSpec,
 ) -> dict[str, object]:
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     best_state = copy.deepcopy(model.state_dict())
@@ -169,7 +225,7 @@ def train_one_model(
         for batch_index, batch in enumerate(train_loader, start=1):
             inputs, targets = _to_device(batch, device)
             optimizer.zero_grad(set_to_none=True)
-            loss = _loss_fn(model(inputs), targets)
+            loss = _loss_fn(model(inputs), targets, task_spec)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
             optimizer.step()
@@ -199,6 +255,7 @@ def train_one_model(
             model,
             val_loader,
             device,
+            task_spec,
             log_context=f"model={model_name} seed={seed} epoch={epoch + 1}/{config.epochs}",
             log_every_seconds=config.log_every_seconds,
         )
@@ -246,6 +303,7 @@ def evaluate_loss(
     model: nn.Module,
     loader: DataLoader,
     device: torch.device,
+    task_spec: TaskSpec,
     log_context: str | None = None,
     log_every_seconds: float = 60.0,
 ) -> float:
@@ -256,7 +314,7 @@ def evaluate_loss(
     last_log = start
     for batch_index, batch in enumerate(loader, start=1):
         inputs, targets = _to_device(batch, device)
-        losses.append(float(_loss_fn(model(inputs), targets).detach().cpu()))
+        losses.append(float(_loss_fn(model(inputs), targets, task_spec).detach().cpu()))
         now = time.perf_counter()
         if (
             log_context is not None
@@ -301,11 +359,71 @@ def _final_displacement_error(pred: np.ndarray, target: np.ndarray) -> float:
     return float(np.mean(np.linalg.norm(pred[:, -1, 2:4] - target[:, -1, 2:4], axis=1)))
 
 
+def _circular_error(pred_angle: np.ndarray, target_angle: np.ndarray) -> np.ndarray:
+    return (pred_angle - target_angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def _decode_bump_angle(bump: np.ndarray) -> np.ndarray:
+    bins = bump.shape[-1]
+    angles = np.linspace(-np.pi, np.pi, bins, endpoint=False, dtype=np.float32)
+    sin_sum = np.sum(bump * np.sin(angles), axis=-1)
+    cos_sum = np.sum(bump * np.cos(angles), axis=-1)
+    return np.arctan2(sin_sum, cos_sum)
+
+
+def _evaluate_cartesian_metrics(
+    pred_np: np.ndarray, target_np: np.ndarray, losses: list[float]
+) -> dict[str, float]:
+    return {
+        "mse": float(np.mean(losses)),
+        "heading_angular_error": _angular_error(pred_np, target_np),
+        "position_rmse": _position_rmse(pred_np, target_np),
+        "final_home_vector_cosine": _final_home_vector_cosine(pred_np, target_np),
+        "final_displacement_error": _final_displacement_error(pred_np, target_np),
+    }
+
+
+def _evaluate_cx_polar_bump_metrics(
+    pred_np: np.ndarray,
+    target_np: np.ndarray,
+    losses: list[float],
+    task_spec: TaskSpec,
+) -> dict[str, float]:
+    bins = task_spec.heading_bins
+    pred_bump = 1.0 / (1.0 + np.exp(-pred_np[..., :bins]))
+    target_bump = target_np[..., :bins]
+    pred_heading = _decode_bump_angle(pred_bump)
+    target_heading = _decode_bump_angle(target_bump)
+    heading_error = np.abs(_circular_error(pred_heading, target_heading))
+    pred_bearing = np.arctan2(pred_np[..., bins + 1], pred_np[..., bins])
+    target_bearing = np.arctan2(target_np[..., bins + 1], target_np[..., bins])
+    bearing_error = np.abs(_circular_error(pred_bearing, target_bearing))
+    pred_distance = pred_np[..., bins + 2] * task_spec.home_distance_scale
+    target_distance = target_np[..., bins + 2] * task_spec.home_distance_scale
+    distance_error = pred_distance - target_distance
+    final_bearing_error = bearing_error[:, -1]
+    final_distance_error = np.abs(distance_error[:, -1])
+    return {
+        "mse": float(np.mean(losses)),
+        "heading_angular_error": float(np.mean(heading_error)),
+        "position_rmse": float(np.sqrt(np.mean(distance_error**2))),
+        "final_home_vector_cosine": float(np.mean(np.cos(final_bearing_error))),
+        "final_displacement_error": float(np.mean(final_distance_error)),
+        "bump_mse": float(np.mean((pred_bump - target_bump) ** 2)),
+        "heading_bump_angular_error": float(np.mean(heading_error)),
+        "home_bearing_angular_error": float(np.mean(bearing_error)),
+        "home_distance_rmse": float(np.sqrt(np.mean(distance_error**2))),
+        "final_home_bearing_angular_error": float(np.mean(final_bearing_error)),
+        "final_home_distance_error": float(np.mean(final_distance_error)),
+    }
+
+
 @torch.no_grad()
 def evaluate_metrics(
     model: nn.Module,
     loader: DataLoader,
     device: torch.device,
+    task_spec: TaskSpec,
     log_context: str | None = None,
     log_every_seconds: float = 60.0,
 ) -> dict[str, float]:
@@ -319,7 +437,7 @@ def evaluate_metrics(
     for batch_index, batch in enumerate(loader, start=1):
         inputs, targets = _to_device(batch, device)
         pred = model(inputs)
-        losses.append(float(_loss_fn(pred, targets).detach().cpu()))
+        losses.append(float(_loss_fn(pred, targets, task_spec).detach().cpu()))
         preds.append(pred.detach().cpu().numpy())
         targets_all.append(targets.detach().cpu().numpy())
         now = time.perf_counter()
@@ -337,13 +455,11 @@ def evaluate_metrics(
             last_log = now
     pred_np = np.concatenate(preds, axis=0)
     target_np = np.concatenate(targets_all, axis=0)
-    return {
-        "mse": float(np.mean(losses)),
-        "heading_angular_error": _angular_error(pred_np, target_np),
-        "position_rmse": _position_rmse(pred_np, target_np),
-        "final_home_vector_cosine": _final_home_vector_cosine(pred_np, target_np),
-        "final_displacement_error": _final_displacement_error(pred_np, target_np),
-    }
+    if task_spec.kind == TASK_CARTESIAN:
+        return _evaluate_cartesian_metrics(pred_np, target_np, losses)
+    if task_spec.kind == TASK_CX_POLAR_BUMP:
+        return _evaluate_cx_polar_bump_metrics(pred_np, target_np, losses, task_spec)
+    raise ValueError(f"Unknown task kind: {task_spec.kind}")
 
 
 @torch.no_grad()
@@ -376,11 +492,18 @@ def _summarize_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
         "position_rmse",
         "final_home_vector_cosine",
         "final_displacement_error",
+        "bump_mse",
+        "heading_bump_angular_error",
+        "home_bearing_angular_error",
+        "home_distance_rmse",
+        "final_home_bearing_angular_error",
+        "final_home_distance_error",
         "drift_slope_vs_T",
         "latency_ms_per_sequence",
         "final_train_loss",
         "best_val_loss",
     ]
+    metric_cols = [col for col in metric_cols if col in metrics.columns]
     grouped = metrics.groupby(["model", "split", "T", "noise_std"], dropna=False)
     summary = grouped[metric_cols].agg(["mean", "std"]).reset_index()
     summary.columns = [
@@ -440,6 +563,7 @@ def run_training(
         "run-config "
         f"models={','.join(model_names)} seeds={','.join(map(str, train_config.seeds))} "
         f"epochs={train_config.epochs} batch_size={train_config.batch_size} "
+        f"task={task_spec.kind} output_dim={output_dim_for_task(task_spec)} "
         f"log_every_seconds={train_config.log_every_seconds:g}"
     )
 
@@ -454,7 +578,7 @@ def run_training(
         torch.manual_seed(seed)
         np.random.seed(seed)
         tqdm.write(f"build-model model={model_name} seed={seed}")
-        model = _make_model(graph, model_name, seed, device)
+        model = _make_model(graph, model_name, seed, device, task_spec)
         history = train_one_model(
             model,
             train_loader,
@@ -463,6 +587,7 @@ def run_training(
             device,
             model_name=model_name,
             seed=seed,
+            task_spec=task_spec,
         )
         loss_rows.extend(history["epoch_rows"])
         pd.DataFrame(loss_rows).to_csv(paths.loss_history_csv, index=False)
@@ -494,6 +619,7 @@ def run_training(
                 model,
                 loader,
                 device,
+                task_spec,
                 log_context=(
                     f"model={model_name} seed={seed} split={split.name} "
                     f"T={split.T} noise_std={split.noise_std}"
@@ -504,6 +630,7 @@ def run_training(
                 {
                     "seed": int(seed),
                     "model": model_name,
+                    "task": task_spec.kind,
                     "split": split.name,
                     "T": int(split.T),
                     "noise_std": float(split.noise_std),

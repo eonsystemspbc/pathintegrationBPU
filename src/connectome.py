@@ -212,6 +212,10 @@ def _power_iteration_radius(matrix: sparse.spmatrix, iters: int = 200) -> float:
     return last_norm
 
 
+def power_iteration_radius(matrix: sparse.spmatrix, iters: int = 120) -> float:
+    return _power_iteration_radius(matrix, iters=iters)
+
+
 def scale_to_spectral_radius(
     unsigned: sparse.csr_matrix,
     signed: sparse.csr_matrix | None,

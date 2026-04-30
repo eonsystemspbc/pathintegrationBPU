@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from .config import RHO_TARGET, OutputPaths, TaskSpec
+from .config import OUTPUT_DIM, RHO_TARGET, OutputPaths, TaskSpec, output_dim_for_task
 from .connectome import (
     control_invariants,
     degree_preserving_shuffle_matrix,
@@ -36,7 +36,7 @@ def _load_metadata(paths: OutputPaths) -> dict[str, object]:
 def _sequence_paths(paths: OutputPaths) -> list[Path]:
     if not paths.sequence_dir.exists():
         return []
-    return sorted(paths.sequence_dir.glob("*.npz"))
+    return sorted(paths.sequence_dir.rglob("*.npz"))
 
 
 def write_data_validation(paths: OutputPaths) -> None:
@@ -78,7 +78,7 @@ def write_data_validation(paths: OutputPaths) -> None:
     _write(paths.data_validation_md, "Data Validation", lines)
 
 
-def write_bpu_validation(paths: OutputPaths) -> None:
+def write_bpu_validation(paths: OutputPaths, task_spec: TaskSpec | None = None) -> None:
     graph = load_prepared_graph(paths)
     metadata = graph.metadata
     unsigned = graph.unsigned.tocsr()
@@ -117,14 +117,26 @@ def write_bpu_validation(paths: OutputPaths) -> None:
         pool: pools.loc[pools["pool"] == pool, "index"].astype(int).tolist()
         for pool in ("sensory", "output")
     }
-    model = CXBPU(graph.matrix, indices["sensory"], indices["output"], int(metadata["estimated_K"]))
+    output_dim = output_dim_for_task(task_spec) if task_spec is not None else OUTPUT_DIM
+    model = CXBPU(
+        graph.matrix,
+        indices["sensory"],
+        indices["output"],
+        int(metadata["estimated_K"]),
+        output_dim=output_dim,
+    )
     try:
         assert_bpu_trainable_surface(model)
         surface_ok = True
     except AssertionError:
         surface_ok = False
     lines.append(_line(surface_ok, "CX-BPU exposes only W_in, b_in, W_out, b_out as trainable"))
-    expected_params = len(indices["sensory"]) * 2 + len(indices["sensory"]) + 4 * len(indices["output"]) + 4
+    expected_params = (
+        len(indices["sensory"]) * 2
+        + len(indices["sensory"])
+        + output_dim * len(indices["output"])
+        + output_dim
+    )
     observed_params = count_trainable_parameters(model)
     lines.append(
         _line(
@@ -221,7 +233,6 @@ def write_summary(paths: OutputPaths) -> None:
 
 def run_validation(paths: OutputPaths, task_spec: TaskSpec | None = None) -> None:
     write_data_validation(paths)
-    write_bpu_validation(paths)
+    write_bpu_validation(paths, task_spec)
     write_control_validation(paths)
     write_summary(paths)
-

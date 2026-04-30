@@ -25,6 +25,7 @@ class CXBPU(nn.Module):
         output_indices: list[int],
         K: int,
         reset_each_timestep: bool = False,
+        output_dim: int = OUTPUT_DIM,
     ) -> None:
         super().__init__()
         if sparse.issparse(recurrent):
@@ -41,6 +42,7 @@ class CXBPU(nn.Module):
             raise ValueError("output_indices cannot be empty.")
         self.N = int(rec_array.shape[0])
         self.K = int(K)
+        self.output_dim = int(output_dim)
         self.reset_each_timestep = bool(reset_each_timestep)
         self.register_buffer("W_rec", torch.as_tensor(rec_array, dtype=torch.float32))
         self.register_buffer(
@@ -51,8 +53,8 @@ class CXBPU(nn.Module):
         scale_out = 1.0 / math.sqrt(max(len(output_indices), 1))
         self.W_in = nn.Parameter(torch.empty(len(sensory_indices), INPUT_DIM))
         self.b_in = nn.Parameter(torch.zeros(len(sensory_indices)))
-        self.W_out = nn.Parameter(torch.empty(OUTPUT_DIM, len(output_indices)))
-        self.b_out = nn.Parameter(torch.zeros(OUTPUT_DIM))
+        self.W_out = nn.Parameter(torch.empty(self.output_dim, len(output_indices)))
+        self.b_out = nn.Parameter(torch.zeros(self.output_dim))
         nn.init.uniform_(self.W_in, -scale_in, scale_in)
         nn.init.uniform_(self.W_out, -scale_out, scale_out)
 
@@ -85,11 +87,12 @@ class CXBPU(nn.Module):
 
 
 class GRUBaseline(nn.Module):
-    def __init__(self, hidden_size: int = 256) -> None:
+    def __init__(self, hidden_size: int = 256, output_dim: int = OUTPUT_DIM) -> None:
         super().__init__()
         self.hidden_size = int(hidden_size)
+        self.output_dim = int(output_dim)
         self.gru = nn.GRU(INPUT_DIM, self.hidden_size, batch_first=True)
-        self.out = nn.Linear(self.hidden_size, OUTPUT_DIM)
+        self.out = nn.Linear(self.hidden_size, self.output_dim)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         h, _ = self.gru(inputs)
@@ -111,4 +114,3 @@ def assert_bpu_trainable_surface(model: CXBPU) -> None:
         raise AssertionError(f"CXBPU trainable surface mismatch: {observed} != {expected}")
     if model.W_rec.requires_grad:
         raise AssertionError("W_rec must be frozen.")
-

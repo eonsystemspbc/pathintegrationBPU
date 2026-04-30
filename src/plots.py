@@ -12,7 +12,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from .config import OutputPaths
+from .config import TASK_CX_POLAR_BUMP, OutputPaths
 
 
 def _mean_sem(frame: pd.DataFrame, x: str, y: str) -> pd.DataFrame:
@@ -20,6 +20,18 @@ def _mean_sem(frame: pd.DataFrame, x: str, y: str) -> pd.DataFrame:
     out = grouped.agg(["mean", "std", "count"]).reset_index()
     out["sem"] = out["std"].fillna(0.0) / out["count"].clip(lower=1) ** 0.5
     return out
+
+
+def _is_polar_bump(metrics: pd.DataFrame) -> bool:
+    return "task" in metrics.columns and set(metrics["task"].dropna().astype(str)) == {
+        TASK_CX_POLAR_BUMP
+    }
+
+
+def _error_axis_label(metrics: pd.DataFrame) -> str:
+    if _is_polar_bump(metrics):
+        return "Home-distance RMSE"
+    return "Position RMSE"
 
 
 def plot_error_vs_sequence_length(metrics: pd.DataFrame, out_path: Path) -> None:
@@ -40,8 +52,13 @@ def plot_error_vs_sequence_length(metrics: pd.DataFrame, out_path: Path) -> None
             label=model,
         )
     ax.set_xlabel("Sequence length T")
-    ax.set_ylabel("Position RMSE")
-    ax.set_title("Path-integration error vs sequence length")
+    ax.set_ylabel(_error_axis_label(metrics))
+    title = (
+        "Home-vector error vs sequence length"
+        if _is_polar_bump(metrics)
+        else "Path-integration error vs sequence length"
+    )
+    ax.set_title(title)
     ax.grid(True, alpha=0.25)
     ax.legend(frameon=False, fontsize=8)
     fig.tight_layout()
@@ -67,7 +84,7 @@ def plot_error_vs_noise(metrics: pd.DataFrame, out_path: Path) -> None:
             label=model,
         )
     ax.set_xlabel("Input noise std")
-    ax.set_ylabel("Position RMSE at T=200")
+    ax.set_ylabel(f"{_error_axis_label(metrics)} at T=200")
     ax.set_title("Noise robustness")
     ax.grid(True, alpha=0.25)
     ax.legend(frameon=False, fontsize=8)

@@ -36,6 +36,8 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --seeds 0 1 2 \
   --comparison default|structure \
   --models cx_bpu no_recurrence weight_shuffle \
+  --task cartesian|cx_polar_bump \
+  --heading-bins 32 \
   --epochs 20 \
   --batch-size 128 \
   --num-workers 2 \
@@ -50,6 +52,13 @@ against same-size matched controls: `cx_bpu`, `random`, `degree_shuffle`,
 `weight_shuffle`, and `no_recurrence`. An explicit `--models ...` list overrides
 the preset.
 
+The default task is `cartesian`, which predicts `[cos(theta), sin(theta), x, y]`
+at every timestep. The specialized `cx_polar_bump` task predicts a circular
+heading bump plus a body-centered home-vector readout
+`[cos(home_bearing), sin(home_bearing), scaled_home_distance]`. It is intended
+as a more CX-like path-integration target for comparing the hemibrain recurrent
+core against same-size non-connectomic controls.
+
 For a quick sanity run after `download` and `prepare`, train one seed with three
 models:
 
@@ -62,6 +71,23 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --epochs 1 \
   --batch-size 64 \
   --num-workers 2
+```
+
+To compare the connectome against a same-size random recurrent substrate on the
+specialized CX-style task:
+
+```bash
+python experiments/hemibrain_cx_bpu/run_benchmark.py \
+  --mode train \
+  --device cuda \
+  --task cx_polar_bump \
+  --heading-bins 32 \
+  --seeds 0 \
+  --models cx_bpu random \
+  --epochs 20 \
+  --batch-size 128 \
+  --num-workers 2 \
+  --log-every-seconds 30
 ```
 
 ## Output Layout

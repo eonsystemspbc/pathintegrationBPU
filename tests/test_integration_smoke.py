@@ -73,6 +73,8 @@ def test_mocked_end_to_end_cpu(tmp_path: Path) -> None:
     with (tmp_path / "graph_metadata.json").open("r", encoding="utf-8") as f:
         metadata = json.load(f)
     assert metadata["orientation"] == "W_rec[post_index, pre_index]"
+    data_report = (tmp_path / "data_validation.md").read_text(encoding="utf-8")
+    assert "no train/val/test leakage across" in data_report
     splits = ensure_splits(paths.sequence_dir, smoke_task_spec())
     validate_split_ids([split.path for split in splits])
     loaded = load_split(splits[0].path)
