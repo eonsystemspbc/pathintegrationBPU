@@ -14,6 +14,7 @@ CX_ROI_LABELS = ("EB", "PB", "FB", "NO")
 RHO_TARGET = 0.95
 SIGN_COVERAGE_THRESHOLD = 0.95
 DATA_SEED = 12345
+TASK_CACHE_VERSION = 2
 DT = 1.0
 INPUT_DIM = 2
 OUTPUT_DIM = 4
@@ -27,6 +28,13 @@ DEFAULT_BPU_MODELS = (
     "random",
     "degree_shuffle",
     "weight_shuffle",
+)
+STRUCTURE_COMPARISON_MODELS = (
+    "cx_bpu",
+    "random",
+    "degree_shuffle",
+    "weight_shuffle",
+    "no_recurrence",
 )
 ALL_MODEL_NAMES = DEFAULT_BPU_MODELS + ("gru",)
 
@@ -122,6 +130,7 @@ class TaskSpec:
     test_T: tuple[int, ...] = DEFAULT_TEST_T
     noise_stds: tuple[float, ...] = DEFAULT_NOISE_STDS
     data_seed: int = DATA_SEED
+    cache_version: int = TASK_CACHE_VERSION
 
 
 @dataclass(frozen=True)
@@ -177,6 +186,15 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument(
+        "--comparison",
+        choices=("default", "structure"),
+        default="default",
+        help=(
+            "Named model preset. 'structure' tests CX-BPU against same-size "
+            "random, degree-preserving, weight-shuffled, and no-recurrence controls."
+        ),
+    )
+    parser.add_argument(
         "--models",
         nargs="+",
         choices=ALL_MODEL_NAMES,
@@ -188,6 +206,9 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
 
     output_dir = args.output_dir.resolve()
     cache_dir = (args.cache_dir.resolve() if args.cache_dir else output_dir)
+    models = tuple(args.models) if args.models is not None else None
+    if models is None and args.comparison == "structure":
+        models = STRUCTURE_COMPARISON_MODELS
     train = TrainConfig(
         seeds=tuple(args.seeds),
         epochs=args.epochs,
@@ -195,7 +216,7 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         num_workers=args.num_workers,
         include_gru=args.include_gru,
         device=args.device,
-        models=tuple(args.models) if args.models is not None else None,
+        models=models,
     )
     return CliConfig(
         mode=args.mode,

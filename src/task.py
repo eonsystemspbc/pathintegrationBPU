@@ -96,6 +96,33 @@ def generate_sequences(
         "ids": ids,
         "T": np.array(T, dtype=np.int32),
         "noise_std": np.array(noise_std, dtype=np.float32),
+        "cache_version": np.array(0, dtype=np.int32),
+    }
+
+
+def with_input_noise(
+    base_data: dict[str, np.ndarray],
+    rng: np.random.Generator,
+    split_name: str,
+    noise_std: float,
+    cache_version: int,
+) -> dict[str, np.ndarray]:
+    clean_inputs = base_data["clean_inputs"].astype(np.float32)
+    if noise_std > 0:
+        inputs = clean_inputs + rng.normal(0.0, noise_std, size=clean_inputs.shape).astype(np.float32)
+        inputs[:, :, 0] = np.maximum(inputs[:, :, 0], 0.0)
+    else:
+        inputs = clean_inputs.copy()
+    count, T, _ = clean_inputs.shape
+    ids = np.array([f"{split_name}-{i:06d}" for i in range(count)])
+    return {
+        "inputs": inputs.astype(np.float32),
+        "clean_inputs": clean_inputs,
+        "targets": base_data["targets"].astype(np.float32),
+        "ids": ids,
+        "T": np.array(T, dtype=np.int32),
+        "noise_std": np.array(noise_std, dtype=np.float32),
+        "cache_version": np.array(cache_version, dtype=np.int32),
     }
 
 
@@ -116,6 +143,7 @@ def ensure_splits(sequence_dir: Path, spec: TaskSpec) -> list[SequenceSplit]:
         ("test_noise", 200, spec.test_count, float(noise)) for noise in spec.noise_stds
     )
     splits: list[SequenceSplit] = []
+    noise_base: dict[str, np.ndarray] | None = None
     for split_index, (name, T, count, noise_std) in enumerate(desired):
         path = split_path(sequence_dir, name, T, noise_std)
         regenerate = not path.exists()
@@ -123,16 +151,38 @@ def ensure_splits(sequence_dir: Path, spec: TaskSpec) -> list[SequenceSplit]:
             cached = load_split(path)
             cached_inputs = cached["inputs"]
             cached_noise = float(cached.get("noise_std", np.array(-1.0)))
+            cached_version = int(cached.get("cache_version", np.array(-1)))
             regenerate = (
                 cached_inputs.shape[:2] != (count, T)
                 or not np.isclose(cached_noise, noise_std)
+                or cached_version != spec.cache_version
             )
         if regenerate:
             seed_seq = np.random.SeedSequence(
                 [spec.data_seed, split_index, T, int(round(noise_std * 1000))]
             )
             rng = np.random.default_rng(seed_seq)
-            data = generate_sequences(count, T, rng, f"{name}_T{T}_n{noise_std:.2f}", noise_std)
+            if name == "test_noise":
+                if noise_base is None:
+                    base_seed = np.random.SeedSequence([spec.data_seed, 90_200, T])
+                    base_rng = np.random.default_rng(base_seed)
+                    noise_base = generate_sequences(
+                        count,
+                        T,
+                        base_rng,
+                        f"{name}_T{T}_base",
+                        noise_std=0.0,
+                    )
+                data = with_input_noise(
+                    noise_base,
+                    rng,
+                    f"{name}_T{T}_n{noise_std:.2f}",
+                    noise_std,
+                    spec.cache_version,
+                )
+            else:
+                data = generate_sequences(count, T, rng, f"{name}_T{T}_n{noise_std:.2f}", noise_std)
+                data["cache_version"] = np.array(spec.cache_version, dtype=np.int32)
             np.savez_compressed(path, **data)
         splits.append(SequenceSplit(name=name, T=T, noise_std=noise_std, path=path))
     validate_split_ids([split.path for split in splits])

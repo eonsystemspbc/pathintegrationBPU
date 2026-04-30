@@ -34,6 +34,7 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --cache-dir experiments/hemibrain_cx_bpu/outputs \
   --signed-policy auto|force_unsigned|force_signed \
   --seeds 0 1 2 \
+  --comparison default|structure \
   --models cx_bpu no_recurrence weight_shuffle \
   --epochs 20 \
   --batch-size 128 \
@@ -42,6 +43,11 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
 
 Add `--include-gru` to run the optional stretch GRU baseline after the frozen
 benchmark suite.
+
+Use `--comparison structure` to test whether the CX connectome topology helps
+against same-size matched controls: `cx_bpu`, `random`, `degree_shuffle`,
+`weight_shuffle`, and `no_recurrence`. An explicit `--models ...` list overrides
+the preset.
 
 For a quick sanity run after `download` and `prepare`, train one seed with three
 models:

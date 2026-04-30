@@ -78,6 +78,9 @@ def test_mocked_end_to_end_cpu(tmp_path: Path) -> None:
     loaded = load_split(splits[0].path)
     loaded_again = load_split(splits[0].path)
     assert (loaded["inputs"] == loaded_again["inputs"]).all()
+    noise_splits = [split for split in splits if split.name == "test_noise"]
+    noise_clean = [load_split(split.path)["clean_inputs"] for split in noise_splits]
+    assert all((noise_clean[0] == clean).all() for clean in noise_clean[1:])
 
 
 def test_cuda_path_smoke_conditionally(tmp_path: Path) -> None:
