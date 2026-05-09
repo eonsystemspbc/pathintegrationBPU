@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
+import torch
 from scipy import sparse
 
 from src.config import RHO_TARGET
@@ -20,7 +21,8 @@ from src.connectome import (
     weight_shuffled_control_matrix,
 )
 from src.models import CXBPU, assert_bpu_trainable_surface, count_trainable_parameters
-from src.pools import assign_pools
+from src.models import SparseCXBPU
+from src.pools import assign_pools, assign_whole_brain_pools
 
 
 def toy_neurons() -> pd.DataFrame:
@@ -99,6 +101,31 @@ def test_cx_bpu_trainable_surface_only_adapters() -> None:
     model = CXBPU(matrix, sensory_indices=[0], output_indices=[3], K=3)
     assert_bpu_trainable_surface(model)
     assert count_trainable_parameters(model) == 1 * 2 + 1 + 4 * 1 + 4
+
+
+def test_sparse_bpu_matches_dense_bpu_shape_and_trainable_surface() -> None:
+    matrix, _, _ = build_raw_adjacency(toy_neurons(), toy_connections())
+    dense_model = CXBPU(matrix, sensory_indices=[0], output_indices=[3], K=3)
+    sparse_model = SparseCXBPU(matrix, sensory_indices=[0], output_indices=[3], K=3)
+    assert_bpu_trainable_surface(sparse_model)
+    assert count_trainable_parameters(sparse_model) == count_trainable_parameters(dense_model)
+    inputs = torch.zeros((2, 5, 2), dtype=torch.float32)
+    assert sparse_model(inputs).shape == dense_model(inputs).shape
+
+
+def test_whole_brain_pool_assignment_is_exhaustive() -> None:
+    neurons = pd.DataFrame(
+        {
+            "bodyId": list(range(10)),
+            "pre": [1, 2, 3, 20, 25, 30, 5, 5, 4, 6],
+            "post": [30, 25, 20, 3, 2, 1, 5, 4, 6, 5],
+        }
+    )
+    pools = assign_whole_brain_pools(neurons, pool_fraction=0.2, min_pool_size=1)
+    assert set(pools["bodyId"]) == set(range(10))
+    assert pools[["is_sensory", "is_internal", "is_output"]].sum(axis=1).eq(1).all()
+    assert (pools["pool"] == "sensory").sum() == 2
+    assert (pools["pool"] == "output").sum() == 2
 
 
 def test_controls_preserve_required_invariants() -> None:

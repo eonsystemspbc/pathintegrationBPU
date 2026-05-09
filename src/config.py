@@ -11,6 +11,11 @@ import torch
 HEMIBRAIN_DATASET = "hemibrain:v1.2.1"
 NEUPRINT_SERVER = "neuprint.janelia.org"
 CX_ROI_LABELS = ("EB", "PB", "FB", "NO")
+CONNECTOME_HEMIBRAIN_CX = "hemibrain_cx"
+CONNECTOME_FLYWIRE_WHOLE = "flywire_whole"
+CONNECTOME_CHOICES = (CONNECTOME_HEMIBRAIN_CX, CONNECTOME_FLYWIRE_WHOLE)
+DEFAULT_FLYWIRE_RELEASE = "783"
+DEFAULT_WHOLE_BRAIN_POOL_FRACTION = 0.05
 RHO_TARGET = 0.95
 SIGN_COVERAGE_THRESHOLD = 0.95
 DATA_SEED = 12345
@@ -42,7 +47,13 @@ STRUCTURE_COMPARISON_MODELS = (
     "weight_shuffle",
     "no_recurrence",
 )
-ALL_MODEL_NAMES = DEFAULT_BPU_MODELS + ("gru",)
+WHOLE_BRAIN_COMPARISON_MODELS = (
+    "connectome_bpu",
+    "random",
+    "weight_shuffle",
+)
+ALL_MODEL_NAMES = DEFAULT_BPU_MODELS + ("connectome_bpu", "gru")
+RECURRENT_RUNTIME_CHOICES = ("auto", "dense", "sparse")
 
 
 @dataclass(frozen=True)
@@ -156,6 +167,7 @@ class TrainConfig:
     device: str = "auto"
     models: tuple[str, ...] | None = None
     log_every_seconds: float = 60.0
+    recurrent_runtime: str = "auto"
 
 
 @dataclass(frozen=True)
@@ -165,6 +177,10 @@ class CliConfig:
     output_dir: Path
     cache_dir: Path
     signed_policy: str
+    connectome: str
+    flywire_release: str
+    flywire_download_dir: Path | None
+    whole_brain_pool_fraction: float
     train: TrainConfig
     task: TaskSpec
 
@@ -187,6 +203,32 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
     )
     parser.add_argument("--output-dir", type=Path, default=default_output_dir())
     parser.add_argument("--cache-dir", type=Path, default=None)
+    parser.add_argument(
+        "--connectome",
+        choices=CONNECTOME_CHOICES,
+        default=CONNECTOME_HEMIBRAIN_CX,
+        help=(
+            "Connectome substrate. 'hemibrain_cx' uses the original neuPrint CX "
+            "query; 'flywire_whole' uses the FlyWire whole-brain release dump."
+        ),
+    )
+    parser.add_argument(
+        "--flywire-release",
+        default=DEFAULT_FLYWIRE_RELEASE,
+        help="FlyWire release label for file names; currently tested with 783.",
+    )
+    parser.add_argument(
+        "--flywire-download-dir",
+        type=Path,
+        default=None,
+        help="Directory for raw FlyWire release files. Defaults to --cache-dir/flywire_release_<release>.",
+    )
+    parser.add_argument(
+        "--whole-brain-pool-fraction",
+        type=float,
+        default=DEFAULT_WHOLE_BRAIN_POOL_FRACTION,
+        help="Fraction of whole-brain neurons assigned to sensory and output pools each.",
+    )
     parser.add_argument(
         "--signed-policy",
         choices=("auto", "force_unsigned", "force_signed"),
@@ -231,12 +273,19 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
     )
     parser.add_argument(
         "--comparison",
-        choices=("default", "structure"),
+        choices=("default", "structure", "whole_brain"),
         default="default",
         help=(
             "Named model preset. 'structure' tests CX-BPU against same-size "
-            "random, degree-preserving, weight-shuffled, and no-recurrence controls."
+            "random, degree-preserving, weight-shuffled, and no-recurrence controls. "
+            "'whole_brain' uses the scalable whole-brain preset cx_bpu/random/weight_shuffle."
         ),
+    )
+    parser.add_argument(
+        "--recurrent-runtime",
+        choices=RECURRENT_RUNTIME_CHOICES,
+        default="auto",
+        help="Use dense or sparse recurrent multiplication; auto selects sparse for large graphs.",
     )
     parser.add_argument(
         "--models",
@@ -253,12 +302,18 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         parser.error("--home-distance-scale must be positive.")
     if args.bump_kappa <= 0:
         parser.error("--bump-kappa must be positive.")
+    if not (0.0 < args.whole_brain_pool_fraction < 0.5):
+        parser.error("--whole-brain-pool-fraction must be in (0, 0.5).")
 
     output_dir = args.output_dir.resolve()
     cache_dir = (args.cache_dir.resolve() if args.cache_dir else output_dir)
     models = tuple(args.models) if args.models is not None else None
     if models is None and args.comparison == "structure":
         models = STRUCTURE_COMPARISON_MODELS
+    if models is None and args.comparison == "whole_brain":
+        models = WHOLE_BRAIN_COMPARISON_MODELS
+    if models is None and args.connectome == CONNECTOME_FLYWIRE_WHOLE:
+        models = WHOLE_BRAIN_COMPARISON_MODELS
     train = TrainConfig(
         seeds=tuple(args.seeds),
         epochs=args.epochs,
@@ -268,6 +323,7 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         device=args.device,
         models=models,
         log_every_seconds=args.log_every_seconds,
+        recurrent_runtime=args.recurrent_runtime,
     )
     return CliConfig(
         mode=args.mode,
@@ -275,6 +331,14 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         output_dir=output_dir,
         cache_dir=cache_dir,
         signed_policy=args.signed_policy,
+        connectome=args.connectome,
+        flywire_release=str(args.flywire_release),
+        flywire_download_dir=(
+            args.flywire_download_dir.resolve()
+            if args.flywire_download_dir is not None
+            else None
+        ),
+        whole_brain_pool_fraction=float(args.whole_brain_pool_fraction),
         train=train,
         task=TaskSpec(
             kind=args.task,

@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import sys
 
-from src.acquire import download_exports, require_raw_exports
-from src.config import build_paths, parse_args
+from src.acquire import download_exports, download_flywire_exports, require_raw_exports
+from src.config import CONNECTOME_FLYWIRE_WHOLE, build_paths, parse_args
 from src.connectome import prepare_connectome
 from src.plots import write_plots
 from src.train import run_training
@@ -23,14 +23,26 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print("Raw neuPrint exports already exist; download step is complete.")
         except FileNotFoundError:
-            info = download_exports(paths)
+            if cfg.connectome == CONNECTOME_FLYWIRE_WHOLE:
+                info = download_flywire_exports(
+                    paths,
+                    release=cfg.flywire_release,
+                    download_dir=cfg.flywire_download_dir,
+                )
+            else:
+                info = download_exports(paths)
             print(
-                "Downloaded hemibrain CX exports: "
+                f"Downloaded {cfg.connectome} exports: "
                 f"{info['neuron_count']} neurons, {info['edge_count']} aggregated edges."
             )
 
     if cfg.mode in {"prepare", "all"}:
-        graph = prepare_connectome(paths, signed_policy=cfg.signed_policy)
+        graph = prepare_connectome(
+            paths,
+            signed_policy=cfg.signed_policy,
+            connectome=cfg.connectome,
+            whole_brain_pool_fraction=cfg.whole_brain_pool_fraction,
+        )
         print(
             "Prepared graph: "
             f"N={graph.metadata['N']}, edges={graph.metadata['unsigned_edge_count']}, "
@@ -51,4 +63,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

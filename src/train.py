@@ -34,7 +34,13 @@ from .connectome import (
     random_control_matrix,
     weight_shuffled_control_matrix,
 )
-from .models import CXBPU, GRUBaseline, assert_bpu_trainable_surface, count_trainable_parameters
+from .models import (
+    CXBPU,
+    GRUBaseline,
+    SparseCXBPU,
+    assert_bpu_trainable_surface,
+    count_trainable_parameters,
+)
 from .plots import write_plots
 from .task import ensure_splits, load_split
 
@@ -103,7 +109,7 @@ def _scale_control(matrix: sparse.csr_matrix) -> sparse.csr_matrix:
 
 
 def _control_matrix(primary: sparse.csr_matrix, name: str, seed: int) -> sparse.csr_matrix:
-    if name in {"cx_bpu", "no_recurrence"}:
+    if name in {"cx_bpu", "connectome_bpu", "no_recurrence"}:
         tqdm.write(f"control-build-reuse model={name} edges={primary.nnz}")
         return primary
     if name == "random":
@@ -139,12 +145,31 @@ def _control_matrix(primary: sparse.csr_matrix, name: str, seed: int) -> sparse.
     raise ValueError(f"Unknown control: {name}")
 
 
+def _select_recurrent_runtime(
+    graph: PreparedGraph,
+    requested: str,
+    device: torch.device,
+) -> str:
+    if requested == "dense":
+        return "dense"
+    if requested == "sparse":
+        return "sparse"
+    n = int(graph.metadata["N"])
+    nnz = int(graph.matrix.nnz)
+    if device.type == "cuda" and (n > 12_000 or nnz > 1_000_000):
+        return "sparse"
+    if n > 20_000 or nnz > 1_000_000:
+        return "sparse"
+    return "dense"
+
+
 def _make_model(
     graph: PreparedGraph,
     model_name: str,
     seed: int,
     device: torch.device,
     task_spec: TaskSpec,
+    recurrent_runtime: str = "auto",
     include_gru_hidden: int | None = None,
 ) -> nn.Module:
     torch.manual_seed(seed)
@@ -157,14 +182,26 @@ def _make_model(
     indices = pool_indices(graph.pools)
     matrix = _control_matrix(graph.matrix.astype(np.float32).tocsr(), model_name, seed)
     K = int(graph.metadata["estimated_K"])
-    model = CXBPU(
-        matrix,
-        sensory_indices=indices["sensory"],
-        output_indices=indices["output"],
-        K=K,
-        reset_each_timestep=(model_name == "no_recurrence"),
-        output_dim=output_dim,
-    ).to(device)
+    runtime = _select_recurrent_runtime(graph, recurrent_runtime, device)
+    tqdm.write(f"recurrent-runtime model={model_name} seed={seed} runtime={runtime}")
+    if runtime == "sparse":
+        model = SparseCXBPU(
+            matrix,
+            sensory_indices=indices["sensory"],
+            output_indices=indices["output"],
+            K=K,
+            reset_each_timestep=(model_name == "no_recurrence"),
+            output_dim=output_dim,
+        ).to(device)
+    else:
+        model = CXBPU(
+            matrix,
+            sensory_indices=indices["sensory"],
+            output_indices=indices["output"],
+            K=K,
+            reset_each_timestep=(model_name == "no_recurrence"),
+            output_dim=output_dim,
+        ).to(device)
     assert_bpu_trainable_surface(model)
     return model
 
@@ -187,6 +224,17 @@ def _loss_fn(pred: torch.Tensor, target: torch.Tensor, task_spec: TaskSpec) -> t
         distance_loss = torch.mean((pred[..., bins + 2] - target[..., bins + 2]) ** 2)
         return bump_loss + bearing_loss + 0.5 * distance_loss
     raise ValueError(f"Unknown task kind: {task_spec.kind}")
+
+
+def _frozen_edge_count(model: nn.Module) -> int:
+    if not hasattr(model, "W_rec"):
+        return 0
+    W_rec = getattr(model, "W_rec")
+    if isinstance(W_rec, torch.Tensor) and W_rec.is_sparse:
+        return int(W_rec._nnz())
+    if isinstance(W_rec, torch.Tensor):
+        return int(W_rec.count_nonzero().item())
+    return 0
 
 
 def train_one_model(
@@ -564,6 +612,7 @@ def run_training(
         f"models={','.join(model_names)} seeds={','.join(map(str, train_config.seeds))} "
         f"epochs={train_config.epochs} batch_size={train_config.batch_size} "
         f"task={task_spec.kind} output_dim={output_dim_for_task(task_spec)} "
+        f"recurrent_runtime={train_config.recurrent_runtime} "
         f"log_every_seconds={train_config.log_every_seconds:g}"
     )
 
@@ -578,7 +627,14 @@ def run_training(
         torch.manual_seed(seed)
         np.random.seed(seed)
         tqdm.write(f"build-model model={model_name} seed={seed}")
-        model = _make_model(graph, model_name, seed, device, task_spec)
+        model = _make_model(
+            graph,
+            model_name,
+            seed,
+            device,
+            task_spec,
+            recurrent_runtime=train_config.recurrent_runtime,
+        )
         history = train_one_model(
             model,
             train_loader,
@@ -600,7 +656,7 @@ def run_training(
         )
         latency = measure_latency_ms_per_sequence(model, latency_loader, device)
         k_value = int(getattr(model, "K", 1))
-        frozen_edges = int(getattr(model, "W_rec", torch.empty(0)).count_nonzero().item()) if hasattr(model, "W_rec") else 0
+        frozen_edges = _frozen_edge_count(model)
         trainable_params = count_trainable_parameters(model)
         for split in eval_splits:
             tqdm.write(

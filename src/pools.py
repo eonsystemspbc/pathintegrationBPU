@@ -182,3 +182,79 @@ def write_pool_assignments(paths: OutputPaths, primary_rois: tuple[str, ...]) ->
     Path(paths.pool_assignments_csv).parent.mkdir(parents=True, exist_ok=True)
     assignments.to_csv(paths.pool_assignments_csv, index=False)
     return assignments
+
+
+def assign_whole_brain_pools(
+    neurons: pd.DataFrame,
+    pool_fraction: float = 0.05,
+    min_pool_size: int = 256,
+) -> pd.DataFrame:
+    if "bodyId" not in neurons.columns:
+        raise PoolAssignmentError("neurons.csv must include bodyId.")
+    if not (0.0 < pool_fraction < 0.5):
+        raise PoolAssignmentError("pool_fraction must be in (0, 0.5).")
+    neurons = neurons.drop_duplicates("bodyId").copy()
+    neurons["bodyId"] = neurons["bodyId"].astype("int64")
+    neurons = neurons.sort_values("bodyId").reset_index(drop=True)
+    for col in ("pre", "post"):
+        if col not in neurons.columns:
+            neurons[col] = 0.0
+        neurons[col] = pd.to_numeric(neurons[col], errors="coerce").fillna(0.0)
+    n = len(neurons)
+    if n < 3:
+        raise PoolAssignmentError("whole-brain pool assignment requires at least 3 neurons.")
+    pool_size = min(max(min_pool_size, int(round(n * pool_fraction))), max(1, n // 3))
+    total = np.maximum(neurons["pre"].to_numpy(float) + neurons["post"].to_numpy(float), 1.0)
+    input_score = (neurons["post"].to_numpy(float) - neurons["pre"].to_numpy(float)) / total
+    output_score = (neurons["pre"].to_numpy(float) - neurons["post"].to_numpy(float)) / total
+    activity = neurons["pre"].to_numpy(float) + neurons["post"].to_numpy(float)
+    sensory_order = np.lexsort((-activity, -input_score))
+    sensory_set = set(int(idx) for idx in sensory_order[:pool_size])
+    output_candidates = [idx for idx in np.lexsort((-activity, -output_score)) if int(idx) not in sensory_set]
+    output_set = set(int(idx) for idx in output_candidates[:pool_size])
+    rows: list[dict[str, object]] = []
+    for index, row in neurons.iterrows():
+        idx = int(index)
+        if idx in sensory_set:
+            pool = "sensory"
+            reason = "whole_brain_input_dominance"
+        elif idx in output_set:
+            pool = "output"
+            reason = "whole_brain_output_dominance"
+        else:
+            pool = "internal"
+            reason = "whole_brain_internal_default"
+        pre = float(row["pre"])
+        post = float(row["post"])
+        denom = max(pre + post, 1.0)
+        rows.append(
+            {
+                "bodyId": int(row["bodyId"]),
+                "index": idx,
+                "type": row.get("type", ""),
+                "instance": row.get("instance", ""),
+                "pool": pool,
+                "is_sensory": pool == "sensory",
+                "is_internal": pool == "internal",
+                "is_output": pool == "output",
+                "outside_input_frac": post / denom,
+                "outside_output_frac": pre / denom,
+                "post_in_cx_primary": 0.0,
+                "pre_in_cx_primary": 0.0,
+                "assignment_reason": reason,
+            }
+        )
+    assignments = pd.DataFrame(rows).sort_values("index")
+    validate_pool_assignments(assignments, expected_body_ids=neurons["bodyId"].tolist())
+    return assignments
+
+
+def write_whole_brain_pool_assignments(
+    paths: OutputPaths,
+    pool_fraction: float = 0.05,
+) -> pd.DataFrame:
+    neurons = pd.read_csv(paths.neurons_csv)
+    assignments = assign_whole_brain_pools(neurons, pool_fraction=pool_fraction)
+    Path(paths.pool_assignments_csv).parent.mkdir(parents=True, exist_ok=True)
+    assignments.to_csv(paths.pool_assignments_csv, index=False)
+    return assignments

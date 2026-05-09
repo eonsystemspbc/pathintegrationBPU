@@ -4,10 +4,12 @@ This is a fully isolated experiment. The only required entrypoint is
 `experiments/hemibrain_cx_bpu/run_benchmark.py`; nothing is wired into the
 repo-wide Python package or main entrypoints.
 
-The benchmark uses a fixed hemibrain central-complex recurrent core with ReLU
-microsteps. Only `W_in`, `b_in`, `W_out`, and `b_out` are trainable. Frozen
-controls run sequentially with matched data splits, optimizer settings,
-activation, dense float32 recurrence, spectral target, and microstep depth `K`.
+The default benchmark uses a fixed hemibrain central-complex recurrent core
+with ReLU microsteps. The same entrypoint can also prepare a FlyWire whole-brain
+substrate with `--connectome flywire_whole`. Only `W_in`, `b_in`, `W_out`, and
+`b_out` are trainable. Frozen controls run sequentially with matched data
+splits, optimizer settings, activation, spectral target, and microstep depth
+`K`.
 
 ## AWS Run Flow
 
@@ -30,14 +32,18 @@ the intended AWS run, use `--device cuda` so a missing GPU fails loudly.
 python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --mode download|prepare|train|validate|all \
   --device auto|cuda|cpu \
+  --connectome hemibrain_cx|flywire_whole \
   --output-dir experiments/hemibrain_cx_bpu/outputs \
   --cache-dir experiments/hemibrain_cx_bpu/outputs \
+  --flywire-release 783 \
+  --whole-brain-pool-fraction 0.05 \
   --signed-policy auto|force_unsigned|force_signed \
   --seeds 0 1 2 \
-  --comparison default|structure \
+  --comparison default|structure|whole_brain \
   --models cx_bpu no_recurrence weight_shuffle \
   --task cartesian|cx_polar_bump \
   --heading-bins 32 \
+  --recurrent-runtime auto|dense|sparse \
   --epochs 20 \
   --batch-size 128 \
   --num-workers 2 \
@@ -51,6 +57,15 @@ Use `--comparison structure` to test whether the CX connectome topology helps
 against same-size matched controls: `cx_bpu`, `random`, `degree_shuffle`,
 `weight_shuffle`, and `no_recurrence`. An explicit `--models ...` list overrides
 the preset.
+
+Use `--connectome flywire_whole` for the FlyWire whole-brain release. The
+download step pulls the public Zenodo release 783 proofread root IDs and
+proofread aggregated connections, then writes normalized `neurons.csv`,
+`roi_counts.csv`, and `connections.csv` for the rest of the pipeline. Whole
+brain runs default to the scalable control preset `connectome_bpu`, `random`, and
+`weight_shuffle`; use `--comparison whole_brain` to request that preset
+explicitly. Sparse recurrent multiplication is selected automatically for the
+large graph.
 
 The default task is `cartesian`, which predicts `[cos(theta), sin(theta), x, y]`
 at every timestep. The specialized `cx_polar_bump` task predicts a circular
@@ -90,6 +105,51 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --log-every-seconds 30
 ```
 
+To run the same task on the FlyWire whole-brain substrate on AWS, use a separate
+output directory. The raw FlyWire download is large; keep it in the cache
+directory so future runs do not re-download it.
+
+```bash
+WHOLE_OUT=/home/ubuntu/pathintegrationBPU/outputs/flywire_whole_bump_seed0
+mkdir -p "$WHOLE_OUT"
+
+python /home/ubuntu/pathintegrationBPU/run_benchmark.py \
+  --mode all \
+  --connectome flywire_whole \
+  --device cuda \
+  --task cx_polar_bump \
+  --heading-bins 32 \
+  --seeds 0 \
+  --models connectome_bpu random weight_shuffle \
+  --epochs 20 \
+  --batch-size 16 \
+  --num-workers 2 \
+  --recurrent-runtime sparse \
+  --log-every-seconds 60 \
+  --output-dir "$WHOLE_OUT" \
+  --cache-dir "$WHOLE_OUT"
+```
+
+For a stronger run after the seed-0 smoke test succeeds:
+
+```bash
+python /home/ubuntu/pathintegrationBPU/run_benchmark.py \
+  --mode train \
+  --connectome flywire_whole \
+  --device cuda \
+  --task cx_polar_bump \
+  --heading-bins 32 \
+  --seeds 0 1 2 \
+  --comparison whole_brain \
+  --epochs 60 \
+  --batch-size 16 \
+  --num-workers 2 \
+  --recurrent-runtime sparse \
+  --log-every-seconds 60 \
+  --output-dir "$WHOLE_OUT" \
+  --cache-dir "$WHOLE_OUT"
+```
+
 ## Output Layout
 
 All required artifacts are stable under the chosen `--output-dir`:
@@ -117,4 +177,10 @@ unsigned recurrence is primary and signed recurrence is auxiliary.
 
 `K` is estimated from the median reachable sensory-to-output shortest path on
 the binary support and clipped to `[3, 8]`. Validation fails if no
-sensory-to-output path exists.
+sensory-to-output path exists. For the FlyWire whole-brain substrate, `K` is
+estimated from a sampled set of sensory neurons with sparse frontier expansion
+so preparation remains tractable on the large graph. Whole-brain sensory/output
+pools are degree-imbalance heuristics: input-dominant neurons are used for input
+injection, output-dominant neurons are used for readout, and the remainder are
+internal. Interpret whole-brain results as a substrate comparison, not as a
+claim that these heuristic pools are biological sensory or motor labels.

@@ -86,6 +86,74 @@ class CXBPU(nn.Module):
         return torch.stack(outputs, dim=1)
 
 
+class SparseCXBPU(nn.Module):
+    def __init__(
+        self,
+        recurrent: sparse.spmatrix,
+        sensory_indices: list[int],
+        output_indices: list[int],
+        K: int,
+        reset_each_timestep: bool = False,
+        output_dim: int = OUTPUT_DIM,
+    ) -> None:
+        super().__init__()
+        if not sparse.issparse(recurrent):
+            raise ValueError("SparseCXBPU requires a scipy sparse recurrent matrix.")
+        recurrent = recurrent.astype(np.float32).tocoo()
+        if recurrent.shape[0] != recurrent.shape[1]:
+            raise ValueError("recurrent matrix must be square.")
+        if not sensory_indices:
+            raise ValueError("sensory_indices cannot be empty.")
+        if not output_indices:
+            raise ValueError("output_indices cannot be empty.")
+        self.N = int(recurrent.shape[0])
+        self.K = int(K)
+        self.output_dim = int(output_dim)
+        self.reset_each_timestep = bool(reset_each_timestep)
+        indices = torch.as_tensor(
+            np.vstack([recurrent.row, recurrent.col]), dtype=torch.long
+        )
+        values = torch.as_tensor(recurrent.data, dtype=torch.float32)
+        self.register_buffer(
+            "W_rec",
+            torch.sparse_coo_tensor(indices, values, size=recurrent.shape).coalesce(),
+        )
+        self.register_buffer(
+            "sensory_indices", torch.as_tensor(sensory_indices, dtype=torch.long)
+        )
+        self.register_buffer("output_indices", torch.as_tensor(output_indices, dtype=torch.long))
+        scale_in = 1.0 / math.sqrt(INPUT_DIM)
+        scale_out = 1.0 / math.sqrt(max(len(output_indices), 1))
+        self.W_in = nn.Parameter(torch.empty(len(sensory_indices), INPUT_DIM))
+        self.b_in = nn.Parameter(torch.zeros(len(sensory_indices)))
+        self.W_out = nn.Parameter(torch.empty(self.output_dim, len(output_indices)))
+        self.b_out = nn.Parameter(torch.zeros(self.output_dim))
+        nn.init.uniform_(self.W_in, -scale_in, scale_in)
+        nn.init.uniform_(self.W_out, -scale_out, scale_out)
+
+    def forward(self, inputs: torch.Tensor, h0: torch.Tensor | None = None) -> torch.Tensor:
+        if inputs.ndim != 3 or inputs.shape[-1] != INPUT_DIM:
+            raise ValueError(f"inputs must have shape [batch, T, {INPUT_DIM}]")
+        batch, T, _ = inputs.shape
+        if h0 is None:
+            h = inputs.new_zeros((batch, self.N))
+        else:
+            h = h0
+        outputs: list[torch.Tensor] = []
+        for t in range(T):
+            if self.reset_each_timestep:
+                h = inputs.new_zeros((batch, self.N))
+            injection = inputs[:, t, :] @ self.W_in.t() + self.b_in
+            for microstep in range(self.K):
+                next_h = torch.sparse.mm(self.W_rec, h.t()).t()
+                if microstep == 0:
+                    next_h = next_h.index_add(1, self.sensory_indices, injection)
+                h = torch.relu(next_h)
+            readout = h.index_select(1, self.output_indices)
+            outputs.append(readout @ self.W_out.t() + self.b_out)
+        return torch.stack(outputs, dim=1)
+
+
 class GRUBaseline(nn.Module):
     def __init__(self, hidden_size: int = 256, output_dim: int = OUTPUT_DIM) -> None:
         super().__init__()

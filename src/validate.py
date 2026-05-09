@@ -7,7 +7,14 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from .config import OUTPUT_DIM, RHO_TARGET, OutputPaths, TaskSpec, output_dim_for_task
+from .config import (
+    CONNECTOME_FLYWIRE_WHOLE,
+    OUTPUT_DIM,
+    RHO_TARGET,
+    OutputPaths,
+    TaskSpec,
+    output_dim_for_task,
+)
 from .connectome import (
     control_invariants,
     degree_preserving_shuffle_matrix,
@@ -16,7 +23,7 @@ from .connectome import (
     spectral_radius,
     weight_shuffled_control_matrix,
 )
-from .models import CXBPU, assert_bpu_trainable_surface, count_trainable_parameters
+from .models import CXBPU, SparseCXBPU, assert_bpu_trainable_surface, count_trainable_parameters
 from .task import validate_split_ids
 
 
@@ -51,7 +58,7 @@ def write_data_validation(paths: OutputPaths) -> None:
         lines.append(
             _line(
                 neuron_ids == pool_ids,
-                f"all queried CX neurons are retained in pool_assignments.csv ({len(pool_ids)}/{len(neuron_ids)})",
+                f"all queried connectome neurons are retained in pool_assignments.csv ({len(pool_ids)}/{len(neuron_ids)})",
             )
         )
         one_pool = pools[["is_sensory", "is_internal", "is_output"]].astype(bool).sum(axis=1).eq(1)
@@ -118,7 +125,8 @@ def write_bpu_validation(paths: OutputPaths, task_spec: TaskSpec | None = None) 
         for pool in ("sensory", "output")
     }
     output_dim = output_dim_for_task(task_spec) if task_spec is not None else OUTPUT_DIM
-    model = CXBPU(
+    model_cls = SparseCXBPU if int(metadata["N"]) > 12_000 or graph.matrix.nnz > 1_000_000 else CXBPU
+    model = model_cls(
         graph.matrix,
         indices["sensory"],
         indices["output"],
@@ -164,17 +172,28 @@ def _scale_to_target(matrix: sparse.csr_matrix) -> sparse.csr_matrix:
 def write_control_validation(paths: OutputPaths) -> None:
     graph = load_prepared_graph(paths)
     primary = graph.matrix.tocsr()
-    primary_inv = control_invariants(primary)
+    include_full_invariants = primary.nnz <= 200_000 and primary.shape[0] <= 20_000
+    primary_inv = control_invariants(primary, include_weight_multiset=include_full_invariants)
     lines: list[str] = []
-    control_builders = {
-        "no_recurrence": lambda: primary,
-        "random": lambda: _scale_to_target(random_control_matrix(primary, seed=10_000)),
-        "degree_shuffle": lambda: _scale_to_target(degree_preserving_shuffle_matrix(primary, seed=20_000)),
-        "weight_shuffle": lambda: _scale_to_target(weight_shuffled_control_matrix(primary, seed=30_000)),
-    }
+    if graph.metadata.get("connectome") == CONNECTOME_FLYWIRE_WHOLE:
+        control_builders = {
+            "random": lambda: _scale_to_target(random_control_matrix(primary, seed=10_000)),
+            "weight_shuffle": lambda: _scale_to_target(weight_shuffled_control_matrix(primary, seed=30_000)),
+        }
+        lines.append(
+            "- NOTE: whole-brain validation skips degree-preserving shuffle because "
+            "directed double-edge swaps are intentionally not part of the scalable preset."
+        )
+    else:
+        control_builders = {
+            "no_recurrence": lambda: primary,
+            "random": lambda: _scale_to_target(random_control_matrix(primary, seed=10_000)),
+            "degree_shuffle": lambda: _scale_to_target(degree_preserving_shuffle_matrix(primary, seed=20_000)),
+            "weight_shuffle": lambda: _scale_to_target(weight_shuffled_control_matrix(primary, seed=30_000)),
+        }
     for name, builder in control_builders.items():
         matrix = builder()
-        inv = control_invariants(matrix)
+        inv = control_invariants(matrix, include_weight_multiset=include_full_invariants)
         lines.append(_line(inv["N"] == primary_inv["N"], f"{name} matches N"))
         lines.append(_line(inv["edge_count"] == primary_inv["edge_count"], f"{name} matches edge count"))
         lines.append(_line(inv["self_loop_count"] == primary_inv["self_loop_count"], f"{name} matches self-loop count"))

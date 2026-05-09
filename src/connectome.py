@@ -15,12 +15,18 @@ from scipy.sparse import linalg as sparse_linalg
 
 from .acquire import require_raw_exports
 from .config import (
+    CONNECTOME_FLYWIRE_WHOLE,
+    CONNECTOME_HEMIBRAIN_CX,
     CX_ROI_LABELS,
     RHO_TARGET,
     SIGN_COVERAGE_THRESHOLD,
     OutputPaths,
 )
-from .pools import validate_pool_assignments, write_pool_assignments
+from .pools import (
+    validate_pool_assignments,
+    write_pool_assignments,
+    write_whole_brain_pool_assignments,
+)
 
 
 TRANSMITTER_SIGN = {
@@ -184,6 +190,8 @@ def spectral_radius(matrix: sparse.spmatrix) -> float:
     if n <= 256:
         vals = np.linalg.eigvals(matrix.toarray().astype(np.float64))
         return float(np.max(np.abs(vals)))
+    if n > 20_000 or matrix.nnz > 2_000_000:
+        return _power_iteration_radius(matrix, iters=160)
     try:
         vals = sparse_linalg.eigs(
             matrix.astype(np.float64),
@@ -287,6 +295,53 @@ def estimate_k_from_support(
     return int(np.clip(median, min_k, max_k))
 
 
+def estimate_k_from_support_sampled(
+    matrix: sparse.spmatrix,
+    sensory_indices: Iterable[int],
+    output_indices: Iterable[int],
+    min_k: int = 3,
+    max_k: int = 8,
+    max_sources: int = 256,
+    seed: int = 0,
+) -> int:
+    sensory = np.array(list(map(int, sensory_indices)), dtype=np.int64)
+    outputs = np.array(list(map(int, output_indices)), dtype=np.int64)
+    if sensory.size == 0:
+        raise ConnectomePreparationError("No sensory pool neurons are available for K estimation.")
+    if outputs.size == 0:
+        raise ConnectomePreparationError("No output pool neurons are available for K estimation.")
+    rng = np.random.default_rng(seed)
+    if sensory.size > max_sources:
+        sensory = rng.choice(sensory, size=max_sources, replace=False)
+    output_mask = np.zeros(matrix.shape[0], dtype=bool)
+    output_mask[outputs] = True
+    support_csc = matrix.tocsc(copy=True)
+    support_csc.data = np.ones_like(support_csc.data, dtype=np.float32)
+    distances: list[int] = []
+    for source in sensory:
+        visited = np.zeros(matrix.shape[0], dtype=bool)
+        frontier = np.array([int(source)], dtype=np.int64)
+        visited[frontier] = True
+        for depth in range(1, max_k * 4 + 1):
+            next_nodes = support_csc[:, frontier].nonzero()[0]
+            if next_nodes.size == 0:
+                break
+            next_nodes = np.unique(next_nodes[~visited[next_nodes]])
+            if next_nodes.size == 0:
+                break
+            if output_mask[next_nodes].any():
+                distances.append(depth)
+                break
+            visited[next_nodes] = True
+            frontier = next_nodes
+    if not distances:
+        raise ConnectomePreparationError(
+            "No reachable sensory-to-output path exists in sampled whole-brain support."
+        )
+    median = int(round(float(np.median(distances))))
+    return int(np.clip(median, min_k, max_k))
+
+
 def _matrix_nonzero_triplets(matrix: sparse.spmatrix) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     coo = matrix.tocoo()
     return coo.row.astype(np.int64), coo.col.astype(np.int64), coo.data.astype(np.float32)
@@ -298,43 +353,36 @@ def random_control_matrix(matrix: sparse.csr_matrix, seed: int) -> sparse.csr_ma
     rng = np.random.default_rng(seed)
     self_count = int(np.sum(rows == cols))
     self_nodes = rng.choice(n, size=self_count, replace=False) if self_count else np.array([], dtype=int)
-    used: set[tuple[int, int]] = {(int(node), int(node)) for node in self_nodes}
     target_nonself = len(weights) - self_count
     total_nonself = n * (n - 1)
     if target_nonself > total_nonself:
         raise ConnectomePreparationError("Cannot sample requested non-self edge count.")
-    nonself_edges: list[tuple[int, int]] = []
     if target_nonself > total_nonself // 3:
         code_iter = rng.choice(total_nonself, size=target_nonself, replace=False)
     else:
-        code_iter = np.array([], dtype=np.int64)
-    for code in code_iter:
-        post = int(code // (n - 1))
-        pre = int(code % (n - 1))
-        if pre >= post:
-            pre += 1
-        edge = (post, pre)
-        used.add(edge)
-        nonself_edges.append(edge)
-    while len(nonself_edges) < target_nonself:
-        remaining = target_nonself - len(nonself_edges)
-        draw_count = max(remaining * 2, 16)
-        codes = rng.integers(0, total_nonself, size=draw_count)
-        for code in codes:
-            post = int(code // (n - 1))
-            pre = int(code % (n - 1))
-            if pre >= post:
-                pre += 1
-            edge = (post, pre)
-            if edge not in used:
-                used.add(edge)
-                nonself_edges.append(edge)
-                if len(nonself_edges) == target_nonself:
-                    break
-    all_edges = [(int(node), int(node)) for node in self_nodes] + nonself_edges
+        selected: set[int] = set()
+        chunks: list[np.ndarray] = []
+        while len(selected) < target_nonself:
+            remaining = target_nonself - len(selected)
+            draw_count = max(remaining * 2, 4096)
+            codes = rng.integers(0, total_nonself, size=draw_count, dtype=np.int64)
+            keep: list[int] = []
+            for code in codes:
+                value = int(code)
+                if value not in selected:
+                    selected.add(value)
+                    keep.append(value)
+                    if len(selected) == target_nonself:
+                        break
+            if keep:
+                chunks.append(np.array(keep, dtype=np.int64))
+        code_iter = np.concatenate(chunks) if chunks else np.array([], dtype=np.int64)
+    nonself_posts = (code_iter // (n - 1)).astype(np.int64)
+    nonself_pres = (code_iter % (n - 1)).astype(np.int64)
+    nonself_pres = nonself_pres + (nonself_pres >= nonself_posts)
     shuffled_weights = rng.permutation(weights)
-    out_rows = np.array([edge[0] for edge in all_edges], dtype=np.int64)
-    out_cols = np.array([edge[1] for edge in all_edges], dtype=np.int64)
+    out_rows = np.concatenate([self_nodes.astype(np.int64), nonself_posts])
+    out_cols = np.concatenate([self_nodes.astype(np.int64), nonself_pres])
     return sparse.coo_matrix(
         (shuffled_weights, (out_rows, out_cols)), shape=matrix.shape
     ).tocsr()
@@ -390,27 +438,53 @@ def degree_preserving_shuffle_matrix(
     ).tocsr()
 
 
-def control_invariants(matrix: sparse.csr_matrix) -> dict[str, object]:
+def control_invariants(
+    matrix: sparse.csr_matrix,
+    include_weight_multiset: bool = True,
+) -> dict[str, object]:
     support = matrix.copy()
     support.data = np.ones_like(support.data)
-    return {
+    invariants = {
         "N": int(matrix.shape[0]),
         "edge_count": int(matrix.nnz),
         "self_loop_count": int(np.sum(matrix.tocoo().row == matrix.tocoo().col)),
         "in_degree": np.asarray(support.sum(axis=1)).ravel().astype(int).tolist(),
         "out_degree": np.asarray(support.sum(axis=0)).ravel().astype(int).tolist(),
-        "weight_multiset": sorted(np.round(matrix.data.astype(float), 8).tolist()),
         "negative_edge_fraction": float(np.mean(matrix.data < 0)) if matrix.nnz else 0.0,
     }
+    if include_weight_multiset:
+        invariants["weight_multiset"] = sorted(np.round(matrix.data.astype(float), 8).tolist())
+    else:
+        data = matrix.data.astype(float)
+        invariants["weight_summary"] = {
+            "min": float(np.min(data)) if data.size else 0.0,
+            "max": float(np.max(data)) if data.size else 0.0,
+            "mean": float(np.mean(data)) if data.size else 0.0,
+            "sum": float(np.sum(data)) if data.size else 0.0,
+        }
+    return invariants
 
 
-def prepare_connectome(paths: OutputPaths, signed_policy: str = "auto") -> PreparedGraph:
+def prepare_connectome(
+    paths: OutputPaths,
+    signed_policy: str = "auto",
+    connectome: str = CONNECTOME_HEMIBRAIN_CX,
+    whole_brain_pool_fraction: float = 0.05,
+) -> PreparedGraph:
     require_raw_exports(paths)
     neurons = pd.read_csv(paths.neurons_csv)
     connections = pd.read_csv(paths.connections_csv)
     unsigned_raw, body_to_index, aggregated_edges = build_raw_adjacency(neurons, connections)
-    primary_rois = CX_ROI_LABELS
-    pools = write_pool_assignments(paths, primary_rois=primary_rois)
+    if connectome == CONNECTOME_FLYWIRE_WHOLE:
+        primary_rois = ("whole_brain",)
+        pools = write_whole_brain_pool_assignments(
+            paths, pool_fraction=whole_brain_pool_fraction
+        )
+    elif connectome == CONNECTOME_HEMIBRAIN_CX:
+        primary_rois = CX_ROI_LABELS
+        pools = write_pool_assignments(paths, primary_rois=primary_rois)
+    else:
+        raise ConnectomePreparationError(f"Unknown connectome: {connectome}")
     indices = pool_indices(pools)
     signs = assign_presynaptic_signs(neurons, body_to_index)
     signed_raw = build_signed_adjacency(unsigned_raw, signs)
@@ -422,9 +496,14 @@ def prepare_connectome(paths: OutputPaths, signed_policy: str = "auto") -> Prepa
     primary = signed if primary_name == "signed" else unsigned
     if primary is None:
         raise ConnectomePreparationError("Primary adjacency could not be constructed.")
-    k = estimate_k_from_support(primary, indices["sensory"], indices["output"])
+    if connectome == CONNECTOME_FLYWIRE_WHOLE:
+        k = estimate_k_from_support_sampled(primary, indices["sensory"], indices["output"])
+    else:
+        k = estimate_k_from_support(primary, indices["sensory"], indices["output"])
     body_ids = [int(x) for x in neurons["bodyId"].astype("int64").drop_duplicates().sort_values()]
+    include_full_invariants = primary.nnz <= 200_000 and primary.shape[0] <= 20_000
     metadata: dict[str, object] = {
+        "connectome": connectome,
         "primary_rois": list(primary_rois),
         "N": int(unsigned.shape[0]),
         "body_ids": body_ids,
@@ -442,7 +521,10 @@ def prepare_connectome(paths: OutputPaths, signed_policy: str = "auto") -> Prepa
         "rho_target": float(RHO_TARGET),
         "estimated_K": int(k),
         "pool_counts": {pool: int(len(values)) for pool, values in indices.items()},
-        "control_invariants_primary": control_invariants(primary),
+        "whole_brain_pool_fraction": float(whole_brain_pool_fraction),
+        "control_invariants_primary": control_invariants(
+            primary, include_weight_multiset=include_full_invariants
+        ),
     }
     sparse.save_npz(paths.adjacency_unsigned_npz, unsigned)
     if signed is not None:

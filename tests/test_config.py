@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from src.config import STRUCTURE_COMPARISON_MODELS, parse_args, output_dim_for_task
+from src.config import (
+    WHOLE_BRAIN_COMPARISON_MODELS,
+    STRUCTURE_COMPARISON_MODELS,
+    parse_args,
+    output_dim_for_task,
+)
 
 
 def test_structure_comparison_selects_matched_control_models() -> None:
@@ -24,6 +29,18 @@ def test_explicit_models_override_comparison_preset() -> None:
         ]
     )
     assert cfg.train.models == ("cx_bpu", "random")
+
+
+def test_flywire_whole_selects_scalable_default_models() -> None:
+    cfg = parse_args(["--mode", "train", "--connectome", "flywire_whole"])
+    assert cfg.connectome == "flywire_whole"
+    assert cfg.train.models == WHOLE_BRAIN_COMPARISON_MODELS
+    assert cfg.train.models[0] == "connectome_bpu"
+
+
+def test_whole_brain_comparison_selects_scalable_models() -> None:
+    cfg = parse_args(["--mode", "train", "--comparison", "whole_brain"])
+    assert cfg.train.models == WHOLE_BRAIN_COMPARISON_MODELS
 
 
 def test_log_interval_can_be_overridden() -> None:

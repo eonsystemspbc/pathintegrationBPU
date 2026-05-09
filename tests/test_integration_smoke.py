@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 
 from src.config import build_paths
+from src.config import CONNECTOME_FLYWIRE_WHOLE
 from src.connectome import prepare_connectome
 from src.task import ensure_splits, load_split, validate_split_ids
 from src.train import run_training, smoke_task_spec, smoke_train_config
@@ -83,6 +84,34 @@ def test_mocked_end_to_end_cpu(tmp_path: Path) -> None:
     noise_splits = [split for split in splits if split.name == "test_noise"]
     noise_clean = [load_split(split.path)["clean_inputs"] for split in noise_splits]
     assert all((noise_clean[0] == clean).all() for clean in noise_clean[1:])
+
+
+def test_mocked_whole_brain_prepare_and_sparse_train(tmp_path: Path) -> None:
+    paths = build_paths(tmp_path)
+    write_mock_exports(tmp_path)
+    graph = prepare_connectome(
+        paths,
+        connectome=CONNECTOME_FLYWIRE_WHOLE,
+        whole_brain_pool_fraction=0.2,
+    )
+    assert graph.metadata["connectome"] == CONNECTOME_FLYWIRE_WHOLE
+    cfg = smoke_train_config()
+    cfg = type(cfg)(
+        seeds=cfg.seeds,
+        epochs=cfg.epochs,
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+        lr=cfg.lr,
+        patience=cfg.patience,
+        grad_clip=cfg.grad_clip,
+        include_gru=cfg.include_gru,
+        device="cpu",
+        models=("connectome_bpu", "weight_shuffle"),
+        log_every_seconds=0,
+        recurrent_runtime="sparse",
+    )
+    metrics = run_training(paths, cfg, smoke_task_spec())
+    assert set(metrics["model"]) == {"connectome_bpu", "weight_shuffle"}
 
 
 def test_cuda_path_smoke_conditionally(tmp_path: Path) -> None:
