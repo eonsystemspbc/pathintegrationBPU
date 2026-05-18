@@ -26,6 +26,7 @@ class CXBPU(nn.Module):
         K: int,
         reset_each_timestep: bool = False,
         output_dim: int = OUTPUT_DIM,
+        train_recurrent: bool = False,
     ) -> None:
         super().__init__()
         if sparse.issparse(recurrent):
@@ -44,7 +45,12 @@ class CXBPU(nn.Module):
         self.K = int(K)
         self.output_dim = int(output_dim)
         self.reset_each_timestep = bool(reset_each_timestep)
-        self.register_buffer("W_rec", torch.as_tensor(rec_array, dtype=torch.float32))
+        self.train_recurrent_mode = "dense" if train_recurrent else "frozen"
+        rec_tensor = torch.as_tensor(rec_array, dtype=torch.float32)
+        if train_recurrent:
+            self.W_rec = nn.Parameter(rec_tensor)
+        else:
+            self.register_buffer("W_rec", rec_tensor)
         self.register_buffer(
             "sensory_indices", torch.as_tensor(sensory_indices, dtype=torch.long)
         )
@@ -95,6 +101,7 @@ class SparseCXBPU(nn.Module):
         K: int,
         reset_each_timestep: bool = False,
         output_dim: int = OUTPUT_DIM,
+        train_recurrent: bool = False,
     ) -> None:
         super().__init__()
         if not sparse.issparse(recurrent):
@@ -110,14 +117,20 @@ class SparseCXBPU(nn.Module):
         self.K = int(K)
         self.output_dim = int(output_dim)
         self.reset_each_timestep = bool(reset_each_timestep)
+        self.train_recurrent_mode = "observed" if train_recurrent else "frozen"
         indices = torch.as_tensor(
             np.vstack([recurrent.row, recurrent.col]), dtype=torch.long
         )
         values = torch.as_tensor(recurrent.data, dtype=torch.float32)
-        self.register_buffer(
-            "W_rec",
-            torch.sparse_coo_tensor(indices, values, size=recurrent.shape).coalesce(),
-        )
+        self.recurrent_shape = tuple(int(dim) for dim in recurrent.shape)
+        if train_recurrent:
+            self.register_buffer("W_rec_indices", indices)
+            self.W_rec_values = nn.Parameter(values)
+        else:
+            self.register_buffer(
+                "W_rec",
+                torch.sparse_coo_tensor(indices, values, size=recurrent.shape).coalesce(),
+            )
         self.register_buffer(
             "sensory_indices", torch.as_tensor(sensory_indices, dtype=torch.long)
         )
@@ -131,6 +144,19 @@ class SparseCXBPU(nn.Module):
         nn.init.uniform_(self.W_in, -scale_in, scale_in)
         nn.init.uniform_(self.W_out, -scale_out, scale_out)
 
+    def _recurrent_tensor(self) -> torch.Tensor:
+        if self.train_recurrent_mode == "observed":
+            return torch.sparse_coo_tensor(
+                self.W_rec_indices,
+                self.W_rec_values,
+                size=self.recurrent_shape,
+            ).coalesce()
+        return self.W_rec
+
+    @property
+    def W_rec_trainable(self) -> bool:
+        return self.train_recurrent_mode == "observed"
+
     def forward(self, inputs: torch.Tensor, h0: torch.Tensor | None = None) -> torch.Tensor:
         if inputs.ndim != 3 or inputs.shape[-1] != INPUT_DIM:
             raise ValueError(f"inputs must have shape [batch, T, {INPUT_DIM}]")
@@ -140,12 +166,13 @@ class SparseCXBPU(nn.Module):
         else:
             h = h0
         outputs: list[torch.Tensor] = []
+        W_rec = self._recurrent_tensor()
         for t in range(T):
             if self.reset_each_timestep:
                 h = inputs.new_zeros((batch, self.N))
             injection = inputs[:, t, :] @ self.W_in.t() + self.b_in
             for microstep in range(self.K):
-                next_h = torch.sparse.mm(self.W_rec, h.t()).t()
+                next_h = torch.sparse.mm(W_rec, h.t()).t()
                 if microstep == 0:
                     next_h = next_h.index_add(1, self.sensory_indices, injection)
                 h = torch.relu(next_h)
@@ -182,3 +209,19 @@ def assert_bpu_trainable_surface(model: CXBPU) -> None:
         raise AssertionError(f"CXBPU trainable surface mismatch: {observed} != {expected}")
     if model.W_rec.requires_grad:
         raise AssertionError("W_rec must be frozen.")
+
+
+def assert_recurrent_trainable_surface(model: nn.Module, mode: str) -> None:
+    observed = trainable_parameter_names(model)
+    if mode == "frozen":
+        expected = ["W_in", "b_in", "W_out", "b_out"]
+    elif mode == "dense":
+        expected = ["W_rec", "W_in", "b_in", "W_out", "b_out"]
+    elif mode == "observed":
+        expected = ["W_rec_values", "W_in", "b_in", "W_out", "b_out"]
+    else:
+        raise ValueError(f"Unknown recurrent train mode: {mode}")
+    if observed != expected:
+        raise AssertionError(
+            f"BPU trainable surface mismatch for mode={mode}: {observed} != {expected}"
+        )

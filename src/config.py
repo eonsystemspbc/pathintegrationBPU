@@ -54,6 +54,7 @@ WHOLE_BRAIN_COMPARISON_MODELS = (
 )
 ALL_MODEL_NAMES = DEFAULT_BPU_MODELS + ("connectome_bpu", "gru")
 RECURRENT_RUNTIME_CHOICES = ("auto", "dense", "sparse")
+RECURRENT_TRAIN_CHOICES = ("frozen", "observed", "dense")
 
 
 @dataclass(frozen=True)
@@ -168,6 +169,7 @@ class TrainConfig:
     models: tuple[str, ...] | None = None
     log_every_seconds: float = 60.0
     recurrent_runtime: str = "auto"
+    train_recurrent: str = "frozen"
 
 
 @dataclass(frozen=True)
@@ -288,6 +290,16 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         help="Use dense or sparse recurrent multiplication; auto selects sparse for large graphs.",
     )
     parser.add_argument(
+        "--train-recurrent",
+        choices=RECURRENT_TRAIN_CHOICES,
+        default="frozen",
+        help=(
+            "Recurrent training mode. 'frozen' keeps the BPU connectome fixed; "
+            "'observed' trains one recurrent parameter per observed edge while "
+            "preserving support; 'dense' trains a full N x N recurrent matrix."
+        ),
+    )
+    parser.add_argument(
         "--models",
         nargs="+",
         choices=ALL_MODEL_NAMES,
@@ -324,6 +336,7 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         models=models,
         log_every_seconds=args.log_every_seconds,
         recurrent_runtime=args.recurrent_runtime,
+        train_recurrent=args.train_recurrent,
     )
     return CliConfig(
         mode=args.mode,

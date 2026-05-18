@@ -11,6 +11,11 @@ substrate with `--connectome flywire_whole`. Only `W_in`, `b_in`, `W_out`, and
 splits, optimizer settings, activation, spectral target, and microstep depth
 `K`.
 
+The frozen-connectome BPU is the default. For exploratory non-BPU baselines you
+can opt into recurrent training with `--train-recurrent observed`, which trains
+one parameter per observed connectome edge while preserving the binary support,
+or `--train-recurrent dense`, which trains a full `N x N` recurrent matrix.
+
 ## AWS Run Flow
 
 Target: Ubuntu on AWS with an NVIDIA L4 24GB GPU.
@@ -44,6 +49,7 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --task cartesian|cx_polar_bump \
   --heading-bins 32 \
   --recurrent-runtime auto|dense|sparse \
+  --train-recurrent frozen|observed|dense \
   --epochs 20 \
   --batch-size 128 \
   --num-workers 2 \
@@ -52,6 +58,13 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
 
 Add `--include-gru` to run the optional stretch GRU baseline after the frozen
 benchmark suite.
+
+Use `--train-recurrent observed` for the hemibrain run where all observed
+synaptic weights are trainable. This forces sparse recurrent multiplication and
+adds one trainable recurrent parameter per observed edge. Use
+`--train-recurrent dense` only for smaller graphs such as the hemibrain CX
+substrate; it is blocked for very large connectomes because it allocates a full
+`N x N` recurrent parameter matrix.
 
 Use `--comparison structure` to test whether the CX connectome topology helps
 against same-size matched controls: `cx_bpu`, `random`, `degree_shuffle`,
@@ -103,6 +116,29 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --batch-size 128 \
   --num-workers 2 \
   --log-every-seconds 30
+```
+
+To train all observed hemibrain CX recurrent synaptic weights on the same task
+while keeping the connectome support fixed:
+
+```bash
+HEMI_TRAIN_OUT=/home/ubuntu/pathintegrationBPU/outputs/hemibrain_train_observed_seed0
+mkdir -p "$HEMI_TRAIN_OUT"
+
+python /home/ubuntu/pathintegrationBPU/run_benchmark.py \
+  --mode all \
+  --device cuda \
+  --task cx_polar_bump \
+  --heading-bins 32 \
+  --seeds 0 \
+  --models cx_bpu random weight_shuffle \
+  --train-recurrent observed \
+  --epochs 20 \
+  --batch-size 128 \
+  --num-workers 2 \
+  --log-every-seconds 30 \
+  --output-dir "$HEMI_TRAIN_OUT" \
+  --cache-dir "$HEMI_TRAIN_OUT"
 ```
 
 To run the same task on the FlyWire whole-brain substrate on AWS, use a separate
