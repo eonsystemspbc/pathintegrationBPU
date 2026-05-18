@@ -39,6 +39,7 @@ from .models import (
     GRUBaseline,
     SparseCXBPU,
     assert_bpu_trainable_surface,
+    assert_recurrent_trainable_surface,
     count_trainable_parameters,
 )
 from .plots import write_plots
@@ -149,7 +150,12 @@ def _select_recurrent_runtime(
     graph: PreparedGraph,
     requested: str,
     device: torch.device,
+    train_recurrent: str = "frozen",
 ) -> str:
+    if train_recurrent == "observed":
+        return "sparse"
+    if train_recurrent == "dense":
+        return "dense"
     if requested == "dense":
         return "dense"
     if requested == "sparse":
@@ -170,6 +176,7 @@ def _make_model(
     device: torch.device,
     task_spec: TaskSpec,
     recurrent_runtime: str = "auto",
+    train_recurrent: str = "frozen",
     include_gru_hidden: int | None = None,
 ) -> nn.Module:
     torch.manual_seed(seed)
@@ -177,13 +184,29 @@ def _make_model(
         torch.cuda.manual_seed_all(seed)
     output_dim = output_dim_for_task(task_spec)
     if model_name == "gru":
+        if train_recurrent != "frozen":
+            tqdm.write(
+                f"train-recurrent ignored for model=gru mode={train_recurrent}"
+            )
         hidden = include_gru_hidden or min(256, int(graph.metadata["N"]))
         return GRUBaseline(hidden_size=hidden, output_dim=output_dim).to(device)
     indices = pool_indices(graph.pools)
     matrix = _control_matrix(graph.matrix.astype(np.float32).tocsr(), model_name, seed)
     K = int(graph.metadata["estimated_K"])
-    runtime = _select_recurrent_runtime(graph, recurrent_runtime, device)
-    tqdm.write(f"recurrent-runtime model={model_name} seed={seed} runtime={runtime}")
+    runtime = _select_recurrent_runtime(
+        graph, recurrent_runtime, device, train_recurrent=train_recurrent
+    )
+    n = int(graph.metadata["N"])
+    if train_recurrent == "dense" and n > 20_000:
+        raise RuntimeError(
+            "--train-recurrent dense would allocate a full N x N recurrent "
+            f"parameter matrix for N={n}. Use --train-recurrent observed for "
+            "large connectomes."
+        )
+    tqdm.write(
+        "recurrent-runtime "
+        f"model={model_name} seed={seed} runtime={runtime} train_recurrent={train_recurrent}"
+    )
     if runtime == "sparse":
         model = SparseCXBPU(
             matrix,
@@ -192,6 +215,7 @@ def _make_model(
             K=K,
             reset_each_timestep=(model_name == "no_recurrence"),
             output_dim=output_dim,
+            train_recurrent=(train_recurrent == "observed"),
         ).to(device)
     else:
         model = CXBPU(
@@ -201,8 +225,12 @@ def _make_model(
             K=K,
             reset_each_timestep=(model_name == "no_recurrence"),
             output_dim=output_dim,
+            train_recurrent=(train_recurrent == "dense"),
         ).to(device)
-    assert_bpu_trainable_surface(model)
+    if train_recurrent == "frozen":
+        assert_bpu_trainable_surface(model)
+    else:
+        assert_recurrent_trainable_surface(model, train_recurrent)
     return model
 
 
@@ -227,6 +255,14 @@ def _loss_fn(pred: torch.Tensor, target: torch.Tensor, task_spec: TaskSpec) -> t
 
 
 def _frozen_edge_count(model: nn.Module) -> int:
+    if _trainable_recurrent_parameter_count(model) > 0:
+        return 0
+    return _recurrent_parameter_count(model)
+
+
+def _recurrent_parameter_count(model: nn.Module) -> int:
+    if hasattr(model, "W_rec_values"):
+        return int(getattr(model, "W_rec_values").numel())
     if not hasattr(model, "W_rec"):
         return 0
     W_rec = getattr(model, "W_rec")
@@ -235,6 +271,14 @@ def _frozen_edge_count(model: nn.Module) -> int:
     if isinstance(W_rec, torch.Tensor):
         return int(W_rec.count_nonzero().item())
     return 0
+
+
+def _trainable_recurrent_parameter_count(model: nn.Module) -> int:
+    total = 0
+    for name, param in model.named_parameters():
+        if name in {"W_rec", "W_rec_values"} and param.requires_grad:
+            total += int(param.numel())
+    return total
 
 
 def train_one_model(
@@ -557,7 +601,16 @@ def _summarize_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
     summary.columns = [
         "_".join(col).rstrip("_") if isinstance(col, tuple) else col for col in summary.columns
     ]
-    first_cols = grouped[["trainable_parameter_count", "frozen_edge_count", "K"]].first().reset_index()
+    size_cols = [
+        "trainable_parameter_count",
+        "frozen_edge_count",
+        "recurrent_parameter_count",
+        "trainable_recurrent_parameter_count",
+        "recurrent_train_mode",
+        "K",
+    ]
+    size_cols = [col for col in size_cols if col in metrics.columns]
+    first_cols = grouped[size_cols].first().reset_index()
     return summary.merge(first_cols, on=["model", "split", "T", "noise_std"], how="left")
 
 
@@ -613,6 +666,7 @@ def run_training(
         f"epochs={train_config.epochs} batch_size={train_config.batch_size} "
         f"task={task_spec.kind} output_dim={output_dim_for_task(task_spec)} "
         f"recurrent_runtime={train_config.recurrent_runtime} "
+        f"train_recurrent={train_config.train_recurrent} "
         f"log_every_seconds={train_config.log_every_seconds:g}"
     )
 
@@ -634,6 +688,7 @@ def run_training(
             device,
             task_spec,
             recurrent_runtime=train_config.recurrent_runtime,
+            train_recurrent=train_config.train_recurrent,
         )
         history = train_one_model(
             model,
@@ -657,6 +712,8 @@ def run_training(
         latency = measure_latency_ms_per_sequence(model, latency_loader, device)
         k_value = int(getattr(model, "K", 1))
         frozen_edges = _frozen_edge_count(model)
+        recurrent_params = _recurrent_parameter_count(model)
+        trainable_recurrent_params = _trainable_recurrent_parameter_count(model)
         trainable_params = count_trainable_parameters(model)
         for split in eval_splits:
             tqdm.write(
@@ -695,6 +752,11 @@ def run_training(
                     "best_val_loss": float(history["best_val_loss"]),
                     "trainable_parameter_count": trainable_params,
                     "frozen_edge_count": frozen_edges,
+                    "recurrent_parameter_count": recurrent_params,
+                    "trainable_recurrent_parameter_count": trainable_recurrent_params,
+                    "recurrent_train_mode": getattr(
+                        model, "train_recurrent_mode", "none"
+                    ),
                     "K": k_value,
                     "latency_ms_per_sequence": latency,
                     **metric,

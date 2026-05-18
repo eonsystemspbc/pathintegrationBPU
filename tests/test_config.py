@@ -48,6 +48,11 @@ def test_log_interval_can_be_overridden() -> None:
     assert cfg.train.log_every_seconds == 15.0
 
 
+def test_recurrent_training_mode_can_be_overridden() -> None:
+    cfg = parse_args(["--mode", "train", "--train-recurrent", "observed"])
+    assert cfg.train.train_recurrent == "observed"
+
+
 def test_cx_polar_bump_task_sets_output_dimension() -> None:
     cfg = parse_args(
         [

@@ -114,6 +114,34 @@ def test_mocked_whole_brain_prepare_and_sparse_train(tmp_path: Path) -> None:
     assert set(metrics["model"]) == {"connectome_bpu", "weight_shuffle"}
 
 
+def test_mocked_trainable_observed_recurrent_smoke(tmp_path: Path) -> None:
+    paths = build_paths(tmp_path)
+    write_mock_exports(tmp_path)
+    graph = prepare_connectome(paths)
+    cfg = smoke_train_config()
+    cfg = type(cfg)(
+        seeds=cfg.seeds,
+        epochs=cfg.epochs,
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+        lr=cfg.lr,
+        patience=cfg.patience,
+        grad_clip=cfg.grad_clip,
+        include_gru=cfg.include_gru,
+        device="cpu",
+        models=("cx_bpu",),
+        log_every_seconds=0,
+        recurrent_runtime="auto",
+        train_recurrent="observed",
+    )
+    metrics = run_training(paths, cfg, smoke_task_spec())
+    row = metrics.iloc[0]
+    assert row["model"] == "cx_bpu"
+    assert row["recurrent_train_mode"] == "observed"
+    assert row["trainable_recurrent_parameter_count"] == graph.matrix.nnz
+    assert row["frozen_edge_count"] == 0
+
+
 def test_cuda_path_smoke_conditionally(tmp_path: Path) -> None:
     if not torch.cuda.is_available():
         return

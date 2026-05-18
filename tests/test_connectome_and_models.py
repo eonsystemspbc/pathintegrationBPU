@@ -20,7 +20,12 @@ from src.connectome import (
     spectral_radius,
     weight_shuffled_control_matrix,
 )
-from src.models import CXBPU, assert_bpu_trainable_surface, count_trainable_parameters
+from src.models import (
+    CXBPU,
+    assert_bpu_trainable_surface,
+    assert_recurrent_trainable_surface,
+    count_trainable_parameters,
+)
 from src.models import SparseCXBPU
 from src.pools import assign_pools, assign_whole_brain_pools
 
@@ -111,6 +116,36 @@ def test_sparse_bpu_matches_dense_bpu_shape_and_trainable_surface() -> None:
     assert count_trainable_parameters(sparse_model) == count_trainable_parameters(dense_model)
     inputs = torch.zeros((2, 5, 2), dtype=torch.float32)
     assert sparse_model(inputs).shape == dense_model(inputs).shape
+
+
+def test_dense_recurrent_training_exposes_full_recurrent_matrix() -> None:
+    matrix, _, _ = build_raw_adjacency(toy_neurons(), toy_connections())
+    model = CXBPU(matrix, sensory_indices=[0], output_indices=[3], K=3, train_recurrent=True)
+    assert_recurrent_trainable_surface(model, "dense")
+    expected = matrix.shape[0] * matrix.shape[1] + 1 * 2 + 1 + 4 * 1 + 4
+    assert count_trainable_parameters(model) == expected
+    inputs = torch.randn((2, 4, 2), dtype=torch.float32)
+    loss = model(inputs).sum()
+    loss.backward()
+    assert model.W_rec.grad is not None
+
+
+def test_sparse_observed_recurrent_training_exposes_edge_values_only() -> None:
+    matrix, _, _ = build_raw_adjacency(toy_neurons(), toy_connections())
+    model = SparseCXBPU(
+        matrix,
+        sensory_indices=[0],
+        output_indices=[3],
+        K=3,
+        train_recurrent=True,
+    )
+    assert_recurrent_trainable_surface(model, "observed")
+    expected = matrix.nnz + 1 * 2 + 1 + 4 * 1 + 4
+    assert count_trainable_parameters(model) == expected
+    inputs = torch.randn((2, 4, 2), dtype=torch.float32)
+    loss = model(inputs).sum()
+    loss.backward()
+    assert model.W_rec_values.grad is not None
 
 
 def test_whole_brain_pool_assignment_is_exhaustive() -> None:

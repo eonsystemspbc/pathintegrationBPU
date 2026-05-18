@@ -206,15 +206,34 @@ def write_control_validation(paths: OutputPaths) -> None:
         metrics = pd.read_csv(paths.metrics_by_seed_csv)
         expected_k = int(graph.metadata["estimated_K"])
         bpu_rows = metrics[metrics["model"] != "gru"]
-        lines.append(_line(bool((bpu_rows["K"] == expected_k).all()), "all frozen BPU controls match K"))
+        recurrent_modes = set()
+        if "recurrent_train_mode" in bpu_rows.columns:
+            recurrent_modes = set(bpu_rows["recurrent_train_mode"].dropna().astype(str))
+        is_trainable_recurrent_run = bool(recurrent_modes.difference({"frozen", "none"}))
+        run_label = "trainable-recurrent BPU controls" if is_trainable_recurrent_run else "frozen BPU controls"
+        lines.append(_line(bool((bpu_rows["K"] == expected_k).all()), f"all {run_label} match K"))
         edge_count = int(primary.nnz)
-        lines.append(
-            _line(
-                bool((bpu_rows["frozen_edge_count"] == edge_count).all()),
-                "all frozen BPU controls match frozen edge count in metrics",
+        if is_trainable_recurrent_run:
+            lines.append(
+                _line(
+                    bool((bpu_rows["recurrent_parameter_count"] == edge_count).all()),
+                    "all trainable-recurrent controls match recurrent support edge count in metrics",
+                )
             )
-        )
-        lines.append(_line(True, "all frozen controls use ReLU activation, Adam optimizer, and identical cached data splits"))
+            lines.append(
+                _line(
+                    bool((bpu_rows["trainable_recurrent_parameter_count"] > 0).all()),
+                    "recurrent weights are counted as trainable in metrics",
+                )
+            )
+        else:
+            lines.append(
+                _line(
+                    bool((bpu_rows["frozen_edge_count"] == edge_count).all()),
+                    "all frozen BPU controls match frozen edge count in metrics",
+                )
+            )
+        lines.append(_line(True, f"all {run_label} use ReLU activation, Adam optimizer, and identical cached data splits"))
     else:
         lines.append("- SKIP: metrics_by_seed.csv not found; training comparability checks pending")
     _write(paths.control_validation_md, "Control Validation", lines)
@@ -223,10 +242,22 @@ def write_control_validation(paths: OutputPaths) -> None:
 def write_summary(paths: OutputPaths) -> None:
     lines: list[str] = []
     metadata = _load_metadata(paths) if paths.graph_metadata_json.exists() else {}
-    lines.append(
-        "This benchmark is an isolated hemibrain CX-BPU experiment with a fixed recurrent core "
-        "and trainable input/output adapters only."
-    )
+    recurrent_modes: set[str] = set()
+    if paths.metrics_by_seed_csv.exists():
+        metrics_for_mode = pd.read_csv(paths.metrics_by_seed_csv)
+        if "recurrent_train_mode" in metrics_for_mode.columns:
+            recurrent_modes = set(metrics_for_mode["recurrent_train_mode"].dropna().astype(str))
+    if recurrent_modes.difference({"frozen", "none"}):
+        lines.append(
+            "This benchmark is an isolated hemibrain CX recurrent-training experiment. "
+            "It is not the frozen-connectome BPU setting: recurrent weights are trainable "
+            "according to the recorded recurrent_train_mode."
+        )
+    else:
+        lines.append(
+            "This benchmark is an isolated hemibrain CX-BPU experiment with a fixed recurrent core "
+            "and trainable input/output adapters only."
+        )
     if metadata:
         lines.append(
             f"- Primary substrate: `{metadata.get('primary_matrix')}`; N=`{metadata.get('N')}`, "
