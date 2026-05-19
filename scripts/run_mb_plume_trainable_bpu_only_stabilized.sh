@@ -47,20 +47,11 @@ COMMON_ARGS=(
   --gae-lambda 0.95
 )
 
-mkdir -p "$OUT/rnn_param_matched" "$OUT/mb_bpu_trainable" "$OUT/logs" "$OUT/analysis"
+mkdir -p "$OUT/mb_bpu_trainable_stabilized_cuda" "$OUT/logs" "$OUT/analysis"
 
 cd "$PLUME_CODE"
 
-echo "Starting parameter-matched VRNN at $(date -Is)"
-"$PY" -u main.py \
-  "${COMMON_ARGS[@]}" \
-  --num-env-steps 100000 \
-  --hidden_size 512 \
-  --save-dir "$OUT/rnn_param_matched" \
-  --outsuffix rnn_param_matched \
-  2>&1 | tee "$OUT/logs/rnn_param_matched.log"
-
-echo "Starting trainable hemibrain mushroom-body BPU at $(date -Is)"
+echo "Starting CUDA stabilized trainable hemibrain mushroom-body BPU at $(date -Is)"
 "$PY" -u main.py \
   "${COMMON_ARGS[@]}" \
   --num-env-steps 100000 \
@@ -69,14 +60,16 @@ echo "Starting trainable hemibrain mushroom-body BPU at $(date -Is)"
   --bpu-pools "$ROOT/outputs/hemibrain_mushroom_body_plume/pool_assignments.csv" \
   --bpu-metadata "$ROOT/outputs/hemibrain_mushroom_body_plume/graph_metadata.json" \
   --bpu-k 3 \
+  --bpu-state-clip 20 \
+  --bpu-value-clip 1 \
   --hidden_size 64 \
-  --save-dir "$OUT/mb_bpu_trainable" \
-  --outsuffix mb_bpu_trainable \
-  2>&1 | tee "$OUT/logs/mb_bpu_trainable.log"
+  --save-dir "$OUT/mb_bpu_trainable_stabilized_cuda" \
+  --outsuffix mb_bpu_trainable_stabilized_cuda \
+  2>&1 | tee "$OUT/logs/mb_bpu_trainable_stabilized_cuda.log"
 
 cd "$ROOT"
 "$PY" scripts/compare_plume_runs.py --root "$OUT" \
-  --models rnn_param_matched mb_bpu_trainable \
-  2>&1 | tee "$OUT/logs/analysis.log"
+  --models rnn_param_matched mb_bpu_trainable_stabilized_cuda \
+  2>&1 | tee "$OUT/logs/analysis_stabilized_cuda.log"
 
 echo "Finished at $(date -Is)"

@@ -1,0 +1,5 @@
+model,source,T,score,mean,median,min,max
+mb_bpu_trainable_stabilized_cuda,train,99968,-73.4351025,-72.13856566,-73.4351025,-139.052009,82.190014
+rnn_param_matched,train,99968,-64.489556,-71.12871154,-64.489556,-174.899032,-39.215236
+mb_bpu_trainable_stabilized_cuda,eval,99968,-46.6,-46.6,,,
+rnn_param_matched,eval,99968,-50.57,-50.57,,,
