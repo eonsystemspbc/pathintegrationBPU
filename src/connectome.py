@@ -16,8 +16,12 @@ from scipy.sparse import linalg as sparse_linalg
 from .acquire import require_raw_exports
 from .config import (
     CONNECTOME_FLYWIRE_WHOLE,
+    CONNECTOME_FLYWIRE_MUSHROOM_BODY,
     CONNECTOME_HEMIBRAIN_CX,
+    CONNECTOME_HEMIBRAIN_MUSHROOM_BODY,
     CX_ROI_LABELS,
+    HEMIBRAIN_MB_ROI_LABELS,
+    MB_ROI_LABELS,
     RHO_TARGET,
     SIGN_COVERAGE_THRESHOLD,
     OutputPaths,
@@ -480,6 +484,12 @@ def prepare_connectome(
         pools = write_whole_brain_pool_assignments(
             paths, pool_fraction=whole_brain_pool_fraction
         )
+    elif connectome == CONNECTOME_FLYWIRE_MUSHROOM_BODY:
+        primary_rois = MB_ROI_LABELS
+        pools = write_pool_assignments(paths, primary_rois=primary_rois)
+    elif connectome == CONNECTOME_HEMIBRAIN_MUSHROOM_BODY:
+        primary_rois = HEMIBRAIN_MB_ROI_LABELS
+        pools = write_pool_assignments(paths, primary_rois=primary_rois)
     elif connectome == CONNECTOME_HEMIBRAIN_CX:
         primary_rois = CX_ROI_LABELS
         pools = write_pool_assignments(paths, primary_rois=primary_rois)

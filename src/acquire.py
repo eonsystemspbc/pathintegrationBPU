@@ -10,7 +10,7 @@ from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 
-from .config import CX_ROI_LABELS, HEMIBRAIN_DATASET, NEUPRINT_SERVER, OutputPaths
+from .config import CX_ROI_LABELS, HEMIBRAIN_DATASET, MB_ROI_LABELS, NEUPRINT_SERVER, OutputPaths
 
 
 class NeuprintAcquisitionError(RuntimeError):
@@ -238,9 +238,14 @@ def _write_flywire_neurons(
     paths: OutputPaths,
     root_ids_path: Path,
     connections: pd.DataFrame,
+    body_ids_subset: pd.Index | np.ndarray | None = None,
 ) -> pd.DataFrame:
-    root_ids = np.load(root_ids_path).astype(np.int64)
-    body_ids = pd.Index(root_ids, name="bodyId").drop_duplicates().sort_values()
+    if body_ids_subset is None:
+        root_ids = np.load(root_ids_path).astype(np.int64)
+        body_ids = pd.Index(root_ids, name="bodyId").drop_duplicates().sort_values()
+    else:
+        body_ids = pd.Index(body_ids_subset, name="bodyId").astype("int64")
+        body_ids = body_ids.drop_duplicates().sort_values()
     pre_totals = (
         connections.groupby("pre_pt_root_id")["syn_count"].sum().rename("pre").astype(float)
     )
@@ -350,6 +355,74 @@ def download_flywire_exports(
         "source_rows": int(len(connections)),
         "aggregated_edge_count": int(len(aggregated)),
     }
+
+
+def download_flywire_mushroom_body_exports(
+    paths: OutputPaths,
+    release: str = "783",
+    download_dir: Path | None = None,
+) -> dict[str, Any]:
+    download_dir = (
+        Path(download_dir)
+        if download_dir is not None
+        else paths.cache_dir / f"flywire_release_{release}"
+    )
+    download_dir.mkdir(parents=True, exist_ok=True)
+    root_ids_path = _ensure_flywire_file(
+        download_dir, _flywire_filename("proofread_root_ids", release)
+    )
+    connections_path = _ensure_flywire_file(
+        download_dir, _flywire_filename("proofread_connections", release)
+    )
+    connections = _read_flywire_connections(connections_path)
+    if "neuropil" not in connections.columns:
+        raise NeuprintAcquisitionError(
+            "FlyWire proofread connections do not include neuropil labels."
+        )
+    mb_connections = connections[connections["neuropil"].isin(MB_ROI_LABELS)].copy()
+    if mb_connections.empty:
+        raise NeuprintAcquisitionError(
+            f"No FlyWire connections found in mushroom-body ROIs: {MB_ROI_LABELS}"
+        )
+    body_ids = pd.Index(
+        pd.concat(
+            [mb_connections["pre_pt_root_id"], mb_connections["post_pt_root_id"]],
+            ignore_index=True,
+        )
+        .dropna()
+        .astype("int64")
+        .unique()
+    )
+    selected_global = connections[
+        connections["pre_pt_root_id"].isin(body_ids)
+        | connections["post_pt_root_id"].isin(body_ids)
+    ].copy()
+    paths.output_dir.mkdir(parents=True, exist_ok=True)
+    neurons = _write_flywire_neurons(
+        paths, root_ids_path, selected_global, body_ids_subset=body_ids
+    )
+    _write_flywire_roi_counts(paths, selected_global)
+    aggregated = _write_flywire_connections(paths, mb_connections)
+    source_metadata = {
+        "connectome": "flywire_mushroom_body",
+        "release": release,
+        "zenodo_record": FLYWIRE_ZENODO_RECORD,
+        "root_ids_path": str(root_ids_path),
+        "proofread_connections_path": str(connections_path),
+        "source_rows": int(len(connections)),
+        "mb_source_rows": int(len(mb_connections)),
+        "aggregated_edge_count": int(len(aggregated)),
+        "primary_rois": list(MB_ROI_LABELS),
+    }
+    with (paths.output_dir / "flywire_sources.json").open("w", encoding="utf-8") as f:
+        json.dump(source_metadata, f, indent=2, sort_keys=True)
+    return {
+        "primary_rois": MB_ROI_LABELS,
+        "neuron_count": int(len(neurons)),
+        "edge_count": int(len(aggregated)),
+        "flywire_sources_path": str(paths.output_dir / "flywire_sources.json"),
+        "download_dir": str(download_dir),
+    }
     with (paths.output_dir / "flywire_sources.json").open("w", encoding="utf-8") as f:
         json.dump(source_metadata, f, indent=2, sort_keys=True)
     return {
@@ -387,10 +460,14 @@ def _call_fetch_adjacencies(client: Any, body_ids: list[int]) -> pd.DataFrame:
     return pd.DataFrame(connections).copy()
 
 
-def download_exports(paths: OutputPaths) -> dict[str, Any]:
+def download_exports(
+    paths: OutputPaths,
+    requested_rois: Iterable[str] = CX_ROI_LABELS,
+    source_label: str = "hemibrain_cx",
+) -> dict[str, Any]:
     client = create_client()
     hierarchy = fetch_roi_hierarchy(client)
-    primary_rois = resolve_cx_primary_rois(hierarchy)
+    primary_rois = resolve_cx_primary_rois(hierarchy, requested=requested_rois)
     neurons, roi_counts = _call_fetch_neurons(client, primary_rois)
     neurons = neurons.drop_duplicates("bodyId").sort_values("bodyId")
     body_ids = neurons["bodyId"].astype("int64").tolist()
@@ -411,6 +488,7 @@ def download_exports(paths: OutputPaths) -> dict[str, Any]:
         json.dump(hierarchy, f, indent=2, sort_keys=True)
 
     return {
+        "connectome": source_label,
         "primary_rois": primary_rois,
         "neuron_count": int(len(neurons)),
         "edge_count": int(len(connections)),

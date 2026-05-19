@@ -1,0 +1,3 @@
+model,source,T,score,mean,median,min,max
+rnn_param_matched,eval,48768,-36.38,-36.38,,,
+mb_bpu,train,49920,-66.384991,-67.09357059999999,-66.384991,-148.871451,81.989124
