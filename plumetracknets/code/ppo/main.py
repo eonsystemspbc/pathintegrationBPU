@@ -135,7 +135,6 @@ import json
 import time
 
 from setproctitle import setproctitle as ptitle
-import evalCli 
 
 def get_args():
     parser = argparse.ArgumentParser(description='PPO for Plume')
@@ -212,6 +211,10 @@ def get_args():
     parser.add_argument('--bpu-freeze-recurrent', dest='bpu_train_recurrent',
         action='store_false', default=True,
         help='keep BPU recurrent connectome edge weights fixed')
+    parser.add_argument('--bpu-state-clip', dest='bpu_state_clip', type=float, default=20.0,
+        help='clip BPU recurrent hidden activity after each microstep')
+    parser.add_argument('--bpu-value-clip', dest='bpu_value_clip', type=float, default=1.0,
+        help='clip BPU recurrent edge values in the forward pass')
 
     parser.add_argument('--stacking', type=int, default=0)
     parser.add_argument('--masking', type=str, default=None)
@@ -535,6 +538,8 @@ def main():
             'bpu_k': args.bpu_k,
             'bpu_output_limit': args.bpu_output_limit,
             'bpu_train_recurrent': args.bpu_train_recurrent,
+            'bpu_state_clip': args.bpu_state_clip,
+            'bpu_value_clip': args.bpu_value_clip,
         })
 
     actor_critic = Policy(
@@ -632,6 +637,7 @@ def main():
       args.dataset = ds
       test_sparsity = True if 'constantx5b5' in args.dataset else False
       test_sparsity = False if 'short' in args.eval_type else test_sparsity
+      import evalCli
       evalCli.eval_loop(args, actor_critic, test_sparsity=test_sparsity)
 
 if __name__ == "__main__":

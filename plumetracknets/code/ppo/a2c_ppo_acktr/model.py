@@ -247,6 +247,8 @@ class ConnectomeBPUBase(nn.Module):
         bpu_k=None,
         bpu_output_limit=0,
         bpu_train_recurrent=True,
+        bpu_state_clip=20.0,
+        bpu_value_clip=1.0,
     ):
         super(ConnectomeBPUBase, self).__init__()
         if matrix_path is None:
@@ -262,6 +264,8 @@ class ConnectomeBPUBase(nn.Module):
         self._recurrent = True
         self.K = int(bpu_k) if bpu_k is not None and int(bpu_k) > 0 else 3
         self.train_recurrent = bool(bpu_train_recurrent)
+        self.state_clip = float(bpu_state_clip) if bpu_state_clip else 0.0
+        self.value_clip = float(bpu_value_clip) if bpu_value_clip else 0.0
 
         pools = pd.read_csv(pools_path)
         sensory = pools.loc[pools["pool"] == "sensory", "index"].astype(int).tolist()
@@ -304,7 +308,8 @@ class ConnectomeBPUBase(nn.Module):
             "ConnectomeBPUBase "
             f"N={self.N} edges={self.W_rec_values.numel()} sensory={len(sensory)} "
             f"output={len(output)} K={self.K} actor_hidden={hidden_size} "
-            f"train_recurrent={self.train_recurrent}"
+            f"train_recurrent={self.train_recurrent} state_clip={self.state_clip} "
+            f"value_clip={self.value_clip}"
         )
         self.train()
 
@@ -321,9 +326,13 @@ class ConnectomeBPUBase(nn.Module):
         return self._hidden_size
 
     def _recurrent_matrix(self):
+        values = self.W_rec_values
+        if self.value_clip > 0:
+            values = torch.clamp(values, min=-self.value_clip, max=self.value_clip)
+        values = torch.nan_to_num(values, nan=0.0, posinf=self.value_clip or 1.0, neginf=-(self.value_clip or 1.0))
         return torch.sparse_coo_tensor(
             self.W_rec_indices,
-            self.W_rec_values,
+            values,
             size=(self.N, self.N),
             device=self.W_rec_values.device,
             is_coalesced=True,
@@ -337,7 +346,16 @@ class ConnectomeBPUBase(nn.Module):
             next_h = torch.sparse.mm(W_rec, h.t()).t()
             if microstep == 0:
                 next_h = next_h.index_add(1, self.sensory_indices, injection)
+            if self.state_clip > 0:
+                next_h = torch.nan_to_num(
+                    next_h,
+                    nan=0.0,
+                    posinf=self.state_clip,
+                    neginf=-self.state_clip,
+                )
             h = torch.relu(next_h)
+            if self.state_clip > 0:
+                h = torch.clamp(h, max=self.state_clip)
         readout = h.index_select(1, self.output_indices)
         hx1_critic = self.critic1(readout)
         hx1_actor = self.actor1(readout)
