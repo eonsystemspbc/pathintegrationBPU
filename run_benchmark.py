@@ -3,8 +3,20 @@ from __future__ import annotations
 
 import sys
 
-from src.acquire import download_exports, download_flywire_exports, require_raw_exports
-from src.config import CONNECTOME_FLYWIRE_WHOLE, build_paths, parse_args
+from src.acquire import (
+    download_exports,
+    download_flywire_exports,
+    download_flywire_mushroom_body_exports,
+    require_raw_exports,
+)
+from src.config import (
+    CONNECTOME_FLYWIRE_MUSHROOM_BODY,
+    CONNECTOME_FLYWIRE_WHOLE,
+    CONNECTOME_HEMIBRAIN_MUSHROOM_BODY,
+    HEMIBRAIN_MB_ROI_LABELS,
+    build_paths,
+    parse_args,
+)
 from src.connectome import prepare_connectome
 from src.plots import write_plots
 from src.train import run_training
@@ -29,8 +41,20 @@ def main(argv: list[str] | None = None) -> int:
                     release=cfg.flywire_release,
                     download_dir=cfg.flywire_download_dir,
                 )
+            elif cfg.connectome == CONNECTOME_FLYWIRE_MUSHROOM_BODY:
+                info = download_flywire_mushroom_body_exports(
+                    paths,
+                    release=cfg.flywire_release,
+                    download_dir=cfg.flywire_download_dir,
+                )
+            elif cfg.connectome == CONNECTOME_HEMIBRAIN_MUSHROOM_BODY:
+                info = download_exports(
+                    paths,
+                    requested_rois=HEMIBRAIN_MB_ROI_LABELS,
+                    source_label=cfg.connectome,
+                )
             else:
-                info = download_exports(paths)
+                info = download_exports(paths, source_label=cfg.connectome)
             print(
                 f"Downloaded {cfg.connectome} exports: "
                 f"{info['neuron_count']} neurons, {info['edge_count']} aggregated edges."

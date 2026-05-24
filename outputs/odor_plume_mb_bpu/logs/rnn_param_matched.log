@@ -1,0 +1,516 @@
+Gym has been unmaintained since 2022 and does not support NumPy 2.0 amongst other critical functionality.
+Please upgrade to Gymnasium, the maintained drop-in replacement of Gym, or contact the authors of your software and request that they upgrade.
+Users of this version of Gym should be able to simply replace 'import gym' with 'import gymnasium as gym' in the vast majority of cases.
+See the migration guide at https://gymnasium.farama.org/introduction/migration_guide/ for additional information.
+CUDA: False
+Namespace(algo='ppo', lr=0.0003, eps=1e-05, alpha=0.99, gamma=0.997, use_gae=True, gae_lambda=0.95, entropy_coef=0.005, value_loss_coef=0.5, max_grad_norm=0.5, seed=137, cuda_deterministic=False, num_processes=1, num_steps=128, ppo_epoch=4, num_mini_batch=1, clip_param=0.2, log_interval=1, save_interval=10, no_cuda=True, use_proper_time_limits=False, recurrent_policy=True, use_linear_lr_decay=False, env_name='plume', log_dir='/tmp/gym/', save_dir='/home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched', dynamic=False, eval_type='skip', eval_episodes=5, eval_interval=10, weight_decay=0.01, rnn_type='VRNN', hidden_size=94, betadist=False, policy_type='mlp', bpu_matrix=None, bpu_pools=None, bpu_metadata=None, bpu_k=None, bpu_output_limit=0, stacking=0, masking=None, stride=1, dataset=['constantx5b5'], num_env_steps=[50000], qvar=[0.0], birthx=[0.2], diff_max=[0.9], diff_min=[0.4], birthx_max=1.0, dryrun=False, curriculum=False, turnx=1.0, movex=1.0, auto_movex=False, auto_reward=False, loc_algo='uniform', time_algo='uniform', env_dt=0.04, outsuffix='rnn_param_matched', walking=False, radiusx=1.0, diffusion_min=0.33, diffusion_max=1.0, r_shaping=['step', 'oob', 'stray'], wind_rel=True, action_feedback=False, squash_action=True, flipping=True, odor_scaling=True, stray_max=2.0, test_episodes=20, viz_episodes=0, model_fname='', obs_noise=0.025, act_noise=0.025, cuda=False)
+PPO Args ---> Namespace(algo='ppo', lr=0.0003, eps=1e-05, alpha=0.99, gamma=0.997, use_gae=True, gae_lambda=0.95, entropy_coef=0.005, value_loss_coef=0.5, max_grad_norm=0.5, seed=137, cuda_deterministic=False, num_processes=1, num_steps=128, ppo_epoch=4, num_mini_batch=1, clip_param=0.2, log_interval=1, save_interval=10, no_cuda=True, use_proper_time_limits=False, recurrent_policy=True, use_linear_lr_decay=False, env_name='plume', log_dir='/tmp/gym/', save_dir='/home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched', dynamic=False, eval_type='skip', eval_episodes=5, eval_interval=10, weight_decay=0.01, rnn_type='VRNN', hidden_size=94, betadist=False, policy_type='mlp', bpu_matrix=None, bpu_pools=None, bpu_metadata=None, bpu_k=None, bpu_output_limit=0, stacking=0, masking=None, stride=1, dataset=['constantx5b5'], num_env_steps=[50000], qvar=[0.0], birthx=[0.2], diff_max=[0.9], diff_min=[0.4], birthx_max=1.0, dryrun=False, curriculum=False, turnx=1.0, movex=1.0, auto_movex=False, auto_reward=False, loc_algo='uniform', time_algo='uniform', env_dt=0.04, outsuffix='rnn_param_matched', walking=False, radiusx=1.0, diffusion_min=0.33, diffusion_max=1.0, r_shaping=['step', 'oob', 'stray'], wind_rel=True, action_feedback=False, squash_action=True, flipping=True, odor_scaling=True, stray_max=2.0, test_episodes=20, viz_episodes=0, model_fname='', obs_noise=0.025, act_noise=0.025, cuda=False)
+Using Precomputed Plume...
+PlumeEnvironment: {'self': <plume_env.PlumeEnvironment object at 0x762316797c20>, 't_val_min': 60.0, 'sim_steps_max': 300, 'reset_offset_tmax': 30, 'dataset': 'constantx5b5', 'move_capacity': 2.0, 'turn_capacity': 19.634954084936208, 'wind_obsx': 1.0, 'movex': 1.0, 'turnx': 1.0, 'birthx': 0.2, 'birthx_max': 1.0, 'env_dt': 0.04, 'loc_algo': 'uniform', 'qvar': 0.0, 'time_algo': 'uniform', 'angle_algo': 'uniform', 'homed_radius': 0.2, 'stray_max': 2.0, 'wind_rel': True, 'auto_movex': False, 'auto_reward': False, 'diff_max': 0.9, 'diff_min': 0.4, 'r_shaping': ['step', 'oob', 'stray'], 'rewardx': 1.0, 'rescale': False, 'squash_action': True, 'walking': False, 'walk_move': 0.05, 'walk_turn': 3.141592653589793, 'radiusx': 1.0, 'diffusion_min': 1.0, 'diffusion_max': 1.0, 'action_feedback': False, 'flipping': True, 'odor_scaling': True, 'obs_noise': 0.025, 'act_noise': 0.025, 'dynamic': False, 'seed': 137, 'verbose': 0, '__class__': <class 'plume_env.PlumeEnvironment'>}
+Squashing actions to 0-1
+constantx5b5
+wind: t_val_diff 0.03999999999999915 env_dt 0.04
+puffs: t_val_diff 0.03999999999999915 env_dt 0.04
+Reward Shaping ['step', 'oob', 'stray']
+Using Precomputed Plume...
+PlumeEnvironment: {'self': <plume_env.PlumeEnvironment object at 0x76231db72750>, 't_val_min': 60.0, 'sim_steps_max': 300, 'reset_offset_tmax': 30, 'dataset': 'constantx5b5', 'move_capacity': 2.0, 'turn_capacity': 19.634954084936208, 'wind_obsx': 1.0, 'movex': 1.0, 'turnx': 1.0, 'birthx': 0.2, 'birthx_max': 1.0, 'env_dt': 0.04, 'loc_algo': 'uniform', 'qvar': 0.0, 'time_algo': 'uniform', 'angle_algo': 'uniform', 'homed_radius': 0.2, 'stray_max': 2.0, 'wind_rel': True, 'auto_movex': False, 'auto_reward': False, 'diff_max': 0.9, 'diff_min': 0.4, 'r_shaping': ['step', 'oob', 'stray'], 'rewardx': 1.0, 'rescale': False, 'squash_action': True, 'walking': False, 'walk_move': 0.05, 'walk_turn': 3.141592653589793, 'radiusx': 1.0, 'diffusion_min': 1.0, 'diffusion_max': 1.0, 'action_feedback': False, 'flipping': True, 'odor_scaling': True, 'obs_noise': 0.025, 'act_noise': 0.025, 'dynamic': False, 'seed': 137, 'verbose': 0, '__class__': <class 'plume_env.PlumeEnvironment'>}
+Squashing actions to 0-1
+constantx5b5
+wind: t_val_diff 0.03999999999999915 env_dt 0.04
+puffs: t_val_diff 0.03999999999999915 env_dt 0.04
+Reward Shaping ['step', 'oob', 'stray']
+Using MLPBase
+hidden_size 94
+Using VanillaRNN
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt.start
+Stage: 0/1 - constantx5b5 b0.2 q0.0 n50000
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 2/390, T 384, FPS 129, 2-training-episode: mean/median -66.7/-66.7, min/max -97.5/-35.9
+Update 3/390, T 512, FPS 130, 3-training-episode: mean/median -60.3/-47.5, min/max -97.5/-35.9
+Update 4/390, T 640, FPS 132, 3-training-episode: mean/median -60.3/-47.5, min/max -97.5/-35.9
+Update 5/390, T 768, FPS 132, 4-training-episode: mean/median -82.5/-72.5, min/max -149.1/-35.9
+Update 6/390, T 896, FPS 133, 4-training-episode: mean/median -82.5/-72.5, min/max -149.1/-35.9
+Update 7/390, T 1024, FPS 133, 5-training-episode: mean/median -77.9/-59.7, min/max -149.1/-35.9
+Update 8/390, T 1152, FPS 133, 5-training-episode: mean/median -77.9/-59.7, min/max -149.1/-35.9
+Update 9/390, T 1280, FPS 133, 6-training-episode: mean/median -77.4/-67.4, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 10/390, T 1408, FPS 134, 6-training-episode: mean/median -77.4/-67.4, min/max -149.1/-35.9
+eval_lite: {'r_mean': -70.63, 'r_std': 11.01, 'steps_mean': 175.4, 't': 6.5, 'T': 1408}
+Update 11/390, T 1536, FPS 85, 7-training-episode: mean/median -81.0/-75.0, min/max -149.1/-35.9
+Update 12/390, T 1664, FPS 87, 7-training-episode: mean/median -81.0/-75.0, min/max -149.1/-35.9
+Update 13/390, T 1792, FPS 89, 8-training-episode: mean/median -79.7/-73.1, min/max -149.1/-35.9
+Update 14/390, T 1920, FPS 91, 8-training-episode: mean/median -79.7/-73.1, min/max -149.1/-35.9
+Update 15/390, T 2048, FPS 93, 9-training-episode: mean/median -78.5/-71.1, min/max -149.1/-35.9
+Update 16/390, T 2176, FPS 95, 9-training-episode: mean/median -78.5/-71.1, min/max -149.1/-35.9
+Update 17/390, T 2304, FPS 96, 10-training-episode: mean/median -76.8/-69.7, min/max -149.1/-35.9
+Update 18/390, T 2432, FPS 98, 10-training-episode: mean/median -76.8/-69.7, min/max -149.1/-35.9
+Update 19/390, T 2560, FPS 99, 11-training-episode: mean/median -75.6/-68.3, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 20/390, T 2688, FPS 100, 11-training-episode: mean/median -75.6/-68.3, min/max -149.1/-35.9
+eval_lite: {'r_mean': -55.2, 'r_std': 6.84, 'steps_mean': 299.0, 't': 10.99, 'T': 2688}
+Update 21/390, T 2816, FPS 72, 11-training-episode: mean/median -75.6/-68.3, min/max -149.1/-35.9
+Update 22/390, T 2944, FPS 74, 12-training-episode: mean/median -76.4/-69.7, min/max -149.1/-35.9
+Update 23/390, T 3072, FPS 75, 12-training-episode: mean/median -76.4/-69.7, min/max -149.1/-35.9
+Update 24/390, T 3200, FPS 76, 13-training-episode: mean/median -74.9/-68.3, min/max -149.1/-35.9
+Update 25/390, T 3328, FPS 77, 14-training-episode: mean/median -72.8/-65.9, min/max -149.1/-35.9
+Update 26/390, T 3456, FPS 78, 15-training-episode: mean/median -71.2/-63.4, min/max -149.1/-35.9
+Update 27/390, T 3584, FPS 80, 15-training-episode: mean/median -71.2/-63.4, min/max -149.1/-35.9
+Update 28/390, T 3712, FPS 81, 16-training-episode: mean/median -72.2/-65.9, min/max -149.1/-35.9
+Update 29/390, T 3840, FPS 82, 16-training-episode: mean/median -72.2/-65.9, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 30/390, T 3968, FPS 83, 17-training-episode: mean/median -76.1/-68.3, min/max -149.1/-35.9
+eval_lite: {'r_mean': -70.49, 'r_std': 23.48, 'steps_mean': 299.0, 't': 11.0, 'T': 3968}
+Update 31/390, T 4096, FPS 68, 17-training-episode: mean/median -76.1/-68.3, min/max -149.1/-35.9
+Update 32/390, T 4224, FPS 69, 17-training-episode: mean/median -76.1/-68.3, min/max -149.1/-35.9
+Update 33/390, T 4352, FPS 70, 18-training-episode: mean/median -77.2/-69.7, min/max -149.1/-35.9
+Update 34/390, T 4480, FPS 71, 18-training-episode: mean/median -77.2/-69.7, min/max -149.1/-35.9
+Update 35/390, T 4608, FPS 72, 19-training-episode: mean/median -79.5/-71.1, min/max -149.1/-35.9
+Update 36/390, T 4736, FPS 73, 19-training-episode: mean/median -79.5/-71.1, min/max -149.1/-35.9
+Update 37/390, T 4864, FPS 73, 20-training-episode: mean/median -78.0/-69.7, min/max -149.1/-35.9
+Update 38/390, T 4992, FPS 74, 20-training-episode: mean/median -78.0/-69.7, min/max -149.1/-35.9
+Update 39/390, T 5120, FPS 75, 21-training-episode: mean/median -77.2/-68.3, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 40/390, T 5248, FPS 76, 21-training-episode: mean/median -77.2/-68.3, min/max -149.1/-35.9
+eval_lite: {'r_mean': -54.14, 'r_std': 17.92, 'steps_mean': 299.0, 't': 11.06, 'T': 5248}
+Update 41/390, T 5376, FPS 66, 21-training-episode: mean/median -77.2/-68.3, min/max -149.1/-35.9
+Update 42/390, T 5504, FPS 67, 22-training-episode: mean/median -77.1/-69.7, min/max -149.1/-35.9
+Update 43/390, T 5632, FPS 68, 22-training-episode: mean/median -77.1/-69.7, min/max -149.1/-35.9
+Update 44/390, T 5760, FPS 68, 23-training-episode: mean/median -77.1/-71.1, min/max -149.1/-35.9
+Update 45/390, T 5888, FPS 69, 23-training-episode: mean/median -77.1/-71.1, min/max -149.1/-35.9
+Update 46/390, T 6016, FPS 70, 24-training-episode: mean/median -77.8/-73.1, min/max -149.1/-35.9
+Update 47/390, T 6144, FPS 71, 24-training-episode: mean/median -77.8/-73.1, min/max -149.1/-35.9
+Update 48/390, T 6272, FPS 71, 24-training-episode: mean/median -77.8/-73.1, min/max -149.1/-35.9
+Update 49/390, T 6400, FPS 72, 25-training-episode: mean/median -77.7/-75.0, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 50/390, T 6528, FPS 73, 26-training-episode: mean/median -77.6/-75.1, min/max -149.1/-35.9
+eval_lite: {'r_mean': -55.3, 'r_std': 19.87, 'steps_mean': 299.0, 't': 10.78, 'T': 6528}
+Update 51/390, T 6656, FPS 65, 26-training-episode: mean/median -77.6/-75.1, min/max -149.1/-35.9
+Update 52/390, T 6784, FPS 66, 27-training-episode: mean/median -77.0/-75.0, min/max -149.1/-35.9
+Update 53/390, T 6912, FPS 67, 27-training-episode: mean/median -77.0/-75.0, min/max -149.1/-35.9
+Update 54/390, T 7040, FPS 67, 27-training-episode: mean/median -77.0/-75.0, min/max -149.1/-35.9
+Update 55/390, T 7168, FPS 68, 28-training-episode: mean/median -76.5/-73.1, min/max -149.1/-35.9
+Update 56/390, T 7296, FPS 68, 28-training-episode: mean/median -76.5/-73.1, min/max -149.1/-35.9
+Update 57/390, T 7424, FPS 69, 29-training-episode: mean/median -76.8/-75.0, min/max -149.1/-35.9
+Update 58/390, T 7552, FPS 70, 29-training-episode: mean/median -76.8/-75.0, min/max -149.1/-35.9
+Update 59/390, T 7680, FPS 70, 30-training-episode: mean/median -76.4/-73.1, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 60/390, T 7808, FPS 71, 30-training-episode: mean/median -76.4/-73.1, min/max -149.1/-35.9
+eval_lite: {'r_mean': -61.78, 'r_std': 10.23, 'steps_mean': 122.2, 't': 4.76, 'T': 7808}
+Update 61/390, T 7936, FPS 68, 30-training-episode: mean/median -76.4/-73.1, min/max -149.1/-35.9
+Update 62/390, T 8064, FPS 69, 31-training-episode: mean/median -77.0/-75.0, min/max -149.1/-35.9
+Update 63/390, T 8192, FPS 69, 32-training-episode: mean/median -77.0/-75.1, min/max -149.1/-35.9
+Update 64/390, T 8320, FPS 70, 32-training-episode: mean/median -77.0/-75.1, min/max -149.1/-35.9
+Update 65/390, T 8448, FPS 70, 33-training-episode: mean/median -77.5/-75.2, min/max -149.1/-35.9
+Update 66/390, T 8576, FPS 71, 33-training-episode: mean/median -77.5/-75.2, min/max -149.1/-35.9
+Update 67/390, T 8704, FPS 71, 33-training-episode: mean/median -77.5/-75.2, min/max -149.1/-35.9
+Update 68/390, T 8832, FPS 72, 35-training-episode: mean/median -76.9/-75.2, min/max -149.1/-35.9
+Update 69/390, T 8960, FPS 72, 36-training-episode: mean/median -76.1/-75.1, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 70/390, T 9088, FPS 72, 36-training-episode: mean/median -76.1/-75.1, min/max -149.1/-35.9
+eval_lite: {'r_mean': -70.25, 'r_std': 15.8, 'steps_mean': 299.0, 't': 10.97, 'T': 9088}
+Update 71/390, T 9216, FPS 67, 37-training-episode: mean/median -76.5/-75.2, min/max -149.1/-35.9
+Update 72/390, T 9344, FPS 67, 37-training-episode: mean/median -76.5/-75.2, min/max -149.1/-35.9
+Update 73/390, T 9472, FPS 68, 38-training-episode: mean/median -76.6/-75.3, min/max -149.1/-35.9
+Update 74/390, T 9600, FPS 68, 38-training-episode: mean/median -76.6/-75.3, min/max -149.1/-35.9
+Update 75/390, T 9728, FPS 69, 39-training-episode: mean/median -76.8/-75.3, min/max -149.1/-35.9
+Update 76/390, T 9856, FPS 69, 39-training-episode: mean/median -76.8/-75.3, min/max -149.1/-35.9
+Update 77/390, T 9984, FPS 70, 41-training-episode: mean/median -76.8/-75.3, min/max -149.1/-35.9
+Update 78/390, T 10112, FPS 70, 42-training-episode: mean/median -75.8/-75.3, min/max -149.1/-35.9
+Update 79/390, T 10240, FPS 70, 42-training-episode: mean/median -75.8/-75.3, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 80/390, T 10368, FPS 71, 43-training-episode: mean/median -75.9/-75.3, min/max -149.1/-35.9
+eval_lite: {'r_mean': -46.76, 'r_std': 23.84, 'steps_mean': 58.6, 't': 2.48, 'T': 10368}
+Update 81/390, T 10496, FPS 70, 43-training-episode: mean/median -75.9/-75.3, min/max -149.1/-35.9
+Update 82/390, T 10624, FPS 70, 44-training-episode: mean/median -76.2/-75.4, min/max -149.1/-35.9
+Update 83/390, T 10752, FPS 71, 44-training-episode: mean/median -76.2/-75.4, min/max -149.1/-35.9
+Update 84/390, T 10880, FPS 71, 45-training-episode: mean/median -76.5/-75.5, min/max -149.1/-35.9
+Update 85/390, T 11008, FPS 72, 45-training-episode: mean/median -76.5/-75.5, min/max -149.1/-35.9
+Update 86/390, T 11136, FPS 72, 46-training-episode: mean/median -77.7/-76.4, min/max -149.1/-35.9
+Update 87/390, T 11264, FPS 72, 46-training-episode: mean/median -77.7/-76.4, min/max -149.1/-35.9
+Update 88/390, T 11392, FPS 73, 47-training-episode: mean/median -78.5/-77.3, min/max -149.1/-35.9
+Update 89/390, T 11520, FPS 73, 47-training-episode: mean/median -78.5/-77.3, min/max -149.1/-35.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 90/390, T 11648, FPS 74, 47-training-episode: mean/median -78.5/-77.3, min/max -149.1/-35.9
+eval_lite: {'r_mean': -56.94, 'r_std': 10.96, 'steps_mean': 299.0, 't': 11.25, 'T': 11648}
+Update 91/390, T 11776, FPS 69, 48-training-episode: mean/median -78.7/-77.5, min/max -149.1/-35.9
+Update 92/390, T 11904, FPS 69, 48-training-episode: mean/median -78.7/-77.5, min/max -149.1/-35.9
+Update 93/390, T 12032, FPS 70, 49-training-episode: mean/median -78.5/-77.3, min/max -149.1/-35.9
+Update 94/390, T 12160, FPS 70, 49-training-episode: mean/median -78.5/-77.3, min/max -149.1/-35.9
+Update 95/390, T 12288, FPS 70, 50-training-episode: mean/median -78.7/-77.5, min/max -149.1/-35.9
+Update 96/390, T 12416, FPS 71, 50-training-episode: mean/median -78.7/-77.5, min/max -149.1/-35.9
+Update 97/390, T 12544, FPS 71, 50-training-episode: mean/median -78.7/-77.5, min/max -149.1/-35.9
+Update 98/390, T 12672, FPS 71, 50-training-episode: mean/median -79.2/-77.5, min/max -149.1/-38.0
+Update 99/390, T 12800, FPS 72, 50-training-episode: mean/median -79.2/-77.5, min/max -149.1/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 100/390, T 12928, FPS 72, 50-training-episode: mean/median -79.0/-77.5, min/max -149.1/-38.0
+eval_lite: {'r_mean': -50.79, 'r_std': 12.9, 'steps_mean': 299.0, 't': 11.15, 'T': 12928}
+Update 101/390, T 13056, FPS 68, 50-training-episode: mean/median -79.0/-77.5, min/max -149.1/-38.0
+Update 102/390, T 13184, FPS 68, 50-training-episode: mean/median -79.0/-77.5, min/max -149.1/-38.0
+Update 103/390, T 13312, FPS 69, 50-training-episode: mean/median -79.0/-77.5, min/max -149.1/-38.0
+Update 104/390, T 13440, FPS 69, 50-training-episode: mean/median -79.0/-77.5, min/max -149.1/-38.0
+Update 105/390, T 13568, FPS 69, 50-training-episode: mean/median -77.5/-76.4, min/max -139.1/-38.0
+Update 106/390, T 13696, FPS 70, 50-training-episode: mean/median -77.5/-76.4, min/max -139.1/-38.0
+Update 107/390, T 13824, FPS 70, 50-training-episode: mean/median -77.3/-76.4, min/max -139.1/-38.0
+Update 108/390, T 13952, FPS 70, 50-training-episode: mean/median -77.3/-76.4, min/max -139.1/-38.0
+Update 109/390, T 14080, FPS 70, 50-training-episode: mean/median -76.7/-76.4, min/max -139.1/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 110/390, T 14208, FPS 71, 50-training-episode: mean/median -76.7/-76.4, min/max -139.1/-38.0
+eval_lite: {'r_mean': -59.47, 'r_std': 18.97, 'steps_mean': 299.0, 't': 10.91, 'T': 14208}
+Update 111/390, T 14336, FPS 67, 50-training-episode: mean/median -76.7/-76.4, min/max -139.1/-38.0
+Update 112/390, T 14464, FPS 68, 50-training-episode: mean/median -75.5/-75.4, min/max -139.1/-38.0
+Update 113/390, T 14592, FPS 68, 50-training-episode: mean/median -75.5/-75.4, min/max -139.1/-38.0
+Update 114/390, T 14720, FPS 68, 50-training-episode: mean/median -75.3/-75.4, min/max -139.1/-38.0
+Update 115/390, T 14848, FPS 69, 50-training-episode: mean/median -75.3/-75.4, min/max -139.1/-38.0
+Update 116/390, T 14976, FPS 69, 50-training-episode: mean/median -74.9/-75.4, min/max -139.1/-38.0
+Update 117/390, T 15104, FPS 69, 50-training-episode: mean/median -74.9/-75.4, min/max -139.1/-38.0
+Update 118/390, T 15232, FPS 69, 50-training-episode: mean/median -74.9/-75.4, min/max -139.1/-38.0
+Update 119/390, T 15360, FPS 70, 50-training-episode: mean/median -74.9/-75.4, min/max -139.1/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 120/390, T 15488, FPS 70, 50-training-episode: mean/median -74.9/-75.4, min/max -139.1/-38.0
+eval_lite: {'r_mean': -61.28, 'r_std': 23.64, 'steps_mean': 299.0, 't': 10.53, 'T': 15488}
+Update 121/390, T 15616, FPS 67, 50-training-episode: mean/median -74.5/-75.4, min/max -139.1/-38.0
+Update 122/390, T 15744, FPS 67, 50-training-episode: mean/median -74.5/-75.4, min/max -139.1/-38.0
+Update 123/390, T 15872, FPS 68, 50-training-episode: mean/median -74.5/-75.4, min/max -139.1/-38.0
+Update 124/390, T 16000, FPS 68, 50-training-episode: mean/median -73.9/-75.3, min/max -139.1/-38.0
+Update 125/390, T 16128, FPS 68, 50-training-episode: mean/median -73.9/-75.3, min/max -139.1/-38.0
+Update 126/390, T 16256, FPS 68, 50-training-episode: mean/median -74.1/-75.3, min/max -139.1/-38.0
+Update 127/390, T 16384, FPS 69, 50-training-episode: mean/median -74.1/-75.3, min/max -139.1/-38.0
+Update 128/390, T 16512, FPS 69, 50-training-episode: mean/median -74.0/-75.3, min/max -139.1/-38.0
+Update 129/390, T 16640, FPS 69, 50-training-episode: mean/median -74.0/-75.3, min/max -139.1/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 130/390, T 16768, FPS 69, 50-training-episode: mean/median -74.0/-75.3, min/max -139.1/-38.0
+eval_lite: {'r_mean': -56.8, 'r_std': 20.1, 'steps_mean': 299.0, 't': 10.87, 'T': 16768}
+Update 131/390, T 16896, FPS 67, 50-training-episode: mean/median -74.0/-75.3, min/max -139.1/-38.0
+Update 132/390, T 17024, FPS 67, 50-training-episode: mean/median -74.0/-75.3, min/max -139.1/-38.0
+Update 133/390, T 17152, FPS 67, 50-training-episode: mean/median -73.3/-74.0, min/max -139.1/-38.0
+Update 134/390, T 17280, FPS 67, 50-training-episode: mean/median -73.3/-74.0, min/max -139.1/-38.0
+Update 135/390, T 17408, FPS 68, 50-training-episode: mean/median -71.6/-69.4, min/max -131.0/-38.0
+Update 136/390, T 17536, FPS 68, 50-training-episode: mean/median -71.6/-69.4, min/max -131.0/-38.0
+Update 137/390, T 17664, FPS 68, 50-training-episode: mean/median -71.6/-69.4, min/max -131.0/-38.0
+Update 138/390, T 17792, FPS 68, 50-training-episode: mean/median -71.2/-69.4, min/max -131.0/-38.0
+Update 139/390, T 17920, FPS 69, 50-training-episode: mean/median -71.2/-69.4, min/max -131.0/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 140/390, T 18048, FPS 69, 50-training-episode: mean/median -69.5/-66.1, min/max -131.0/-38.0
+eval_lite: {'r_mean': -47.0, 'r_std': 8.95, 'steps_mean': 299.0, 't': 11.08, 'T': 18048}
+Update 141/390, T 18176, FPS 66, 50-training-episode: mean/median -69.5/-66.1, min/max -131.0/-38.0
+Update 142/390, T 18304, FPS 66, 50-training-episode: mean/median -69.9/-67.7, min/max -131.0/-38.0
+Update 143/390, T 18432, FPS 67, 50-training-episode: mean/median -69.9/-67.7, min/max -131.0/-38.0
+Update 144/390, T 18560, FPS 67, 50-training-episode: mean/median -69.9/-67.7, min/max -131.0/-38.0
+Update 145/390, T 18688, FPS 67, 50-training-episode: mean/median -70.7/-71.0, min/max -131.0/-38.0
+Update 146/390, T 18816, FPS 67, 50-training-episode: mean/median -70.7/-71.0, min/max -131.0/-38.0
+Update 147/390, T 18944, FPS 68, 50-training-episode: mean/median -70.3/-67.7, min/max -131.0/-38.0
+Update 148/390, T 19072, FPS 68, 50-training-episode: mean/median -70.3/-67.7, min/max -131.0/-38.0
+Update 149/390, T 19200, FPS 68, 50-training-episode: mean/median -70.1/-67.4, min/max -131.0/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 150/390, T 19328, FPS 68, 50-training-episode: mean/median -70.1/-67.4, min/max -131.0/-38.0
+eval_lite: {'r_mean': -49.62, 'r_std': 8.41, 'steps_mean': 299.0, 't': 10.89, 'T': 19328}
+Update 151/390, T 19456, FPS 66, 50-training-episode: mean/median -70.1/-67.4, min/max -131.0/-38.0
+Update 152/390, T 19584, FPS 66, 50-training-episode: mean/median -69.4/-66.1, min/max -131.0/-38.0
+Update 153/390, T 19712, FPS 66, 50-training-episode: mean/median -69.4/-66.1, min/max -131.0/-38.0
+Update 154/390, T 19840, FPS 66, 50-training-episode: mean/median -68.8/-65.9, min/max -131.0/-38.0
+Update 155/390, T 19968, FPS 67, 50-training-episode: mean/median -68.8/-65.9, min/max -131.0/-38.0
+Update 156/390, T 20096, FPS 67, 50-training-episode: mean/median -68.9/-65.9, min/max -131.0/-38.0
+Update 157/390, T 20224, FPS 67, 50-training-episode: mean/median -68.9/-65.9, min/max -131.0/-38.0
+Update 158/390, T 20352, FPS 67, 50-training-episode: mean/median -68.9/-65.9, min/max -131.0/-38.0
+Update 159/390, T 20480, FPS 68, 50-training-episode: mean/median -68.9/-65.9, min/max -131.0/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 160/390, T 20608, FPS 68, 50-training-episode: mean/median -68.9/-65.9, min/max -131.0/-38.0
+eval_lite: {'r_mean': -56.4, 'r_std': 16.66, 'steps_mean': 299.0, 't': 11.02, 'T': 20608}
+Update 161/390, T 20736, FPS 66, 50-training-episode: mean/median -68.7/-65.9, min/max -131.0/-38.0
+Update 162/390, T 20864, FPS 66, 50-training-episode: mean/median -68.7/-65.9, min/max -131.0/-38.0
+Update 163/390, T 20992, FPS 66, 50-training-episode: mean/median -68.2/-64.7, min/max -131.0/-38.0
+Update 164/390, T 21120, FPS 66, 50-training-episode: mean/median -68.2/-64.7, min/max -131.0/-38.0
+Update 165/390, T 21248, FPS 66, 50-training-episode: mean/median -68.2/-64.7, min/max -131.0/-38.0
+Update 166/390, T 21376, FPS 67, 50-training-episode: mean/median -68.0/-63.2, min/max -131.0/-38.0
+Update 167/390, T 21504, FPS 67, 50-training-episode: mean/median -68.0/-63.2, min/max -131.0/-38.0
+Update 168/390, T 21632, FPS 67, 50-training-episode: mean/median -68.0/-63.2, min/max -131.0/-38.0
+Update 169/390, T 21760, FPS 67, 50-training-episode: mean/median -68.0/-63.2, min/max -131.0/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 170/390, T 21888, FPS 67, 50-training-episode: mean/median -67.5/-62.5, min/max -131.0/-38.0
+eval_lite: {'r_mean': -56.95, 'r_std': 16.39, 'steps_mean': 299.0, 't': 10.99, 'T': 21888}
+Update 171/390, T 22016, FPS 65, 50-training-episode: mean/median -67.5/-62.5, min/max -131.0/-38.0
+Update 172/390, T 22144, FPS 65, 50-training-episode: mean/median -67.5/-62.5, min/max -131.0/-38.0
+Update 173/390, T 22272, FPS 66, 50-training-episode: mean/median -67.2/-62.5, min/max -131.0/-38.0
+Update 174/390, T 22400, FPS 66, 50-training-episode: mean/median -67.2/-62.5, min/max -131.0/-38.0
+Update 175/390, T 22528, FPS 66, 50-training-episode: mean/median -66.9/-62.5, min/max -131.0/-38.0
+Update 176/390, T 22656, FPS 66, 50-training-episode: mean/median -66.9/-62.5, min/max -131.0/-38.0
+Update 177/390, T 22784, FPS 66, 50-training-episode: mean/median -67.0/-62.5, min/max -131.0/-38.0
+Update 178/390, T 22912, FPS 67, 50-training-episode: mean/median -67.0/-62.5, min/max -131.0/-38.0
+Update 179/390, T 23040, FPS 67, 50-training-episode: mean/median -67.0/-62.5, min/max -131.0/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 180/390, T 23168, FPS 67, 50-training-episode: mean/median -66.9/-62.5, min/max -131.0/-38.0
+eval_lite: {'r_mean': -43.16, 'r_std': 4.52, 'steps_mean': 299.0, 't': 11.09, 'T': 23168}
+Update 181/390, T 23296, FPS 65, 50-training-episode: mean/median -66.9/-62.5, min/max -131.0/-38.0
+Update 182/390, T 23424, FPS 65, 50-training-episode: mean/median -66.9/-62.5, min/max -131.0/-38.0
+Update 183/390, T 23552, FPS 65, 50-training-episode: mean/median -66.9/-62.5, min/max -131.0/-38.0
+Update 184/390, T 23680, FPS 66, 50-training-episode: mean/median -67.2/-62.5, min/max -131.0/-38.0
+Update 185/390, T 23808, FPS 66, 50-training-episode: mean/median -67.2/-62.5, min/max -131.0/-38.0
+Update 186/390, T 23936, FPS 66, 50-training-episode: mean/median -67.2/-62.5, min/max -131.0/-38.0
+Update 187/390, T 24064, FPS 66, 50-training-episode: mean/median -66.4/-61.4, min/max -131.0/-38.0
+Update 188/390, T 24192, FPS 66, 50-training-episode: mean/median -66.4/-61.4, min/max -131.0/-38.0
+Update 189/390, T 24320, FPS 66, 50-training-episode: mean/median -66.1/-61.4, min/max -131.0/-38.0
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 190/390, T 24448, FPS 67, 50-training-episode: mean/median -66.1/-61.4, min/max -131.0/-38.0
+eval_lite: {'r_mean': -60.84, 'r_std': 17.1, 'steps_mean': 299.0, 't': 10.86, 'T': 24448}
+Update 191/390, T 24576, FPS 65, 50-training-episode: mean/median -66.5/-62.5, min/max -131.0/-38.0
+Update 192/390, T 24704, FPS 65, 50-training-episode: mean/median -66.5/-62.5, min/max -131.0/-38.0
+Update 193/390, T 24832, FPS 65, 50-training-episode: mean/median -66.5/-62.5, min/max -131.0/-38.0
+Update 194/390, T 24960, FPS 65, 50-training-episode: mean/median -67.6/-63.2, min/max -131.0/-38.1
+Update 195/390, T 25088, FPS 66, 50-training-episode: mean/median -67.6/-63.2, min/max -131.0/-38.1
+Update 196/390, T 25216, FPS 66, 50-training-episode: mean/median -67.2/-62.5, min/max -131.0/-38.1
+Update 197/390, T 25344, FPS 66, 50-training-episode: mean/median -67.2/-62.5, min/max -131.0/-38.1
+Update 198/390, T 25472, FPS 66, 50-training-episode: mean/median -67.0/-62.5, min/max -131.0/-38.1
+Update 199/390, T 25600, FPS 66, 50-training-episode: mean/median -67.0/-62.5, min/max -131.0/-38.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 200/390, T 25728, FPS 66, 50-training-episode: mean/median -67.0/-62.5, min/max -131.0/-38.1
+eval_lite: {'r_mean': -66.67, 'r_std': 22.25, 'steps_mean': 299.0, 't': 11.1, 'T': 25728}
+Update 201/390, T 25856, FPS 65, 50-training-episode: mean/median -66.2/-61.7, min/max -131.0/-38.1
+Update 202/390, T 25984, FPS 65, 50-training-episode: mean/median -66.2/-61.7, min/max -131.0/-38.1
+Update 203/390, T 26112, FPS 65, 50-training-episode: mean/median -64.4/-60.8, min/max -116.1/-38.1
+Update 204/390, T 26240, FPS 65, 50-training-episode: mean/median -64.4/-60.8, min/max -116.1/-38.1
+Update 205/390, T 26368, FPS 65, 50-training-episode: mean/median -63.0/-60.4, min/max -101.2/-38.1
+Update 206/390, T 26496, FPS 65, 50-training-episode: mean/median -63.0/-60.4, min/max -101.2/-38.1
+Update 207/390, T 26624, FPS 66, 50-training-episode: mean/median -63.0/-60.4, min/max -101.2/-38.1
+Update 208/390, T 26752, FPS 66, 50-training-episode: mean/median -62.9/-60.4, min/max -101.2/-38.1
+Update 209/390, T 26880, FPS 66, 50-training-episode: mean/median -62.9/-60.4, min/max -101.2/-38.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 210/390, T 27008, FPS 66, 50-training-episode: mean/median -62.5/-59.8, min/max -101.2/-38.1
+eval_lite: {'r_mean': -60.88, 'r_std': 19.53, 'steps_mean': 299.0, 't': 10.5, 'T': 27008}
+Update 211/390, T 27136, FPS 65, 50-training-episode: mean/median -62.5/-59.8, min/max -101.2/-38.1
+Update 212/390, T 27264, FPS 65, 50-training-episode: mean/median -61.8/-59.8, min/max -101.2/-38.1
+Update 213/390, T 27392, FPS 65, 50-training-episode: mean/median -61.8/-59.8, min/max -101.2/-38.1
+Update 214/390, T 27520, FPS 65, 50-training-episode: mean/median -61.8/-59.8, min/max -101.2/-38.1
+Update 215/390, T 27648, FPS 65, 50-training-episode: mean/median -61.7/-57.1, min/max -101.2/-38.1
+Update 216/390, T 27776, FPS 65, 50-training-episode: mean/median -61.7/-57.1, min/max -101.2/-38.1
+Update 217/390, T 27904, FPS 66, 50-training-episode: mean/median -61.4/-57.1, min/max -101.2/-38.1
+Update 218/390, T 28032, FPS 66, 50-training-episode: mean/median -61.4/-57.1, min/max -101.2/-38.1
+Update 219/390, T 28160, FPS 66, 50-training-episode: mean/median -61.3/-57.1, min/max -101.2/-38.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 220/390, T 28288, FPS 66, 50-training-episode: mean/median -61.3/-57.1, min/max -101.2/-38.1
+eval_lite: {'r_mean': -65.72, 'r_std': 25.87, 'steps_mean': 299.0, 't': 10.89, 'T': 28288}
+Update 221/390, T 28416, FPS 64, 50-training-episode: mean/median -61.3/-57.1, min/max -101.2/-38.1
+Update 222/390, T 28544, FPS 65, 50-training-episode: mean/median -61.9/-57.1, min/max -102.7/-38.1
+Update 223/390, T 28672, FPS 65, 50-training-episode: mean/median -61.9/-57.1, min/max -102.7/-38.1
+Update 224/390, T 28800, FPS 65, 50-training-episode: mean/median -62.1/-58.6, min/max -102.7/-38.1
+Update 225/390, T 28928, FPS 65, 50-training-episode: mean/median -62.1/-58.6, min/max -102.7/-38.1
+Update 226/390, T 29056, FPS 65, 50-training-episode: mean/median -62.2/-58.6, min/max -102.7/-38.1
+Update 227/390, T 29184, FPS 65, 50-training-episode: mean/median -62.2/-58.6, min/max -102.7/-38.1
+Update 228/390, T 29312, FPS 65, 50-training-episode: mean/median -62.2/-58.6, min/max -102.7/-38.1
+Update 229/390, T 29440, FPS 66, 50-training-episode: mean/median -62.7/-60.4, min/max -102.7/-38.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 230/390, T 29568, FPS 66, 50-training-episode: mean/median -62.7/-60.4, min/max -102.7/-38.1
+eval_lite: {'r_mean': -57.47, 'r_std': 18.25, 'steps_mean': 299.0, 't': 10.99, 'T': 29568}
+Update 231/390, T 29696, FPS 64, 50-training-episode: mean/median -62.5/-58.6, min/max -102.7/-38.1
+Update 232/390, T 29824, FPS 64, 50-training-episode: mean/median -62.5/-58.6, min/max -102.7/-38.1
+Update 233/390, T 29952, FPS 65, 50-training-episode: mean/median -63.4/-60.4, min/max -102.7/-38.1
+Update 234/390, T 30080, FPS 65, 50-training-episode: mean/median -63.4/-60.4, min/max -102.7/-38.1
+Update 235/390, T 30208, FPS 65, 50-training-episode: mean/median -63.4/-60.4, min/max -102.7/-38.1
+Update 236/390, T 30336, FPS 65, 50-training-episode: mean/median -63.7/-60.4, min/max -102.7/-38.1
+Update 237/390, T 30464, FPS 65, 50-training-episode: mean/median -63.7/-60.4, min/max -102.7/-38.1
+Update 238/390, T 30592, FPS 65, 50-training-episode: mean/median -64.1/-60.8, min/max -102.7/-38.1
+Update 239/390, T 30720, FPS 65, 50-training-episode: mean/median -64.1/-60.8, min/max -102.7/-38.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 240/390, T 30848, FPS 66, 50-training-episode: mean/median -64.4/-61.1, min/max -102.7/-38.1
+eval_lite: {'r_mean': -65.48, 'r_std': 18.27, 'steps_mean': 299.0, 't': 10.93, 'T': 30848}
+Update 241/390, T 30976, FPS 64, 50-training-episode: mean/median -64.4/-61.1, min/max -102.7/-38.1
+Update 242/390, T 31104, FPS 64, 50-training-episode: mean/median -64.4/-61.1, min/max -102.7/-38.1
+Update 243/390, T 31232, FPS 64, 50-training-episode: mean/median -64.9/-61.1, min/max -102.7/-38.1
+Update 244/390, T 31360, FPS 65, 50-training-episode: mean/median -64.9/-61.1, min/max -102.7/-38.1
+Update 245/390, T 31488, FPS 65, 50-training-episode: mean/median -66.3/-61.7, min/max -112.0/-38.1
+Update 246/390, T 31616, FPS 65, 50-training-episode: mean/median -66.3/-61.7, min/max -112.0/-38.1
+Update 247/390, T 31744, FPS 65, 50-training-episode: mean/median -66.8/-64.3, min/max -112.0/-38.1
+Update 248/390, T 31872, FPS 65, 50-training-episode: mean/median -66.8/-64.3, min/max -112.0/-38.1
+Update 249/390, T 32000, FPS 65, 50-training-episode: mean/median -66.8/-64.3, min/max -112.0/-38.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 250/390, T 32128, FPS 65, 50-training-episode: mean/median -67.0/-64.3, min/max -112.0/-38.1
+eval_lite: {'r_mean': -49.89, 'r_std': 6.17, 'steps_mean': 299.0, 't': 10.97, 'T': 32128}
+Update 251/390, T 32256, FPS 64, 50-training-episode: mean/median -67.0/-64.3, min/max -112.0/-38.1
+Update 252/390, T 32384, FPS 64, 50-training-episode: mean/median -67.3/-66.4, min/max -112.0/-38.1
+Update 253/390, T 32512, FPS 64, 50-training-episode: mean/median -67.3/-66.4, min/max -112.0/-38.1
+Update 254/390, T 32640, FPS 64, 50-training-episode: mean/median -67.0/-64.3, min/max -112.0/-38.1
+Update 255/390, T 32768, FPS 65, 50-training-episode: mean/median -67.0/-64.3, min/max -112.0/-38.1
+Update 256/390, T 32896, FPS 65, 50-training-episode: mean/median -67.0/-64.3, min/max -112.0/-38.1
+Update 257/390, T 33024, FPS 65, 50-training-episode: mean/median -67.6/-66.4, min/max -112.0/-42.1
+Update 258/390, T 33152, FPS 65, 50-training-episode: mean/median -67.6/-66.4, min/max -112.0/-42.1
+Update 259/390, T 33280, FPS 65, 50-training-episode: mean/median -67.5/-65.4, min/max -112.0/-42.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 260/390, T 33408, FPS 65, 50-training-episode: mean/median -67.5/-65.4, min/max -112.0/-42.1
+eval_lite: {'r_mean': -48.64, 'r_std': 5.53, 'steps_mean': 299.0, 't': 10.87, 'T': 33408}
+Update 261/390, T 33536, FPS 64, 50-training-episode: mean/median -66.4/-63.4, min/max -112.0/-42.1
+Update 262/390, T 33664, FPS 64, 50-training-episode: mean/median -66.4/-63.4, min/max -112.0/-42.1
+Update 263/390, T 33792, FPS 64, 50-training-episode: mean/median -66.4/-63.4, min/max -112.0/-42.1
+Update 264/390, T 33920, FPS 64, 50-training-episode: mean/median -66.7/-65.4, min/max -112.0/-42.1
+Update 265/390, T 34048, FPS 64, 50-training-episode: mean/median -66.7/-65.4, min/max -112.0/-42.1
+Update 266/390, T 34176, FPS 65, 50-training-episode: mean/median -66.7/-65.4, min/max -112.0/-42.1
+Update 267/390, T 34304, FPS 65, 50-training-episode: mean/median -66.7/-65.4, min/max -112.0/-42.1
+Update 268/390, T 34432, FPS 65, 50-training-episode: mean/median -66.6/-65.4, min/max -112.0/-42.1
+Update 269/390, T 34560, FPS 65, 50-training-episode: mean/median -66.6/-65.4, min/max -112.0/-42.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 270/390, T 34688, FPS 65, 50-training-episode: mean/median -66.6/-65.4, min/max -112.0/-42.1
+eval_lite: {'r_mean': -66.6, 'r_std': 25.85, 'steps_mean': 299.0, 't': 10.93, 'T': 34688}
+Update 271/390, T 34816, FPS 64, 50-training-episode: mean/median -67.1/-66.4, min/max -112.0/-42.1
+Update 272/390, T 34944, FPS 64, 50-training-episode: mean/median -67.1/-66.4, min/max -112.0/-42.1
+Update 273/390, T 35072, FPS 64, 50-training-episode: mean/median -67.5/-66.4, min/max -112.0/-42.1
+Update 274/390, T 35200, FPS 64, 50-training-episode: mean/median -67.5/-66.4, min/max -112.0/-42.1
+Update 275/390, T 35328, FPS 64, 50-training-episode: mean/median -67.2/-66.4, min/max -112.0/-42.1
+Update 276/390, T 35456, FPS 64, 50-training-episode: mean/median -67.2/-66.4, min/max -112.0/-42.1
+Update 277/390, T 35584, FPS 65, 50-training-episode: mean/median -67.2/-66.4, min/max -112.0/-42.1
+Update 278/390, T 35712, FPS 65, 50-training-episode: mean/median -68.2/-66.9, min/max -112.0/-42.1
+Update 279/390, T 35840, FPS 65, 50-training-episode: mean/median -68.2/-66.9, min/max -112.0/-42.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 280/390, T 35968, FPS 65, 50-training-episode: mean/median -68.8/-67.8, min/max -112.0/-42.1
+eval_lite: {'r_mean': -70.46, 'r_std': 20.25, 'steps_mean': 299.0, 't': 11.01, 'T': 35968}
+Update 281/390, T 36096, FPS 64, 50-training-episode: mean/median -68.8/-67.8, min/max -112.0/-42.1
+Update 282/390, T 36224, FPS 64, 50-training-episode: mean/median -69.1/-68.4, min/max -112.0/-42.1
+Update 283/390, T 36352, FPS 64, 50-training-episode: mean/median -69.1/-68.4, min/max -112.0/-42.1
+Update 284/390, T 36480, FPS 64, 50-training-episode: mean/median -69.1/-68.4, min/max -112.0/-42.1
+Update 285/390, T 36608, FPS 64, 50-training-episode: mean/median -68.6/-67.8, min/max -112.0/-42.1
+Update 286/390, T 36736, FPS 64, 50-training-episode: mean/median -68.6/-67.8, min/max -112.0/-42.1
+Update 287/390, T 36864, FPS 64, 50-training-episode: mean/median -69.0/-68.4, min/max -112.0/-42.1
+Update 288/390, T 36992, FPS 65, 50-training-episode: mean/median -69.2/-68.4, min/max -112.0/-42.1
+Update 289/390, T 37120, FPS 65, 50-training-episode: mean/median -69.3/-68.4, min/max -112.0/-42.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 290/390, T 37248, FPS 65, 50-training-episode: mean/median -69.3/-68.4, min/max -112.0/-42.1
+eval_lite: {'r_mean': -69.54, 'r_std': 18.71, 'steps_mean': 299.0, 't': 10.61, 'T': 37248}
+Update 291/390, T 37376, FPS 64, 50-training-episode: mean/median -69.9/-69.2, min/max -112.0/-42.1
+Update 292/390, T 37504, FPS 64, 50-training-episode: mean/median -69.9/-69.2, min/max -112.0/-42.1
+Update 293/390, T 37632, FPS 64, 50-training-episode: mean/median -71.1/-70.2, min/max -112.0/-42.1
+Update 294/390, T 37760, FPS 64, 50-training-episode: mean/median -71.1/-70.2, min/max -112.0/-42.1
+Update 295/390, T 37888, FPS 64, 50-training-episode: mean/median -70.7/-70.2, min/max -112.0/-42.1
+Update 296/390, T 38016, FPS 64, 50-training-episode: mean/median -70.7/-70.2, min/max -112.0/-42.1
+Update 297/390, T 38144, FPS 64, 50-training-episode: mean/median -70.7/-70.2, min/max -112.0/-42.1
+Update 298/390, T 38272, FPS 64, 50-training-episode: mean/median -70.3/-70.2, min/max -112.0/-42.1
+Update 299/390, T 38400, FPS 65, 50-training-episode: mean/median -70.3/-70.2, min/max -112.0/-42.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 300/390, T 38528, FPS 65, 50-training-episode: mean/median -71.6/-70.4, min/max -112.0/-42.1
+eval_lite: {'r_mean': -70.1, 'r_std': 14.87, 'steps_mean': 299.0, 't': 10.89, 'T': 38528}
+Update 301/390, T 38656, FPS 64, 50-training-episode: mean/median -71.6/-70.4, min/max -112.0/-42.1
+Update 302/390, T 38784, FPS 64, 50-training-episode: mean/median -71.6/-70.4, min/max -112.0/-42.1
+Update 303/390, T 38912, FPS 64, 50-training-episode: mean/median -71.6/-70.4, min/max -112.0/-42.1
+Update 304/390, T 39040, FPS 64, 50-training-episode: mean/median -71.6/-70.4, min/max -112.0/-42.1
+Update 305/390, T 39168, FPS 64, 50-training-episode: mean/median -71.6/-70.4, min/max -112.0/-42.1
+Update 306/390, T 39296, FPS 64, 50-training-episode: mean/median -71.6/-70.4, min/max -112.0/-42.1
+Update 307/390, T 39424, FPS 64, 50-training-episode: mean/median -71.1/-70.2, min/max -112.0/-42.1
+Update 308/390, T 39552, FPS 64, 50-training-episode: mean/median -72.2/-70.4, min/max -112.6/-42.1
+Update 309/390, T 39680, FPS 64, 50-training-episode: mean/median -72.2/-70.4, min/max -112.6/-42.1
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 310/390, T 39808, FPS 65, 50-training-episode: mean/median -73.6/-70.4, min/max -152.3/-42.1
+eval_lite: {'r_mean': -74.3, 'r_std': 8.4, 'steps_mean': 299.0, 't': 11.05, 'T': 39808}
+Update 311/390, T 39936, FPS 64, 50-training-episode: mean/median -73.6/-70.4, min/max -152.3/-42.1
+Update 312/390, T 40064, FPS 64, 50-training-episode: mean/median -73.6/-70.4, min/max -152.3/-42.1
+Update 313/390, T 40192, FPS 64, 50-training-episode: mean/median -75.2/-70.6, min/max -152.3/-42.1
+Update 314/390, T 40320, FPS 64, 50-training-episode: mean/median -75.7/-70.6, min/max -152.3/-44.9
+Update 315/390, T 40448, FPS 64, 50-training-episode: mean/median -77.3/-71.0, min/max -152.3/-44.9
+Update 316/390, T 40576, FPS 64, 50-training-episode: mean/median -77.3/-71.0, min/max -152.3/-44.9
+Update 317/390, T 40704, FPS 64, 50-training-episode: mean/median -77.1/-71.0, min/max -152.3/-44.9
+Update 318/390, T 40832, FPS 64, 50-training-episode: mean/median -77.3/-71.0, min/max -152.3/-44.9
+Update 319/390, T 40960, FPS 64, 50-training-episode: mean/median -77.3/-71.0, min/max -152.3/-44.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 320/390, T 41088, FPS 64, 50-training-episode: mean/median -77.7/-71.6, min/max -152.3/-44.9
+eval_lite: {'r_mean': -75.22, 'r_std': 16.53, 'steps_mean': 252.2, 't': 9.4, 'T': 41088}
+Update 321/390, T 41216, FPS 64, 50-training-episode: mean/median -77.7/-71.6, min/max -152.3/-44.9
+Update 322/390, T 41344, FPS 64, 50-training-episode: mean/median -79.8/-72.3, min/max -156.2/-44.9
+Update 323/390, T 41472, FPS 64, 50-training-episode: mean/median -79.5/-72.3, min/max -156.2/-44.9
+Update 324/390, T 41600, FPS 64, 50-training-episode: mean/median -79.5/-72.3, min/max -156.2/-44.9
+Update 325/390, T 41728, FPS 64, 50-training-episode: mean/median -81.8/-73.0, min/max -161.7/-44.9
+Update 326/390, T 41856, FPS 64, 50-training-episode: mean/median -81.8/-73.0, min/max -161.7/-44.9
+Update 327/390, T 41984, FPS 64, 50-training-episode: mean/median -81.5/-73.0, min/max -161.7/-44.9
+Update 328/390, T 42112, FPS 64, 50-training-episode: mean/median -81.5/-73.0, min/max -161.7/-44.9
+Update 329/390, T 42240, FPS 64, 50-training-episode: mean/median -81.7/-73.0, min/max -161.7/-44.9
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 330/390, T 42368, FPS 64, 50-training-episode: mean/median -81.7/-73.0, min/max -161.7/-44.9
+eval_lite: {'r_mean': -71.58, 'r_std': 18.13, 'steps_mean': 249.8, 't': 9.15, 'T': 42368}
+Update 331/390, T 42496, FPS 64, 50-training-episode: mean/median -81.7/-73.0, min/max -161.7/-44.9
+Update 332/390, T 42624, FPS 64, 50-training-episode: mean/median -82.6/-73.6, min/max -161.7/-44.9
+Update 333/390, T 42752, FPS 64, 50-training-episode: mean/median -82.6/-73.6, min/max -161.7/-44.9
+Update 334/390, T 42880, FPS 64, 50-training-episode: mean/median -82.3/-73.6, min/max -161.7/-35.4
+Update 335/390, T 43008, FPS 64, 50-training-episode: mean/median -81.7/-73.0, min/max -161.7/-35.4
+Update 336/390, T 43136, FPS 64, 50-training-episode: mean/median -82.7/-73.6, min/max -161.7/-35.4
+Update 337/390, T 43264, FPS 64, 50-training-episode: mean/median -82.7/-73.6, min/max -161.7/-35.4
+Update 338/390, T 43392, FPS 64, 50-training-episode: mean/median -82.7/-73.6, min/max -161.7/-35.4
+Update 339/390, T 43520, FPS 64, 50-training-episode: mean/median -82.0/-73.6, min/max -161.7/-35.4
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 340/390, T 43648, FPS 65, 50-training-episode: mean/median -81.3/-73.6, min/max -161.7/-35.4
+eval_lite: {'r_mean': -66.13, 'r_std': 37.31, 'steps_mean': 76.2, 't': 3.13, 'T': 43648}
+Update 341/390, T 43776, FPS 64, 50-training-episode: mean/median -81.1/-73.0, min/max -161.7/-35.4
+Update 342/390, T 43904, FPS 64, 50-training-episode: mean/median -80.7/-73.8, min/max -161.7/-35.4
+Update 343/390, T 44032, FPS 64, 50-training-episode: mean/median -80.7/-73.8, min/max -161.7/-35.4
+Update 344/390, T 44160, FPS 65, 50-training-episode: mean/median -81.0/-73.9, min/max -161.7/-35.4
+Update 345/390, T 44288, FPS 65, 50-training-episode: mean/median -81.1/-74.8, min/max -161.7/-35.3
+Update 346/390, T 44416, FPS 65, 50-training-episode: mean/median -81.1/-74.8, min/max -161.7/-35.3
+Update 347/390, T 44544, FPS 65, 50-training-episode: mean/median -82.6/-75.3, min/max -161.7/-35.3
+Update 348/390, T 44672, FPS 65, 50-training-episode: mean/median -82.6/-75.3, min/max -161.7/-35.3
+Update 349/390, T 44800, FPS 65, 50-training-episode: mean/median -82.8/-76.4, min/max -161.7/-35.3
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 350/390, T 44928, FPS 65, 50-training-episode: mean/median -83.3/-77.7, min/max -161.7/-35.3
+eval_lite: {'r_mean': -67.9, 'r_std': 25.49, 'steps_mean': 198.8, 't': 7.24, 'T': 44928}
+Update 351/390, T 45056, FPS 65, 50-training-episode: mean/median -83.3/-77.7, min/max -161.7/-35.3
+Update 352/390, T 45184, FPS 65, 50-training-episode: mean/median -83.3/-77.7, min/max -161.7/-35.3
+Update 353/390, T 45312, FPS 65, 50-training-episode: mean/median -83.0/-77.7, min/max -161.7/-35.3
+Update 354/390, T 45440, FPS 65, 50-training-episode: mean/median -83.3/-77.7, min/max -161.7/-35.3
+Update 355/390, T 45568, FPS 65, 50-training-episode: mean/median -80.9/-75.3, min/max -161.7/-33.8
+Update 356/390, T 45696, FPS 65, 50-training-episode: mean/median -80.5/-75.3, min/max -161.7/-33.8
+Update 357/390, T 45824, FPS 65, 50-training-episode: mean/median -80.5/-75.3, min/max -161.7/-33.8
+Update 358/390, T 45952, FPS 65, 50-training-episode: mean/median -80.5/-75.3, min/max -161.7/-33.8
+Update 359/390, T 46080, FPS 65, 50-training-episode: mean/median -80.0/-76.4, min/max -161.7/-33.8
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 360/390, T 46208, FPS 65, 50-training-episode: mean/median -80.0/-76.4, min/max -161.7/-33.8
+eval_lite: {'r_mean': -78.97, 'r_std': 19.79, 'steps_mean': 253.2, 't': 9.44, 'T': 46208}
+Update 361/390, T 46336, FPS 65, 50-training-episode: mean/median -79.4/-76.4, min/max -161.7/-33.8
+Update 362/390, T 46464, FPS 65, 50-training-episode: mean/median -79.4/-76.4, min/max -161.7/-33.8
+Update 363/390, T 46592, FPS 65, 50-training-episode: mean/median -79.5/-76.4, min/max -161.7/-33.8
+Update 364/390, T 46720, FPS 65, 50-training-episode: mean/median -79.5/-76.4, min/max -161.7/-33.8
+Update 365/390, T 46848, FPS 65, 50-training-episode: mean/median -80.5/-76.4, min/max -161.7/-33.8
+Update 366/390, T 46976, FPS 65, 50-training-episode: mean/median -80.3/-76.4, min/max -161.7/-33.8
+Update 367/390, T 47104, FPS 65, 50-training-episode: mean/median -80.3/-76.4, min/max -161.7/-33.8
+Update 368/390, T 47232, FPS 65, 50-training-episode: mean/median -81.3/-77.7, min/max -161.7/-33.8
+Update 369/390, T 47360, FPS 65, 50-training-episode: mean/median -81.3/-77.7, min/max -161.7/-33.8
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 370/390, T 47488, FPS 65, 50-training-episode: mean/median -82.2/-77.7, min/max -161.7/-33.8
+eval_lite: {'r_mean': -65.39, 'r_std': 25.01, 'steps_mean': 128.4, 't': 4.99, 'T': 47488}
+Update 371/390, T 47616, FPS 65, 50-training-episode: mean/median -82.2/-77.7, min/max -161.7/-33.8
+Update 372/390, T 47744, FPS 65, 50-training-episode: mean/median -81.9/-76.4, min/max -161.7/-33.8
+Update 373/390, T 47872, FPS 65, 50-training-episode: mean/median -82.0/-77.1, min/max -161.7/-33.8
+Update 374/390, T 48000, FPS 65, 50-training-episode: mean/median -81.9/-77.1, min/max -161.7/-33.8
+Update 375/390, T 48128, FPS 65, 50-training-episode: mean/median -75.8/-75.1, min/max -161.7/78.4
+Update 376/390, T 48256, FPS 65, 50-training-episode: mean/median -75.8/-75.1, min/max -161.7/78.4
+Update 377/390, T 48384, FPS 66, 50-training-episode: mean/median -74.0/-73.9, min/max -161.7/78.4
+Update 378/390, T 48512, FPS 66, 50-training-episode: mean/median -74.0/-73.9, min/max -161.7/78.4
+Update 379/390, T 48640, FPS 66, 50-training-episode: mean/median -73.3/-73.9, min/max -161.7/78.4
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 380/390, T 48768, FPS 66, 50-training-episode: mean/median -72.6/-72.3, min/max -161.7/78.4
+eval_lite: {'r_mean': -36.38, 'r_std': 2.1, 'steps_mean': 75.6, 't': 3.12, 'T': 48768}
+Update 381/390, T 48896, FPS 66, 50-training-episode: mean/median -73.5/-73.9, min/max -161.7/78.4
+Update 382/390, T 49024, FPS 66, 50-training-episode: mean/median -73.5/-73.9, min/max -161.7/78.4
+Update 383/390, T 49152, FPS 66, 50-training-episode: mean/median -74.4/-73.9, min/max -161.7/78.4
+Update 384/390, T 49280, FPS 66, 50-training-episode: mean/median -74.4/-73.9, min/max -161.7/78.4
+Update 385/390, T 49408, FPS 66, 50-training-episode: mean/median -72.8/-72.8, min/max -161.7/78.4
+Update 386/390, T 49536, FPS 66, 50-training-episode: mean/median -73.3/-73.9, min/max -161.7/78.4
+Update 387/390, T 49664, FPS 66, 50-training-episode: mean/median -71.5/-72.8, min/max -154.9/78.4
+Update 388/390, T 49792, FPS 66, 50-training-episode: mean/median -71.5/-72.8, min/max -154.9/78.4
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Update 389/390, T 49920, FPS 66, 50-training-episode: mean/median -71.5/-72.8, min/max -154.9/78.4
+Saved /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched/plume_rnn_param_matched.pt
+Batch/CLI mode
+usage: main.py [-h] [--base_dir BASE_DIR]
+main.py: error: unrecognized arguments: --env-name plume --dataset constantx5b5 --seed 137 --eval_type skip --eval-interval 10 --eval_episodes 5 --rnn_type VRNN --r_shaping step oob stray --diff_max 0.9 --diff_min 0.4 --diffusion_max 1.0 --diffusion_min 0.33 --odor_scaling True --flipping True --qvar 0.0 --birthx 0.2 --weight_decay 0.01 --obs_noise 0.025 --act_noise 0.025 --algo ppo --recurrent-policy --squash_action True --test_episodes 20 --viz_episodes 0 --log-interval 1 --save-interval 10 --num-processes 1 --num-mini-batch 1 --use-gae --num-steps 128 --lr 3e-4 --entropy-coef 0.005 --value-loss-coef 0.5 --ppo-epoch 4 --gamma 0.997 --gae-lambda 0.95 --no-cuda --num-env-steps 50000 --hidden_size 94 --save-dir /home/ubuntu/pathintegrationBPU/outputs/odor_plume_mb_bpu/rnn_param_matched --outsuffix rnn_param_matched
+Exception ignored in atexit callback: <function dump_compile_times at 0x762314b03240>
+Traceback (most recent call last):
+  File "/home/ubuntu/pathintegrationBPU/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py", line 860, in dump_compile_times
+    log.info(compile_times(repr="str", aggregate=True))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/pathintegrationBPU/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py", line 846, in compile_times
+    out += tabulate(rows, headers=("Function", "Runtimes (s)"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/pathintegrationBPU/.venv/lib/python3.12/site-packages/torch/_dynamo/utils.py", line 242, in tabulate
+    import tabulate
+  File "/home/ubuntu/pathintegrationBPU/plumetracknets/code/ppo/../tabulate.py", line 43, in <module>
+    args = parser.parse_args()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/argparse.py", line 1911, in parse_args
+    self.error(msg % ' '.join(argv))
+  File "/usr/lib/python3.12/argparse.py", line 2677, in error
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+  File "/usr/lib/python3.12/argparse.py", line 2664, in exit
+    _sys.exit(status)
+SystemExit: 2

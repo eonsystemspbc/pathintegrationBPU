@@ -37,7 +37,7 @@ the intended AWS run, use `--device cuda` so a missing GPU fails loudly.
 python experiments/hemibrain_cx_bpu/run_benchmark.py \
   --mode download|prepare|train|validate|all \
   --device auto|cuda|cpu \
-  --connectome hemibrain_cx|flywire_whole \
+  --connectome hemibrain_cx|hemibrain_mushroom_body|flywire_whole|flywire_mushroom_body \
   --output-dir experiments/hemibrain_cx_bpu/outputs \
   --cache-dir experiments/hemibrain_cx_bpu/outputs \
   --flywire-release 783 \
@@ -86,6 +86,13 @@ heading bump plus a body-centered home-vector readout
 `[cos(home_bearing), sin(home_bearing), scaled_home_distance]`. It is intended
 as a more CX-like path-integration target for comparing the hemibrain recurrent
 core against same-size non-connectomic controls.
+
+For mushroom-body associative learning, use the standalone supervised benchmark
+in `scripts/run_mb_associative_learning.py`. It pairs sparse odor signatures
+with reward or punishment, probes odor-only recall, then reverses a subset of
+associations and probes again. This is a closer match to MB-style olfactory
+associative memory than plume tracking. See
+`docs/mb_associative_learning.md` for the AWS commands.
 
 For a quick sanity run after `download` and `prepare`, train one seed with three
 models:

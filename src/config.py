@@ -11,9 +11,27 @@ import torch
 HEMIBRAIN_DATASET = "hemibrain:v1.2.1"
 NEUPRINT_SERVER = "neuprint.janelia.org"
 CX_ROI_LABELS = ("EB", "PB", "FB", "NO")
+HEMIBRAIN_MB_ROI_LABELS = ("MB(R)", "MB(L)")
+MB_ROI_LABELS = (
+    "MB_CA_L",
+    "MB_CA_R",
+    "MB_ML_L",
+    "MB_ML_R",
+    "MB_PED_L",
+    "MB_PED_R",
+    "MB_VL_L",
+    "MB_VL_R",
+)
 CONNECTOME_HEMIBRAIN_CX = "hemibrain_cx"
+CONNECTOME_HEMIBRAIN_MUSHROOM_BODY = "hemibrain_mushroom_body"
 CONNECTOME_FLYWIRE_WHOLE = "flywire_whole"
-CONNECTOME_CHOICES = (CONNECTOME_HEMIBRAIN_CX, CONNECTOME_FLYWIRE_WHOLE)
+CONNECTOME_FLYWIRE_MUSHROOM_BODY = "flywire_mushroom_body"
+CONNECTOME_CHOICES = (
+    CONNECTOME_HEMIBRAIN_CX,
+    CONNECTOME_HEMIBRAIN_MUSHROOM_BODY,
+    CONNECTOME_FLYWIRE_WHOLE,
+    CONNECTOME_FLYWIRE_MUSHROOM_BODY,
+)
 DEFAULT_FLYWIRE_RELEASE = "783"
 DEFAULT_WHOLE_BRAIN_POOL_FRACTION = 0.05
 RHO_TARGET = 0.95
@@ -211,7 +229,9 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         default=CONNECTOME_HEMIBRAIN_CX,
         help=(
             "Connectome substrate. 'hemibrain_cx' uses the original neuPrint CX "
-            "query; 'flywire_whole' uses the FlyWire whole-brain release dump."
+            "query; 'hemibrain_mushroom_body' uses neuPrint MB(R)/MB(L); "
+            "'flywire_whole' uses the FlyWire whole-brain release dump; "
+            "'flywire_mushroom_body' filters the FlyWire release to MB neuropils."
         ),
     )
     parser.add_argument(
