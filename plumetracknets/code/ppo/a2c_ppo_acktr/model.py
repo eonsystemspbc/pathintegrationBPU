@@ -9,6 +9,50 @@ from a2c_ppo_acktr.distributions import Bernoulli, Categorical, DiagGaussian, Be
 from a2c_ppo_acktr.utils import init
 
 
+def _random_sparse_like(recurrent, seed):
+    """Same N/nnz/self-loop count and weight multiset, random directed support."""
+    recurrent = recurrent.tocoo()
+    n = int(recurrent.shape[0])
+    nnz = int(recurrent.nnz)
+    rng = np.random.default_rng(int(seed))
+    self_loop_count = int(np.sum(recurrent.row == recurrent.col))
+    flats = []
+
+    if self_loop_count:
+        loop_nodes = rng.choice(n, size=self_loop_count, replace=False)
+        flats.append(loop_nodes.astype(np.int64) * n + loop_nodes.astype(np.int64))
+
+    target_nonloops = nnz - self_loop_count
+    nonloop_flats = np.empty(0, dtype=np.int64)
+    # The MB graph is sparse, so oversampling plus uniquing is much cheaper than
+    # sampling without replacement from all N*N possible directed pairs.
+    while nonloop_flats.size < target_nonloops:
+        need = target_nonloops - nonloop_flats.size
+        draw = max(int(need * 1.2), 1024)
+        rows = rng.integers(0, n, size=draw, dtype=np.int64)
+        cols = rng.integers(0, n, size=draw, dtype=np.int64)
+        valid = rows != cols
+        candidates = rows[valid] * n + cols[valid]
+        nonloop_flats = np.unique(np.concatenate([nonloop_flats, candidates]))
+    flats.append(rng.choice(nonloop_flats, size=target_nonloops, replace=False))
+
+    flat = np.concatenate(flats) if flats else np.empty(0, dtype=np.int64)
+    rng.shuffle(flat)
+    rows = flat // n
+    cols = flat % n
+    weights = rng.permutation(recurrent.data.astype(np.float32))
+    return sparse.coo_matrix((weights, (rows, cols)), shape=recurrent.shape).tocoo()
+
+
+def _weight_shuffled_like(recurrent, seed):
+    recurrent = recurrent.tocoo()
+    rng = np.random.default_rng(int(seed))
+    weights = rng.permutation(recurrent.data.astype(np.float32))
+    return sparse.coo_matrix(
+        (weights, (recurrent.row, recurrent.col)), shape=recurrent.shape
+    ).tocoo()
+
+
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
@@ -20,9 +64,13 @@ class Policy(nn.Module):
             base_kwargs = {}
         if base is None:
             if len(obs_shape) == 1:
-                if args is not None and getattr(args, "policy_type", "mlp") == "bpu":
+                policy_type = getattr(args, "policy_type", "mlp") if args is not None else "mlp"
+                if policy_type == "bpu":
                     print("Using ConnectomeBPUBase")
                     base = ConnectomeBPUBase
+                elif policy_type == "seeded_rnn":
+                    print("Using SeededRNNBase")
+                    base = SeededRNNBase
                 else:
                     print("Using MLPBase")
                     base = MLPBase
@@ -234,6 +282,137 @@ class MLPBase(NNBase):
         return value, hidden_actor, rnn_hxs, activities
 
 
+class SeededRNNBase(nn.Module):
+    def __init__(
+        self,
+        num_inputs,
+        recurrent=True,
+        hidden_size=64,
+        rnn_type='VRNN',
+        matrix_path=None,
+        seeded_rnn_init='random',
+        seeded_rnn_init_seed=0,
+        seeded_rnn_state_clip=20.0,
+    ):
+        super(SeededRNNBase, self).__init__()
+        if matrix_path is None:
+            raise ValueError("--seeded-rnn-matrix is required for --policy_type seeded_rnn")
+        recurrent_matrix = sparse.load_npz(matrix_path).astype(np.float32).tocoo()
+        if recurrent_matrix.shape[0] != recurrent_matrix.shape[1]:
+            raise ValueError("seeded RNN recurrent matrix must be square")
+
+        self.N = int(recurrent_matrix.shape[0])
+        self._hidden_size = int(hidden_size)
+        self._recurrent = True
+        self.seeded_rnn_init = str(seeded_rnn_init)
+        self.seeded_rnn_init_seed = int(seeded_rnn_init_seed)
+        self.state_clip = float(seeded_rnn_state_clip) if seeded_rnn_state_clip else 0.0
+
+        rng = np.random.default_rng(self.seeded_rnn_init_seed)
+        if self.seeded_rnn_init == "random":
+            rec_array = rng.normal(
+                loc=0.0,
+                scale=1.0 / np.sqrt(max(self.N, 1)),
+                size=(self.N, self.N),
+            ).astype(np.float32)
+        elif self.seeded_rnn_init in {"connectome", "weight_shuffle"}:
+            rec_array = np.zeros((self.N, self.N), dtype=np.float32)
+            values = recurrent_matrix.data.astype(np.float32)
+            if self.seeded_rnn_init == "weight_shuffle":
+                values = rng.permutation(values)
+            rec_array[recurrent_matrix.row, recurrent_matrix.col] = values
+        else:
+            raise ValueError(
+                "--seeded-rnn-init must be one of: random, connectome, weight_shuffle"
+            )
+
+        self.W_rec = nn.Parameter(torch.as_tensor(rec_array, dtype=torch.float32))
+        scale_in = 1.0 / np.sqrt(max(num_inputs, 1))
+        self.W_in = nn.Parameter(torch.empty(self.N, num_inputs))
+        self.b_rec = nn.Parameter(torch.zeros(self.N))
+        nn.init.uniform_(self.W_in, -scale_in, scale_in)
+
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0), np.sqrt(2))
+        self.actor1 = nn.Sequential(init_(nn.Linear(self.N, hidden_size)), nn.Tanh())
+        self.actor = nn.Sequential(init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+        self.critic1 = nn.Sequential(init_(nn.Linear(self.N, hidden_size)), nn.Tanh())
+        self.critic = nn.Sequential(init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+
+        trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        print(
+            "SeededRNNBase "
+            f"N={self.N} dense_recurrent_params={self.W_rec.numel()} "
+            f"actor_hidden={hidden_size} init={self.seeded_rnn_init} "
+            f"init_seed={self.seeded_rnn_init_seed} state_clip={self.state_clip} "
+            f"trainable_params={trainable_params}"
+        )
+        self.train()
+
+    @property
+    def is_recurrent(self):
+        return True
+
+    @property
+    def recurrent_hidden_state_size(self):
+        return self.N
+
+    @property
+    def output_size(self):
+        return self._hidden_size
+
+    def _step(self, x, hxs, masks):
+        h = hxs * masks
+        next_h = x @ self.W_in.t() + h @ self.W_rec.t() + self.b_rec
+        if self.state_clip > 0:
+            next_h = torch.nan_to_num(
+                next_h,
+                nan=0.0,
+                posinf=self.state_clip,
+                neginf=-self.state_clip,
+            )
+        h = torch.relu(next_h)
+        if self.state_clip > 0:
+            h = torch.clamp(h, max=self.state_clip)
+
+        hx1_critic = self.critic1(h)
+        hx1_actor = self.actor1(h)
+        hidden_critic = self.critic(hx1_critic)
+        hidden_actor = self.actor(hx1_actor)
+        value = self.critic_linear(hidden_critic)
+        activities = {
+            'rnn_hxs': h,
+            'hx1_actor': hx1_actor,
+            'hx1_critic': hx1_critic,
+            'hidden_actor': hidden_actor,
+            'hidden_critic': hidden_critic,
+            'value': value,
+        }
+        return value, hidden_actor, h, activities
+
+    def forward(self, inputs, rnn_hxs, masks):
+        if inputs.size(0) == rnn_hxs.size(0):
+            return self._step(inputs, rnn_hxs, masks)
+
+        N = rnn_hxs.size(0)
+        T = int(inputs.size(0) / N)
+        x = inputs.view(T, N, inputs.size(1))
+        masks = masks.view(T, N, 1)
+        hxs = rnn_hxs
+        values = []
+        actors = []
+        last_activities = None
+        for t in range(T):
+            value, actor_features, hxs, last_activities = self._step(
+                x[t], hxs, masks[t]
+            )
+            values.append(value)
+            actors.append(actor_features)
+        value = torch.cat(values, dim=0)
+        actor_features = torch.cat(actors, dim=0)
+        return value, actor_features, hxs, last_activities
+
+
 class ConnectomeBPUBase(nn.Module):
     def __init__(
         self,
@@ -247,6 +426,8 @@ class ConnectomeBPUBase(nn.Module):
         bpu_k=None,
         bpu_output_limit=0,
         bpu_train_recurrent=True,
+        bpu_init='connectome',
+        bpu_init_seed=0,
         bpu_state_clip=20.0,
         bpu_value_clip=1.0,
     ):
@@ -259,6 +440,18 @@ class ConnectomeBPUBase(nn.Module):
         recurrent = sparse.load_npz(matrix_path).astype(np.float32).tocoo()
         if recurrent.shape[0] != recurrent.shape[1]:
             raise ValueError("BPU recurrent matrix must be square")
+        self.recurrent_init = str(bpu_init)
+        self.recurrent_init_seed = int(bpu_init_seed)
+        if self.recurrent_init == "connectome":
+            pass
+        elif self.recurrent_init == "random_sparse":
+            recurrent = _random_sparse_like(recurrent, self.recurrent_init_seed)
+        elif self.recurrent_init == "weight_shuffle":
+            recurrent = _weight_shuffled_like(recurrent, self.recurrent_init_seed)
+        else:
+            raise ValueError(
+                "--bpu-init must be one of: connectome, random_sparse, weight_shuffle"
+            )
         self.N = int(recurrent.shape[0])
         self._hidden_size = int(hidden_size)
         self._recurrent = True
@@ -308,7 +501,8 @@ class ConnectomeBPUBase(nn.Module):
             "ConnectomeBPUBase "
             f"N={self.N} edges={self.W_rec_values.numel()} sensory={len(sensory)} "
             f"output={len(output)} K={self.K} actor_hidden={hidden_size} "
-            f"train_recurrent={self.train_recurrent} state_clip={self.state_clip} "
+            f"train_recurrent={self.train_recurrent} recurrent_init={self.recurrent_init} "
+            f"init_seed={self.recurrent_init_seed} state_clip={self.state_clip} "
             f"value_clip={self.value_clip}"
         )
         self.train()

@@ -202,7 +202,7 @@ def get_args():
     parser.add_argument('--hidden_size', type=int, default=64)
     parser.add_argument('--betadist', type=bool, default=False)
     parser.add_argument('--policy_type', type=str, default='mlp',
-        choices=['mlp', 'bpu'])
+        choices=['mlp', 'bpu', 'seeded_rnn'])
     parser.add_argument('--bpu-matrix', dest='bpu_matrix', type=str, default=None)
     parser.add_argument('--bpu-pools', dest='bpu_pools', type=str, default=None)
     parser.add_argument('--bpu-metadata', dest='bpu_metadata', type=str, default=None)
@@ -211,10 +211,34 @@ def get_args():
     parser.add_argument('--bpu-freeze-recurrent', dest='bpu_train_recurrent',
         action='store_false', default=True,
         help='keep BPU recurrent connectome edge weights fixed')
+    parser.add_argument('--bpu-init', dest='bpu_init', type=str, default='connectome',
+        choices=['connectome', 'random_sparse', 'weight_shuffle'],
+        help=(
+            'recurrent initialization for --policy_type bpu: connectome uses the '
+            'hemibrain weights/support, random_sparse uses a same-size random '
+            'directed support with the same weight multiset, and weight_shuffle '
+            'keeps support but shuffles weights'
+        ))
+    parser.add_argument('--bpu-init-seed', dest='bpu_init_seed', type=int, default=None,
+        help='seed for --bpu-init random_sparse or weight_shuffle; defaults to --seed')
     parser.add_argument('--bpu-state-clip', dest='bpu_state_clip', type=float, default=20.0,
         help='clip BPU recurrent hidden activity after each microstep')
     parser.add_argument('--bpu-value-clip', dest='bpu_value_clip', type=float, default=1.0,
         help='clip BPU recurrent edge values in the forward pass')
+    parser.add_argument('--seeded-rnn-matrix', dest='seeded_rnn_matrix', type=str, default=None)
+    parser.add_argument('--seeded-rnn-init', dest='seeded_rnn_init', type=str, default='random',
+        choices=['random', 'connectome', 'weight_shuffle'],
+        help=(
+            'initial recurrent matrix for --policy_type seeded_rnn. random is a '
+            'dense random RNN; connectome initializes W_rec from the hemibrain '
+            'matrix with zeros elsewhere; weight_shuffle keeps connectome support '
+            'but shuffles its nonzero weights. W_rec is always fully trainable.'
+        ))
+    parser.add_argument('--seeded-rnn-init-seed', dest='seeded_rnn_init_seed', type=int, default=None,
+        help='seed for --seeded-rnn-init; defaults to --seed')
+    parser.add_argument('--seeded-rnn-state-clip', dest='seeded_rnn_state_clip',
+        type=float, default=20.0,
+        help='clip hidden activity for --policy_type seeded_rnn')
 
     parser.add_argument('--stacking', type=int, default=0)
     parser.add_argument('--masking', type=str, default=None)
@@ -538,8 +562,21 @@ def main():
             'bpu_k': args.bpu_k,
             'bpu_output_limit': args.bpu_output_limit,
             'bpu_train_recurrent': args.bpu_train_recurrent,
+            'bpu_init': args.bpu_init,
+            'bpu_init_seed': args.bpu_init_seed if args.bpu_init_seed is not None else args.seed,
             'bpu_state_clip': args.bpu_state_clip,
             'bpu_value_clip': args.bpu_value_clip,
+        })
+    if args.policy_type == 'seeded_rnn':
+        base_kwargs.update({
+            'matrix_path': args.seeded_rnn_matrix,
+            'seeded_rnn_init': args.seeded_rnn_init,
+            'seeded_rnn_init_seed': (
+                args.seeded_rnn_init_seed
+                if args.seeded_rnn_init_seed is not None
+                else args.seed
+            ),
+            'seeded_rnn_state_clip': args.seeded_rnn_state_clip,
         })
 
     actor_critic = Policy(
