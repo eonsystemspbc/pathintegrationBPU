@@ -109,6 +109,59 @@ def test_sparse_and_dense_associative_rnns_are_size_matched() -> None:
     assert dense_model.W_rec.grad is not None
 
 
+def test_recurrent_orientation_is_post_by_pre() -> None:
+    mb = _load_module()
+    recurrent = sparse.coo_matrix(
+        (
+            np.array([2.0, 3.0, 4.0], dtype=np.float32),
+            (
+                np.array([1, 2, 0], dtype=np.int64),
+                np.array([0, 1, 2], dtype=np.int64),
+            ),
+        ),
+        shape=(3, 3),
+        dtype=np.float32,
+    )
+    model = mb.AssociativeRNN(
+        recurrent=recurrent,
+        input_dim=2,
+        runtime="sparse",
+        state_clip=0.0,
+        seed=5,
+    )
+
+    h = torch.tensor([[5.0, 7.0, 11.0]], dtype=torch.float32)
+    expected = torch.tensor([[44.0, 10.0, 21.0]], dtype=torch.float32)
+    torch.testing.assert_close(model._recurrent_step(h), expected)
+
+
+def test_sparse_and_dense_recurrent_steps_are_equivalent() -> None:
+    mb = _load_module()
+    recurrent = _toy_matrix()
+    sparse_model = mb.AssociativeRNN(
+        recurrent=recurrent,
+        input_dim=3,
+        runtime="sparse",
+        state_clip=0.0,
+        seed=8,
+    )
+    dense_model = mb.AssociativeRNN(
+        recurrent=recurrent,
+        input_dim=3,
+        runtime="dense",
+        state_clip=0.0,
+        seed=8,
+    )
+
+    h = torch.randn(4, recurrent.shape[0])
+    torch.testing.assert_close(
+        sparse_model._recurrent_step(h),
+        dense_model._recurrent_step(h),
+        rtol=1e-6,
+        atol=1e-6,
+    )
+
+
 def test_associative_learning_smoke_run_writes_metrics_and_figures(tmp_path: Path) -> None:
     mb = _load_module()
     matrix_path = tmp_path / "adjacency_unsigned.npz"
