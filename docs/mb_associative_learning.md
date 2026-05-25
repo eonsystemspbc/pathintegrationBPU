@@ -49,15 +49,15 @@ Each training batch is generated synthetically on the fly. The data generator
 does not read real odor recordings.
 
 Each episode selects a small set of synthetic odor prototypes from a larger
-odor bank. The current high-load/noisy configuration uses:
+odor bank. The current normal associative-learning configuration uses:
 
 ```text
-num_odors          = 128
-odor_dim           = 128
-odors_per_episode  = 12
-reversal_count     = 6
-odor_sparsity      = 0.12
-odor_noise_std     = 0.10
+num_odors          = 64
+odor_dim           = 64
+odors_per_episode  = 6
+reversal_count     = 3
+odor_sparsity      = 0.20
+odor_noise_std     = 0.03
 ```
 
 Each odor is a sparse normalized vector:
@@ -72,10 +72,10 @@ The model input at each timestep is:
 [odor vector, reward channel, punishment channel, query channel]
 ```
 
-With `odor_dim=128`, the full input has `131` dimensions:
+With `odor_dim=64`, the full input has `67` dimensions:
 
 ```text
-128 odor features + reward + punishment + query
+64 odor features + reward + punishment + query
 ```
 
 The output is one binary logit at every timestep. During query timesteps, the
@@ -116,7 +116,7 @@ odor B + query -> punishment/danger
 
 ### 3. Reversal Teaching
 
-A subset of odors flips valence. In the current configuration, 6 of 12
+A subset of odors flips valence. In the current configuration, 3 of 6
 episode odors reverse:
 
 ```text
@@ -189,8 +189,8 @@ For the current run, all three models have:
 ```text
 N                 = 11,690 recurrent units
 recurrent_params  = 1,277,773 trainable recurrent weights
-trainable_params  = 2,832,544 total trainable parameters
-timesteps         = 42 per episode
+trainable_params  = 2,084,384 total trainable parameters
+timesteps         = 21 per episode
 runtime           = sparse
 ```
 
@@ -244,15 +244,17 @@ available, the script will fail loudly rather than silently falling back to CPU.
 
 ## Reproduce The Current Run
 
-This command reproduces the current high-load/noisy odor-valence reversal run.
-It is still the same associative-learning task described above; the parameters
-simply make the task more demanding than the short smoke configuration.
+This command reproduces the current normal odor-valence reversal run. This is
+the easier positive-control setting: the task is still nontrivial because
+associations are episode-specific and partly reversed, but all models can learn
+it with enough training. The useful comparison is learning speed and final
+performance relative to matched controls.
 
 ```bash
 cd /home/ubuntu/pathintegrationBPU
 source /home/ubuntu/pathintegrationBPU/.venv/bin/activate
 
-ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_harder_seed0
+ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_seed0_60ep
 mkdir -p "$ASSOC_OUT"
 
 python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
@@ -262,27 +264,27 @@ python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
   --models hemibrain_seeded random_sparse weight_shuffle \
   --recurrent-runtime sparse \
   --seeds 0 \
-  --epochs 80 \
-  --patience 12 \
+  --epochs 60 \
+  --patience 10 \
   --batch-size 64 \
-  --train-batches 250 \
-  --val-batches 50 \
-  --test-batches 100 \
-  --num-odors 128 \
-  --odor-dim 128 \
-  --odors-per-episode 12 \
-  --reversal-count 6 \
+  --train-batches 200 \
+  --val-batches 40 \
+  --test-batches 80 \
+  --num-odors 64 \
+  --odor-dim 64 \
+  --odors-per-episode 6 \
+  --reversal-count 3 \
   --reversal-repeats 1 \
-  --odor-sparsity 0.12 \
-  --odor-noise-std 0.10 \
+  --odor-sparsity 0.20 \
+  --odor-noise-std 0.03 \
   --log-every-seconds 30 \
-  2>&1 | tee "$ASSOC_OUT/mb_associative_learning_harder_seed0.log"
+  2>&1 | tee "$ASSOC_OUT/mb_associative_learning_seed0_60ep.log"
 ```
 
 To watch progress from another terminal:
 
 ```bash
-tail -f /home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_harder_seed0/mb_associative_learning_harder_seed0.log
+tail -f /home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_seed0_60ep/mb_associative_learning_seed0_60ep.log
 ```
 
 ## Expected Outputs
@@ -297,13 +299,13 @@ associative_accuracy.png
 associative_loss.png
 associative_learning_report.md
 run_config.json
-mb_associative_learning_harder_seed0.log
+mb_associative_learning_seed0_60ep.log
 ```
 
 If you also generate the learning-speed plot, you should see:
 
 ```text
-harder_learning_speed_curves.png
+learning_speed_curves.png
 ```
 
 ## Summarize Results
@@ -311,13 +313,13 @@ harder_learning_speed_curves.png
 Use this command after the run:
 
 ```bash
-ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_harder_seed0
+ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_seed0_60ep
 
 python - <<'PY'
 from pathlib import Path
 import pandas as pd
 
-out = Path("/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_harder_seed0")
+out = Path("/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_seed0_60ep")
 metrics = pd.read_csv(out / "metrics_by_seed.csv")
 summary = pd.read_csv(out / "metrics_summary.csv")
 loss = pd.read_csv(out / "loss_history.csv")
@@ -359,36 +361,59 @@ PY
 
 ## Current Results
 
-The current high-load/noisy configuration produced:
+The current normal associative-learning configuration produced:
 
 | model | test query accuracy | initial recall accuracy | reversal recall accuracy | test loss | best validation loss |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| `hemibrain_seeded` | 0.9099 | 0.9273 | 0.8926 | 0.2133 | 0.2109 |
-| `random_sparse` | 0.6138 | 0.6135 | 0.6140 | 0.6496 | 0.6498 |
-| `weight_shuffle` | 0.6141 | 0.6153 | 0.6128 | 0.6497 | 0.6499 |
+| `hemibrain_seeded` | 0.9966 | 0.9985 | 0.9946 | 0.0098 | 0.0100 |
+| `random_sparse` | 0.9857 | 0.9927 | 0.9787 | 0.0387 | 0.0393 |
+| `weight_shuffle` | 0.9963 | 0.9986 | 0.9940 | 0.0105 | 0.0085 |
 
 Interpretation:
 
 ```text
-hemibrain_seeded learned the high-load noisy associative reversal task.
-random_sparse and weight_shuffle plateaued near ~61% accuracy.
+All three models learned the normal associative reversal task.
+The hemibrain-seeded and weight-shuffled MB-structured models performed best.
+The random-sparse control learned more slowly and finished lower.
 ```
 
-Because `weight_shuffle` preserves hemibrain support but destroys the biological
-placement of weights, this current result suggests that the specific weighted
-organization of the hemibrain MB matrix may matter, not just the binary topology.
+The clearest conclusion from this normal/easy run is that MB support/topology is
+useful relative to random sparse structure. `hemibrain_seeded` and
+`weight_shuffle` are very close: `weight_shuffle` has the lowest best validation
+loss and slightly higher initial-recall accuracy, while `hemibrain_seeded` has
+slightly higher final test query accuracy and reversal-recall accuracy. This run
+therefore supports a topology/connectivity advantage, but it does not by itself
+prove that the exact biological weight placement is better than shuffled weights.
+
+The learning-speed curves are also informative. In this run:
+
+```text
+val_loss <= 0.05:
+  hemibrain_seeded reached it at epoch 17
+  weight_shuffle reached it at epoch 18
+  random_sparse reached it at epoch 53
+
+reversal accuracy >= 0.98:
+  hemibrain_seeded reached it at epoch 21
+  weight_shuffle reached it at epoch 22
+  random_sparse never reached it by epoch 60
+```
+
+So the normal-task result is best framed as a sample-efficiency and final-quality
+advantage for MB-structured recurrent substrates over a same-size random sparse
+control.
 
 ## Generate Learning-Speed Plot
 
 ```bash
-ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_harder_seed0
+ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_seed0_60ep
 
 python - <<'PY'
 from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
 
-out = Path("/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_harder_seed0")
+out = Path("/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_seed0_60ep")
 loss = pd.read_csv(out / "loss_history.csv")
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), dpi=160)
@@ -414,8 +439,8 @@ for ax in axes:
     ax.legend(frameon=False)
 
 fig.tight_layout()
-fig.savefig(out / "harder_learning_speed_curves.png")
-print("wrote", out / "harder_learning_speed_curves.png")
+fig.savefig(out / "learning_speed_curves.png")
+print("wrote", out / "learning_speed_curves.png")
 PY
 ```
 
@@ -458,8 +483,9 @@ Before making a strong publication-level claim, run:
 
 The safest current phrasing is:
 
-> In the current run, the hemibrain-weighted mushroom-body recurrent substrate learned a
-> high-load noisy odor-valence reversal task, while matched random-sparse and
-> weight-shuffled controls plateaued near 61% accuracy. This suggests a
-> potentially useful biological inductive bias, pending multi-seed and stronger
-> null-control validation.
+> In the current normal associative-learning run, both MB-structured substrates
+> learned faster and reached higher final accuracy than the matched random-sparse
+> control. The result supports an MB topology/connectivity advantage on this
+> task, while the exact biological weight-placement claim remains weaker because
+> `hemibrain_seeded` and `weight_shuffle` are nearly tied. Multi-seed and
+> stronger null-control validation are still needed before making a broad claim.
