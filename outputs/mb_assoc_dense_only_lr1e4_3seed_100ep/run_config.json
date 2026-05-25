@@ -1,0 +1,50 @@
+{
+  "args": {
+    "batch_size": 32,
+    "data_seed": 12345,
+    "device": "cuda",
+    "epochs": 100,
+    "grad_clip": 0.25,
+    "init_seed": 7000,
+    "log_every_seconds": 30.0,
+    "lr": 0.0001,
+    "matrix": "/home/ec2-user/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz",
+    "max_neurons": 0,
+    "models": [
+      "hemibrain_dense",
+      "random_dense"
+    ],
+    "num_odors": 64,
+    "odor_dim": 64,
+    "odor_noise_std": 0.03,
+    "odor_sparsity": 0.2,
+    "odors_per_episode": 6,
+    "output_dir": "/home/ec2-user/pathintegrationBPU/outputs/mb_assoc_dense_only_lr1e4_3seed_100ep",
+    "patience": 10,
+    "recurrent_runtime": "sparse",
+    "reversal_count": 3,
+    "reversal_repeats": 1,
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "state_clip": 2.0,
+    "test_batches": 80,
+    "test_seed": 33000,
+    "train_batches": 200,
+    "val_batches": 40,
+    "val_seed": 22000
+  },
+  "episode_spec": {
+    "num_odors": 64,
+    "odor_dim": 64,
+    "odor_noise_std": 0.03,
+    "odor_sparsity": 0.2,
+    "odors_per_episode": 6,
+    "reversal_count": 3,
+    "reversal_repeats": 1
+  },
+  "task": "odor_valence_associative_reversal",
+  "task_rationale": "Odor prototypes are paired with reward or punishment inside each episode, then queried without reinforcement and partly reversed. This tests rapid associative olfactory memory and updating."
+}
