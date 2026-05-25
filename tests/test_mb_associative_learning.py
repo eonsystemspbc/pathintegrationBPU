@@ -80,6 +80,35 @@ def test_random_sparse_control_preserves_connectome_control_invariants() -> None
     )
 
 
+def test_random_dense_control_uses_random_init_with_dense_trainability() -> None:
+    mb = _load_module()
+    base = _toy_matrix()
+    sparse_init = mb.matrix_for_model(base, mb.MODEL_RANDOM, seed=12)
+    dense_init = mb.matrix_for_model(base, mb.MODEL_RANDOM_DENSE, seed=12)
+    assert mb.runtime_for_model(mb.MODEL_RANDOM_DENSE, "sparse") == "dense"
+    np.testing.assert_array_equal(sparse_init.row, dense_init.row)
+    np.testing.assert_array_equal(sparse_init.col, dense_init.col)
+    np.testing.assert_allclose(sparse_init.data, dense_init.data, rtol=0, atol=0)
+
+    model = mb.AssociativeRNN(
+        recurrent=dense_init,
+        input_dim=7,
+        runtime=mb.runtime_for_model(mb.MODEL_RANDOM_DENSE, "sparse"),
+        state_clip=5.0,
+        seed=1,
+    )
+    assert model.recurrent_parameter_count() == dense_init.shape[0] ** 2
+    assert int(torch.count_nonzero(model.W_rec).item()) == dense_init.nnz
+    assert model.W_rec.requires_grad
+
+
+def test_random_dense_control_is_not_default_model() -> None:
+    mb = _load_module()
+    args = mb.parse_args([])
+    assert args.models == list(mb.DEFAULT_MODELS)
+    assert mb.MODEL_RANDOM_DENSE not in args.models
+
+
 def test_sparse_and_dense_associative_rnns_are_size_matched() -> None:
     mb = _load_module()
     recurrent = _toy_matrix()

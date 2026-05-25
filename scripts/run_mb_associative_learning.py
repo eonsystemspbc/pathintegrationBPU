@@ -23,8 +23,10 @@ from torch import nn
 
 MODEL_HEMIBRAIN = "hemibrain_seeded"
 MODEL_RANDOM = "random_sparse"
+MODEL_RANDOM_DENSE = "random_dense"
 MODEL_WEIGHT_SHUFFLE = "weight_shuffle"
-MODEL_CHOICES = (MODEL_HEMIBRAIN, MODEL_RANDOM, MODEL_WEIGHT_SHUFFLE)
+MODEL_CHOICES = (MODEL_HEMIBRAIN, MODEL_RANDOM, MODEL_WEIGHT_SHUFFLE, MODEL_RANDOM_DENSE)
+DEFAULT_MODELS = (MODEL_HEMIBRAIN, MODEL_RANDOM, MODEL_WEIGHT_SHUFFLE)
 RUNTIME_CHOICES = ("sparse", "dense")
 
 
@@ -357,9 +359,17 @@ def matrix_for_model(base: sparse.coo_matrix, model_name: str, seed: int) -> spa
         shuffled = base.copy().astype(np.float32).tocoo()
         shuffled.data = rng.permutation(shuffled.data).astype(np.float32)
         return shuffled
-    if model_name == MODEL_RANDOM:
+    if model_name in {MODEL_RANDOM, MODEL_RANDOM_DENSE}:
         return random_sparse_like(base, seed)
     raise ValueError(f"unknown model name: {model_name}")
+
+
+def runtime_for_model(model_name: str, requested_runtime: str) -> str:
+    if requested_runtime not in RUNTIME_CHOICES:
+        raise ValueError(f"requested_runtime must be one of {RUNTIME_CHOICES}")
+    if model_name == MODEL_RANDOM_DENSE:
+        return "dense"
+    return requested_runtime
 
 
 def random_sparse_like(base: sparse.coo_matrix, seed: int) -> sparse.coo_matrix:
@@ -424,10 +434,11 @@ def train_model(
     torch.manual_seed(seed)
     np.random.seed(seed)
     init_matrix = matrix_for_model(base_matrix, model_name, seed=args.init_seed + seed)
+    model_runtime = runtime_for_model(model_name, args.recurrent_runtime)
     model = AssociativeRNN(
         recurrent=init_matrix,
         input_dim=spec.input_dim,
-        runtime=args.recurrent_runtime,
+        runtime=model_runtime,
         state_clip=args.state_clip,
         seed=args.init_seed + seed,
     ).to(device)
@@ -440,9 +451,10 @@ def train_model(
     history: list[dict[str, float | int | str]] = []
     print(
         "model-start "
-        f"model={model_name} seed={seed} runtime={args.recurrent_runtime} "
+        f"model={model_name} seed={seed} runtime={model_runtime} "
         f"N={model.N} recurrent_params={model.recurrent_parameter_count()} "
         f"trainable_params={model.trainable_parameter_count()} "
+        f"init_nonzero_edges={init_matrix.nnz} "
         f"timesteps={spec.timesteps}",
         flush=True,
     )
@@ -541,8 +553,9 @@ def train_model(
     metrics: dict[str, float | int | str] = {
         "model": model_name,
         "seed": seed,
-        "runtime": args.recurrent_runtime,
+        "runtime": model_runtime,
         "N": model.N,
+        "init_nonzero_edges": int(init_matrix.nnz),
         "recurrent_params": model.recurrent_parameter_count(),
         "trainable_params": model.trainable_parameter_count(),
         "timesteps": spec.timesteps,
@@ -584,6 +597,8 @@ def write_outputs(
             test_initial_probe_accuracy_mean=("test_initial_probe_accuracy", "mean"),
             test_reversal_probe_accuracy_mean=("test_reversal_probe_accuracy", "mean"),
             test_loss_mean=("test_loss", "mean"),
+            runtime=("runtime", "first"),
+            init_nonzero_edges=("init_nonzero_edges", "first"),
             trainable_params=("trainable_params", "first"),
             recurrent_params=("recurrent_params", "first"),
             N=("N", "first"),
@@ -676,7 +691,8 @@ def write_report(
         "",
         "Real-world analogue: adaptive chemical-sensor hazard learning, where a system must rapidly bind sparse odor signatures to safety labels and update those labels when feedback changes.",
         "",
-        f"Runtime: `{args.recurrent_runtime}`",
+        f"Requested recurrent runtime: `{args.recurrent_runtime}`",
+        "Per-model runtime is recorded in the metrics table. `random_dense` always uses dense recurrence.",
         f"Episode timesteps: `{spec.timesteps}`",
         f"Odors per episode: `{spec.odors_per_episode}`",
         f"Reversed odors per episode: `{spec.reversal_count}`",
@@ -720,7 +736,7 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         default=Path("outputs/mb_associative_learning"),
     )
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
-    parser.add_argument("--models", nargs="+", choices=MODEL_CHOICES, default=list(MODEL_CHOICES))
+    parser.add_argument("--models", nargs="+", choices=MODEL_CHOICES, default=list(DEFAULT_MODELS))
     parser.add_argument("--recurrent-runtime", choices=RUNTIME_CHOICES, default="sparse")
     parser.add_argument(
         "--max-neurons",

@@ -182,6 +182,30 @@ But it randomly shuffles weights across existing hemibrain edges.
 This asks whether the exact biological placement of weights matters beyond the
 binary wiring diagram.
 
+### `random_dense`
+
+The dense random-structure control.
+
+It starts from the same randomized sparse initialization as `random_sparse`:
+
+```text
+same neuron count
+same initial nonzero edge count
+same initial self-loop count
+same initial nonzero weight multiset
+random directed support
+```
+
+But it trains the recurrent matrix as a full dense `N x N` parameter matrix.
+That means initially absent edges start at zero but are trainable.
+
+This control asks whether a generic dense recurrent network, initialized from a
+randomized connectome-like sparse matrix, can solve the task when it is not
+constrained to the biological sparse support. Because it has `N^2` trainable
+recurrent parameters, it is not parameter-count matched to the sparse MB
+models. Treat it as an extra engineered-capacity baseline rather than a strict
+null connectome.
+
 ## Matching And Fairness Checks
 
 For the current run, all three models have:
@@ -215,6 +239,8 @@ The implemented tests check:
 - sparse and dense recurrent math agree on toy graphs,
 - recurrent orientation is `W[post, pre]`,
 - recurrent weights are trainable,
+- `random_dense` uses the same randomized sparse initialization as
+  `random_sparse` but forces dense recurrent training,
 - smoke runs write metrics, figures, and reports.
 
 ## Setup
@@ -466,6 +492,45 @@ python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
 
 The smoke run is only for checking that the script, CUDA path, matrix loading,
 and outputs work. It should not be interpreted scientifically.
+
+## Optional Dense Random Control
+
+To compare against a dense random recurrent baseline, add `random_dense` to the
+model list:
+
+```bash
+ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_dense_control_seed0
+mkdir -p "$ASSOC_OUT"
+
+python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
+  --matrix /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --output-dir "$ASSOC_OUT" \
+  --device cuda \
+  --models hemibrain_seeded random_sparse weight_shuffle random_dense \
+  --recurrent-runtime sparse \
+  --seeds 0 \
+  --epochs 60 \
+  --patience 10 \
+  --batch-size 64 \
+  --train-batches 200 \
+  --val-batches 40 \
+  --test-batches 80 \
+  --num-odors 64 \
+  --odor-dim 64 \
+  --odors-per-episode 6 \
+  --reversal-count 3 \
+  --reversal-repeats 1 \
+  --odor-sparsity 0.20 \
+  --odor-noise-std 0.03 \
+  --log-every-seconds 30 \
+  2>&1 | tee "$ASSOC_OUT/mb_associative_learning_dense_control_seed0.log"
+```
+
+Even with `--recurrent-runtime sparse`, the `random_dense` model automatically
+uses dense recurrence. On the full mushroom-body matrix, this changes the
+recurrent parameter count from `1,277,773` sparse edge weights to
+`11,690 x 11,690 = 136,656,100` dense recurrent weights, so it will be much
+slower and more memory-hungry than the sparse controls.
 
 ## Scientific Caveats
 
