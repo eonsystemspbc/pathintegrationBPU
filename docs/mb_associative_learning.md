@@ -133,8 +133,9 @@ because it tests flexible odor-valence updating rather than simple memorization.
 
 ## Models
 
-The script compares three matched recurrent models. All use the same
-`AssociativeRNN` architecture.
+The default run compares three matched sparse recurrent models. The script also
+provides optional dense recurrent baselines. All use the same `AssociativeRNN`
+architecture.
 
 ### `hemibrain_seeded`
 
@@ -147,6 +148,29 @@ weights = actual prepared hemibrain mushroom-body adjacency weights
 
 The recurrent weights are trainable. The hemibrain matrix is the initial
 substrate, not a frozen readout-only reservoir.
+
+### `hemibrain_dense`
+
+The dense connectome-initialized model.
+
+It starts from the same real hemibrain mushroom-body adjacency as
+`hemibrain_seeded`:
+
+```text
+same neuron count
+same initial nonzero edge count
+same initial self-loop count
+same initial biological weight placement
+```
+
+But it trains the recurrent matrix as a full dense `N x N` parameter matrix.
+Initially absent connectome edges start at zero but are trainable.
+
+This asks whether the biological connectome is useful as a dense RNN
+initialization, while allowing the model to add or suppress arbitrary recurrent
+connections during supervised training. Because it has `N^2` trainable
+recurrent parameters, it is not parameter-count matched to the sparse MB
+models.
 
 ### `random_sparse`
 
@@ -239,6 +263,8 @@ The implemented tests check:
 - sparse and dense recurrent math agree on toy graphs,
 - recurrent orientation is `W[post, pre]`,
 - recurrent weights are trainable,
+- `hemibrain_dense` uses the same connectome initialization as
+  `hemibrain_seeded` but forces dense recurrent training,
 - `random_dense` uses the same randomized sparse initialization as
   `random_sparse` but forces dense recurrent training,
 - smoke runs write metrics, figures, and reports.
@@ -493,20 +519,20 @@ python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
 The smoke run is only for checking that the script, CUDA path, matrix loading,
 and outputs work. It should not be interpreted scientifically.
 
-## Optional Dense Random Control
+## Optional Dense Controls
 
-To compare against a dense random recurrent baseline, add `random_dense` to the
-model list:
+To compare against dense recurrent baselines, add `hemibrain_dense` and/or
+`random_dense` to the model list:
 
 ```bash
-ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_dense_control_seed0
+ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_dense_controls_seed0
 mkdir -p "$ASSOC_OUT"
 
 python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
   --matrix /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$ASSOC_OUT" \
   --device cuda \
-  --models hemibrain_seeded random_sparse weight_shuffle random_dense \
+  --models hemibrain_seeded hemibrain_dense random_sparse weight_shuffle random_dense \
   --recurrent-runtime sparse \
   --seeds 0 \
   --epochs 60 \
@@ -523,14 +549,14 @@ python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
   --odor-sparsity 0.20 \
   --odor-noise-std 0.03 \
   --log-every-seconds 30 \
-  2>&1 | tee "$ASSOC_OUT/mb_associative_learning_dense_control_seed0.log"
+  2>&1 | tee "$ASSOC_OUT/mb_associative_learning_dense_controls_seed0.log"
 ```
 
-Even with `--recurrent-runtime sparse`, the `random_dense` model automatically
-uses dense recurrence. On the full mushroom-body matrix, this changes the
-recurrent parameter count from `1,277,773` sparse edge weights to
-`11,690 x 11,690 = 136,656,100` dense recurrent weights, so it will be much
-slower and more memory-hungry than the sparse controls.
+Even with `--recurrent-runtime sparse`, `hemibrain_dense` and `random_dense`
+automatically use dense recurrence. On the full mushroom-body matrix, this
+changes the recurrent parameter count from `1,277,773` sparse edge weights to
+`11,690 x 11,690 = 136,656,100` dense recurrent weights, so dense models will
+be much slower and more memory-hungry than the sparse controls.
 
 ## Scientific Caveats
 

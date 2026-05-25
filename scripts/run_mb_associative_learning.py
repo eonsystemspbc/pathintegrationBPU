@@ -22,10 +22,17 @@ from torch import nn
 
 
 MODEL_HEMIBRAIN = "hemibrain_seeded"
+MODEL_HEMIBRAIN_DENSE = "hemibrain_dense"
 MODEL_RANDOM = "random_sparse"
 MODEL_RANDOM_DENSE = "random_dense"
 MODEL_WEIGHT_SHUFFLE = "weight_shuffle"
-MODEL_CHOICES = (MODEL_HEMIBRAIN, MODEL_RANDOM, MODEL_WEIGHT_SHUFFLE, MODEL_RANDOM_DENSE)
+MODEL_CHOICES = (
+    MODEL_HEMIBRAIN,
+    MODEL_HEMIBRAIN_DENSE,
+    MODEL_RANDOM,
+    MODEL_WEIGHT_SHUFFLE,
+    MODEL_RANDOM_DENSE,
+)
 DEFAULT_MODELS = (MODEL_HEMIBRAIN, MODEL_RANDOM, MODEL_WEIGHT_SHUFFLE)
 RUNTIME_CHOICES = ("sparse", "dense")
 
@@ -352,7 +359,7 @@ def load_base_matrix(matrix_path: Path, max_neurons: int) -> sparse.coo_matrix:
 
 
 def matrix_for_model(base: sparse.coo_matrix, model_name: str, seed: int) -> sparse.coo_matrix:
-    if model_name == MODEL_HEMIBRAIN:
+    if model_name in {MODEL_HEMIBRAIN, MODEL_HEMIBRAIN_DENSE}:
         return base.copy().astype(np.float32).tocoo()
     if model_name == MODEL_WEIGHT_SHUFFLE:
         rng = np.random.default_rng(seed)
@@ -367,7 +374,7 @@ def matrix_for_model(base: sparse.coo_matrix, model_name: str, seed: int) -> spa
 def runtime_for_model(model_name: str, requested_runtime: str) -> str:
     if requested_runtime not in RUNTIME_CHOICES:
         raise ValueError(f"requested_runtime must be one of {RUNTIME_CHOICES}")
-    if model_name == MODEL_RANDOM_DENSE:
+    if model_name in {MODEL_HEMIBRAIN_DENSE, MODEL_RANDOM_DENSE}:
         return "dense"
     return requested_runtime
 
@@ -692,7 +699,7 @@ def write_report(
         "Real-world analogue: adaptive chemical-sensor hazard learning, where a system must rapidly bind sparse odor signatures to safety labels and update those labels when feedback changes.",
         "",
         f"Requested recurrent runtime: `{args.recurrent_runtime}`",
-        "Per-model runtime is recorded in the metrics table. `random_dense` always uses dense recurrence.",
+        "Per-model runtime is recorded in the metrics table. `hemibrain_dense` and `random_dense` always use dense recurrence.",
         f"Episode timesteps: `{spec.timesteps}`",
         f"Odors per episode: `{spec.odors_per_episode}`",
         f"Reversed odors per episode: `{spec.reversal_count}`",
