@@ -94,6 +94,12 @@ associations and probes again. This is a closer match to MB-style olfactory
 associative memory than plume tracking. See
 `docs/mb_associative_learning.md` for the AWS commands.
 
+To test whether brain-region identity matters, use
+`scripts/run_cross_region_transfer.py`. It can train the CX substrate on the
+associative task and the mushroom-body substrate on the CX-style angular
+path-integration task, with optional matched references. See
+`docs/cross_region_transfer.md` for commands and output interpretation.
+
 For a quick sanity run after `download` and `prepare`, train one seed with three
 models:
 
