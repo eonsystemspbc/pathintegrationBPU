@@ -12,7 +12,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from .config import TASK_CX_POLAR_BUMP, OutputPaths
+from .config import TASK_CX_LANDMARK_BUMP, TASK_CX_POLAR_BUMP, OutputPaths
 
 
 def _mean_sem(frame: pd.DataFrame, x: str, y: str) -> pd.DataFrame:
@@ -23,9 +23,9 @@ def _mean_sem(frame: pd.DataFrame, x: str, y: str) -> pd.DataFrame:
 
 
 def _is_polar_bump(metrics: pd.DataFrame) -> bool:
-    return "task" in metrics.columns and set(metrics["task"].dropna().astype(str)) == {
-        TASK_CX_POLAR_BUMP
-    }
+    return "task" in metrics.columns and set(metrics["task"].dropna().astype(str)).issubset(
+        {TASK_CX_POLAR_BUMP, TASK_CX_LANDMARK_BUMP}
+    )
 
 
 def _error_axis_label(metrics: pd.DataFrame) -> str:

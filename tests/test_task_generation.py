@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
-from src.config import TASK_CX_POLAR_BUMP, TaskSpec
+from src.config import TASK_CX_LANDMARK_BUMP, TASK_CX_POLAR_BUMP, TaskSpec, input_dim_for_task
 from src.task import build_targets, ensure_splits, load_split
 
 
@@ -48,3 +49,32 @@ def test_cx_polar_bump_splits_use_separate_cache_and_target_dim(tmp_path) -> Non
     train = load_split(next(split.path for split in splits if split.name == "train"))
     assert train["targets"].shape == (3, 5, spec.heading_bins + 3)
     assert str(train["task_kind"]) == TASK_CX_POLAR_BUMP
+
+
+def test_cx_landmark_bump_splits_include_cue_channels_and_metadata(tmp_path) -> None:
+    spec = replace(
+        TaskSpec(),
+        kind=TASK_CX_LANDMARK_BUMP,
+        heading_bins=8,
+        train_count=4,
+        val_count=2,
+        test_count=2,
+        train_T=12,
+        test_T=(12,),
+        noise_stds=(0.10,),
+        landmark_visible_prob=0.3,
+        landmark_noise_std=0.02,
+        passive_displacement_prob=0.2,
+        passive_displacement_scale=0.5,
+    )
+    splits = ensure_splits(tmp_path, spec)
+    assert splits
+    assert all("cx_landmark_bump_bins8_vis0.30_jump0.20" in split.path.parts for split in splits)
+    train = load_split(next(split.path for split in splits if split.name == "train"))
+    assert train["inputs"].shape == (4, 12, input_dim_for_task(spec))
+    assert train["targets"].shape == (4, 12, spec.heading_bins + 3)
+    assert str(train["task_kind"]) == TASK_CX_LANDMARK_BUMP
+    cue_mask = train["inputs"][:, :, 5]
+    assert np.all((cue_mask == 0.0) | (cue_mask == 1.0))
+    assert np.any(cue_mask == 1.0)
+    assert float(train["landmark_visible_prob"]) == pytest.approx(spec.landmark_visible_prob)
