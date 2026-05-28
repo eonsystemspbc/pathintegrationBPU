@@ -1,0 +1,2 @@
+model,best_val_loss_mean,best_val_loss_std,test_query_accuracy_mean,test_query_accuracy_std,test_initial_probe_accuracy_mean,test_reversal_probe_accuracy_mean,test_loss_mean,runtime,init_nonzero_edges,trainable_params,recurrent_params,N
+hemibrain_seeded,0.2153310822447141,0.03066072469678519,0.9127018229166667,0.015758839758837146,0.9295789930555557,0.8958246527777778,0.21456263929605482,sparse,511930,1489348,511930,7349

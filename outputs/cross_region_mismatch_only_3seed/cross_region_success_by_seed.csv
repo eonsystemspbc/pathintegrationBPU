@@ -1,0 +1,7 @@
+condition,task_family,substrate,matched_region_task,seed,success_metric,success_value,higher_is_better,secondary_metric,secondary_value
+assoc_cx_seeded,associative,hemibrain_cx,False,0,test_reversal_probe_accuracy,0.9141276041666668,True,test_loss,0.1816997452080249
+assoc_cx_seeded,associative,hemibrain_cx,False,1,test_reversal_probe_accuracy,0.8945442708333333,True,test_loss,0.2185748706758022
+assoc_cx_seeded,associative,hemibrain_cx,False,2,test_reversal_probe_accuracy,0.8788020833333333,True,test_loss,0.2434133020043373
+path_mb_seeded,path,hemibrain_mushroom_body,False,0,home_bearing_angular_error,0.6501035690307617,False,home_distance_rmse,17.371416091918945
+path_mb_seeded,path,hemibrain_mushroom_body,False,1,home_bearing_angular_error,0.421855479478836,False,home_distance_rmse,14.825528144836426
+path_mb_seeded,path,hemibrain_mushroom_body,False,2,home_bearing_angular_error,0.4788247644901275,False,home_distance_rmse,16.85324478149414
