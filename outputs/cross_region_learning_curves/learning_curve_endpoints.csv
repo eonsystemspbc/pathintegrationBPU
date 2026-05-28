@@ -1,0 +1,5 @@
+figure,curve,final_val_loss_mean,final_reversal_acc_mean,epochs_mean,final_train_loss_mean
+associative,CX substrate (mismatched),0.2153310822447141,0.8944010416666667,160.0,
+associative,MB substrate (matched),0.0768427636226018,0.9615104166666667,160.0,
+path,CX substrate (matched),0.08722706410723424,,16.0,0.0861863986537929
+path,MB substrate (mismatched),0.09438707462201511,,15.333333333333334,0.10017629225545789
