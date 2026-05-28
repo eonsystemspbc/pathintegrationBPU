@@ -1,0 +1,4 @@
+condition,task_family,substrate,matched_region_task,seed,success_metric,success_value,higher_is_better,secondary_metric,secondary_value
+path_cx_seeded,path,hemibrain_cx,True,0,home_bearing_angular_error,0.3919407427310943,False,home_distance_rmse,15.339677810668944
+path_cx_seeded,path,hemibrain_cx,True,1,home_bearing_angular_error,0.5536565184593201,False,home_distance_rmse,14.91150951385498
+path_cx_seeded,path,hemibrain_cx,True,2,home_bearing_angular_error,0.4914974272251129,False,home_distance_rmse,16.868465423583984
