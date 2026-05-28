@@ -5,7 +5,14 @@ from pathlib import Path
 
 import numpy as np
 
-from .config import TASK_CARTESIAN, TASK_CX_POLAR_BUMP, DT, TaskSpec
+from .config import (
+    TASK_CARTESIAN,
+    TASK_CX_LANDMARK_BUMP,
+    TASK_CX_POLAR_BUMP,
+    DT,
+    TaskSpec,
+    input_dim_for_task,
+)
 
 
 @dataclass(frozen=True)
@@ -25,6 +32,12 @@ def task_cache_name(spec: TaskSpec) -> str:
         return "cartesian"
     if spec.kind == TASK_CX_POLAR_BUMP:
         return f"cx_polar_bump_bins{spec.heading_bins}"
+    if spec.kind == TASK_CX_LANDMARK_BUMP:
+        return (
+            f"cx_landmark_bump_bins{spec.heading_bins}"
+            f"_vis{spec.landmark_visible_prob:.2f}"
+            f"_jump{spec.passive_displacement_prob:.2f}"
+        )
     raise ValueError(f"Unknown task kind: {spec.kind}")
 
 
@@ -89,15 +102,19 @@ def integrate_trajectory(controls: np.ndarray) -> np.ndarray:
     return targets
 
 
-def cx_polar_bump_targets(controls: np.ndarray, spec: TaskSpec) -> np.ndarray:
-    theta_values, x_values, y_values = integrate_path_state(controls)
+def cx_polar_bump_targets_from_state(
+    theta_values: np.ndarray,
+    x_values: np.ndarray,
+    y_values: np.ndarray,
+    spec: TaskSpec,
+) -> np.ndarray:
     bin_angles = np.linspace(-np.pi, np.pi, spec.heading_bins, endpoint=False, dtype=np.float32)
     bump = np.exp(
         spec.bump_kappa * (np.cos(theta_values[:, None] - bin_angles[None, :]) - 1.0)
     ).astype(np.float32)
     home_bearing = wrap_angle(np.arctan2(-y_values, -x_values) - theta_values).astype(np.float32)
     home_distance = np.sqrt(x_values**2 + y_values**2).astype(np.float32)
-    targets = np.zeros((controls.shape[0], spec.heading_bins + 3), dtype=np.float32)
+    targets = np.zeros((theta_values.shape[0], spec.heading_bins + 3), dtype=np.float32)
     targets[:, : spec.heading_bins] = bump
     targets[:, spec.heading_bins] = np.cos(home_bearing)
     targets[:, spec.heading_bins + 1] = np.sin(home_bearing)
@@ -105,12 +122,109 @@ def cx_polar_bump_targets(controls: np.ndarray, spec: TaskSpec) -> np.ndarray:
     return targets
 
 
+def cx_polar_bump_targets(controls: np.ndarray, spec: TaskSpec) -> np.ndarray:
+    theta_values, x_values, y_values = integrate_path_state(controls)
+    return cx_polar_bump_targets_from_state(theta_values, x_values, y_values, spec)
+
+
 def build_targets(controls: np.ndarray, spec: TaskSpec) -> np.ndarray:
     if spec.kind == TASK_CARTESIAN:
         return integrate_trajectory(controls)
-    if spec.kind == TASK_CX_POLAR_BUMP:
+    if spec.kind in {TASK_CX_POLAR_BUMP, TASK_CX_LANDMARK_BUMP}:
         return cx_polar_bump_targets(controls, spec)
     raise ValueError(f"Unknown task kind: {spec.kind}")
+
+
+def _landmark_inputs_from_state(
+    controls: np.ndarray,
+    theta_values: np.ndarray,
+    x_values: np.ndarray,
+    y_values: np.ndarray,
+    spec: TaskSpec,
+    rng: np.random.Generator,
+    noise_std: float = 0.0,
+) -> np.ndarray:
+    T = controls.shape[0]
+    inputs = np.zeros((T, input_dim_for_task(spec)), dtype=np.float32)
+    inputs[:, :2] = controls
+    visible = rng.random(T) < spec.landmark_visible_prob
+    if T:
+        visible[min(T - 1, max(1, T // 10))] = True
+        visible[-1] = True
+    home_bearing = wrap_angle(np.arctan2(-y_values, -x_values) - theta_values).astype(np.float32)
+    home_distance = np.sqrt(x_values**2 + y_values**2).astype(np.float32)
+    cue_bearing = home_bearing.copy()
+    cue_distance = home_distance.copy()
+    total_noise = float(spec.landmark_noise_std) + float(noise_std)
+    if total_noise > 0:
+        cue_bearing = cue_bearing + rng.normal(0.0, total_noise, size=T).astype(np.float32)
+        cue_distance = np.maximum(
+            0.0,
+            cue_distance + rng.normal(0.0, total_noise * spec.home_distance_scale, size=T).astype(np.float32),
+        )
+    inputs[visible, 2] = np.cos(cue_bearing[visible]).astype(np.float32)
+    inputs[visible, 3] = np.sin(cue_bearing[visible]).astype(np.float32)
+    inputs[visible, 4] = (cue_distance[visible] / spec.home_distance_scale).astype(np.float32)
+    inputs[visible, 5] = 1.0
+    return inputs
+
+
+def generate_cx_landmark_sequence(
+    T: int,
+    rng: np.random.Generator,
+    spec: TaskSpec,
+    noise_std: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    controls = _run_turn_controls(T, rng)
+    theta_values = np.zeros((T,), dtype=np.float32)
+    x_values = np.zeros((T,), dtype=np.float32)
+    y_values = np.zeros((T,), dtype=np.float32)
+    theta = 0.0
+    x = 0.0
+    y = 0.0
+    for t in range(T):
+        v = float(controls[t, 0])
+        omega = float(controls[t, 1])
+        theta = float(wrap_angle(theta + omega * DT))
+        x += v * np.cos(theta) * DT
+        y += v * np.sin(theta) * DT
+        if rng.random() < spec.passive_displacement_prob:
+            jump_angle = float(rng.uniform(-np.pi, np.pi))
+            jump_radius = float(rng.rayleigh(spec.passive_displacement_scale))
+            x += jump_radius * np.cos(jump_angle)
+            y += jump_radius * np.sin(jump_angle)
+        theta_values[t] = theta
+        x_values[t] = x
+        y_values[t] = y
+    clean_inputs = _landmark_inputs_from_state(
+        controls,
+        theta_values,
+        x_values,
+        y_values,
+        spec,
+        rng,
+        noise_std=0.0,
+    )
+    if noise_std > 0:
+        inputs = clean_inputs.copy()
+        inputs[:, :2] = controls + rng.normal(0.0, noise_std, size=controls.shape).astype(np.float32)
+        inputs[:, 0] = np.maximum(inputs[:, 0], 0.0)
+        visible = clean_inputs[:, 5] > 0.5
+        if np.any(visible):
+            inputs[visible, 2:5] = _landmark_inputs_from_state(
+                controls,
+                theta_values,
+                x_values,
+                y_values,
+                spec,
+                rng,
+                noise_std=noise_std,
+            )[visible, 2:5]
+            inputs[:, 5] = clean_inputs[:, 5]
+    else:
+        inputs = clean_inputs.copy()
+    targets = cx_polar_bump_targets_from_state(theta_values, x_values, y_values, spec)
+    return inputs.astype(np.float32), clean_inputs.astype(np.float32), targets
 
 
 def generate_sequences(
@@ -121,21 +235,30 @@ def generate_sequences(
     spec: TaskSpec,
     noise_std: float = 0.0,
 ) -> dict[str, np.ndarray]:
-    clean_inputs = np.zeros((count, T, 2), dtype=np.float32)
-    inputs = np.zeros((count, T, 2), dtype=np.float32)
+    input_dim = input_dim_for_task(spec)
+    clean_inputs = np.zeros((count, T, input_dim), dtype=np.float32)
+    inputs = np.zeros((count, T, input_dim), dtype=np.float32)
     target_dim = 4 if spec.kind == TASK_CARTESIAN else spec.heading_bins + 3
     targets = np.zeros((count, T, target_dim), dtype=np.float32)
     ids = np.empty((count,), dtype=f"<U{max(16, len(split_name) + 12)}")
     for i in range(count):
-        controls = _run_turn_controls(T, rng)
-        clean_inputs[i] = controls
-        if noise_std > 0:
-            noisy = controls + rng.normal(0.0, noise_std, size=controls.shape).astype(np.float32)
-            noisy[:, 0] = np.maximum(noisy[:, 0], 0.0)
-            inputs[i] = noisy.astype(np.float32)
+        if spec.kind == TASK_CX_LANDMARK_BUMP:
+            sequence_inputs, sequence_clean, sequence_targets = generate_cx_landmark_sequence(
+                T, rng, spec, noise_std=noise_std
+            )
+            inputs[i] = sequence_inputs
+            clean_inputs[i] = sequence_clean
+            targets[i] = sequence_targets
         else:
-            inputs[i] = controls
-        targets[i] = build_targets(controls, spec)
+            controls = _run_turn_controls(T, rng)
+            clean_inputs[i] = controls
+            if noise_std > 0:
+                noisy = controls + rng.normal(0.0, noise_std, size=controls.shape).astype(np.float32)
+                noisy[:, 0] = np.maximum(noisy[:, 0], 0.0)
+                inputs[i] = noisy.astype(np.float32)
+            else:
+                inputs[i] = controls
+            targets[i] = build_targets(controls, spec)
         ids[i] = f"{split_name}-{i:06d}"
     return {
         "inputs": inputs,
@@ -149,6 +272,10 @@ def generate_sequences(
         "heading_bins": np.array(spec.heading_bins, dtype=np.int32),
         "home_distance_scale": np.array(spec.home_distance_scale, dtype=np.float32),
         "bump_kappa": np.array(spec.bump_kappa, dtype=np.float32),
+        "landmark_visible_prob": np.array(spec.landmark_visible_prob, dtype=np.float32),
+        "landmark_noise_std": np.array(spec.landmark_noise_std, dtype=np.float32),
+        "passive_displacement_prob": np.array(spec.passive_displacement_prob, dtype=np.float32),
+        "passive_displacement_scale": np.array(spec.passive_displacement_scale, dtype=np.float32),
     }
 
 
@@ -163,6 +290,10 @@ def with_input_noise(
     if noise_std > 0:
         inputs = clean_inputs + rng.normal(0.0, noise_std, size=clean_inputs.shape).astype(np.float32)
         inputs[:, :, 0] = np.maximum(inputs[:, :, 0], 0.0)
+        task_kind = str(base_data.get("task_kind", np.array("")))
+        if task_kind == TASK_CX_LANDMARK_BUMP:
+            inputs[:, :, 4] = np.maximum(inputs[:, :, 4], 0.0)
+            inputs[:, :, 5] = clean_inputs[:, :, 5]
     else:
         inputs = clean_inputs.copy()
     count, T, _ = clean_inputs.shape
@@ -181,6 +312,18 @@ def with_input_noise(
             "home_distance_scale", np.array(1.0, dtype=np.float32)
         ),
         "bump_kappa": base_data.get("bump_kappa", np.array(1.0, dtype=np.float32)),
+        "landmark_visible_prob": base_data.get(
+            "landmark_visible_prob", np.array(0.0, dtype=np.float32)
+        ),
+        "landmark_noise_std": base_data.get(
+            "landmark_noise_std", np.array(0.0, dtype=np.float32)
+        ),
+        "passive_displacement_prob": base_data.get(
+            "passive_displacement_prob", np.array(0.0, dtype=np.float32)
+        ),
+        "passive_displacement_scale": base_data.get(
+            "passive_displacement_scale", np.array(0.0, dtype=np.float32)
+        ),
     }
 
 
@@ -215,9 +358,14 @@ def ensure_splits(sequence_dir: Path, spec: TaskSpec) -> list[SequenceSplit]:
             cached_kind = str(cached.get("task_kind", np.array("")))
             cached_scale = float(cached.get("home_distance_scale", np.array(-1.0)))
             cached_kappa = float(cached.get("bump_kappa", np.array(-1.0)))
+            cached_visible = float(cached.get("landmark_visible_prob", np.array(-1.0)))
+            cached_landmark_noise = float(cached.get("landmark_noise_std", np.array(-1.0)))
+            cached_jump_prob = float(cached.get("passive_displacement_prob", np.array(-1.0)))
+            cached_jump_scale = float(cached.get("passive_displacement_scale", np.array(-1.0)))
             expected_target_dim = 4 if spec.kind == TASK_CARTESIAN else spec.heading_bins + 3
+            expected_input_dim = input_dim_for_task(spec)
             regenerate = (
-                cached_inputs.shape[:2] != (count, T)
+                cached_inputs.shape != (count, T, expected_input_dim)
                 or cached_targets.shape != (count, T, expected_target_dim)
                 or not np.isclose(cached_noise, noise_std)
                 or cached_version != spec.cache_version
@@ -227,6 +375,15 @@ def ensure_splits(sequence_dir: Path, spec: TaskSpec) -> list[SequenceSplit]:
                     and (
                         not np.isclose(cached_scale, spec.home_distance_scale)
                         or not np.isclose(cached_kappa, spec.bump_kappa)
+                    )
+                )
+                or (
+                    spec.kind == TASK_CX_LANDMARK_BUMP
+                    and (
+                        not np.isclose(cached_visible, spec.landmark_visible_prob)
+                        or not np.isclose(cached_landmark_noise, spec.landmark_noise_std)
+                        or not np.isclose(cached_jump_prob, spec.passive_displacement_prob)
+                        or not np.isclose(cached_jump_scale, spec.passive_displacement_scale)
                     )
                 )
             )

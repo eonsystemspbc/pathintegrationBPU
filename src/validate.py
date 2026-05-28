@@ -13,6 +13,7 @@ from .config import (
     RHO_TARGET,
     OutputPaths,
     TaskSpec,
+    input_dim_for_task,
     output_dim_for_task,
 )
 from .connectome import (
@@ -125,6 +126,7 @@ def write_bpu_validation(paths: OutputPaths, task_spec: TaskSpec | None = None) 
         for pool in ("sensory", "output")
     }
     output_dim = output_dim_for_task(task_spec) if task_spec is not None else OUTPUT_DIM
+    input_dim = input_dim_for_task(task_spec) if task_spec is not None else 2
     model_cls = SparseCXBPU if int(metadata["N"]) > 12_000 or graph.matrix.nnz > 1_000_000 else CXBPU
     model = model_cls(
         graph.matrix,
@@ -132,6 +134,7 @@ def write_bpu_validation(paths: OutputPaths, task_spec: TaskSpec | None = None) 
         indices["output"],
         int(metadata["estimated_K"]),
         output_dim=output_dim,
+        input_dim=input_dim,
     )
     try:
         assert_bpu_trainable_surface(model)
@@ -140,7 +143,7 @@ def write_bpu_validation(paths: OutputPaths, task_spec: TaskSpec | None = None) 
         surface_ok = False
     lines.append(_line(surface_ok, "CX-BPU exposes only W_in, b_in, W_out, b_out as trainable"))
     expected_params = (
-        len(indices["sensory"]) * 2
+        len(indices["sensory"]) * input_dim
         + len(indices["sensory"])
         + output_dim * len(indices["output"])
         + output_dim

@@ -43,10 +43,16 @@ INPUT_DIM = 2
 OUTPUT_DIM = 4
 TASK_CARTESIAN = "cartesian"
 TASK_CX_POLAR_BUMP = "cx_polar_bump"
-TASK_CHOICES = (TASK_CARTESIAN, TASK_CX_POLAR_BUMP)
+TASK_CX_LANDMARK_BUMP = "cx_landmark_bump"
+TASK_CHOICES = (TASK_CARTESIAN, TASK_CX_POLAR_BUMP, TASK_CX_LANDMARK_BUMP)
 DEFAULT_HEADING_BINS = 32
 DEFAULT_HOME_DISTANCE_SCALE = 25.0
 DEFAULT_BUMP_KAPPA = 8.0
+CX_LANDMARK_INPUT_DIM = 6
+DEFAULT_LANDMARK_VISIBLE_PROB = 0.15
+DEFAULT_LANDMARK_NOISE_STD = 0.05
+DEFAULT_PASSIVE_DISPLACEMENT_PROB = 0.08
+DEFAULT_PASSIVE_DISPLACEMENT_SCALE = 0.75
 DEFAULT_SEEDS = (0, 1, 2)
 DEFAULT_TRAIN_T = 50
 DEFAULT_TEST_T = (50, 100, 200)
@@ -171,6 +177,10 @@ class TaskSpec:
     heading_bins: int = DEFAULT_HEADING_BINS
     home_distance_scale: float = DEFAULT_HOME_DISTANCE_SCALE
     bump_kappa: float = DEFAULT_BUMP_KAPPA
+    landmark_visible_prob: float = DEFAULT_LANDMARK_VISIBLE_PROB
+    landmark_noise_std: float = DEFAULT_LANDMARK_NOISE_STD
+    passive_displacement_prob: float = DEFAULT_PASSIVE_DISPLACEMENT_PROB
+    passive_displacement_scale: float = DEFAULT_PASSIVE_DISPLACEMENT_SCALE
 
 
 @dataclass(frozen=True)
@@ -263,7 +273,9 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         default=TASK_CARTESIAN,
         help=(
             "Training target. 'cartesian' predicts [cos(theta), sin(theta), x, y]. "
-            "'cx_polar_bump' predicts a heading bump plus home-vector polar readout."
+            "'cx_polar_bump' predicts a heading bump plus home-vector polar readout. "
+            "'cx_landmark_bump' adds intermittent home-landmark cues and passive "
+            "displacements to stress cue correction."
         ),
     )
     parser.add_argument(
@@ -283,6 +295,30 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         type=float,
         default=DEFAULT_BUMP_KAPPA,
         help="Concentration of the circular heading bump for --task cx_polar_bump.",
+    )
+    parser.add_argument(
+        "--landmark-visible-prob",
+        type=float,
+        default=DEFAULT_LANDMARK_VISIBLE_PROB,
+        help="Per-timestep probability of a home-vector landmark cue for --task cx_landmark_bump.",
+    )
+    parser.add_argument(
+        "--landmark-noise-std",
+        type=float,
+        default=DEFAULT_LANDMARK_NOISE_STD,
+        help="Noise added to visible landmark bearing/distance cue channels.",
+    )
+    parser.add_argument(
+        "--passive-displacement-prob",
+        type=float,
+        default=DEFAULT_PASSIVE_DISPLACEMENT_PROB,
+        help="Per-timestep probability of an unobserved world-frame displacement for --task cx_landmark_bump.",
+    )
+    parser.add_argument(
+        "--passive-displacement-scale",
+        type=float,
+        default=DEFAULT_PASSIVE_DISPLACEMENT_SCALE,
+        help="Scale of passive displacement jumps for --task cx_landmark_bump.",
     )
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -334,6 +370,14 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
         parser.error("--home-distance-scale must be positive.")
     if args.bump_kappa <= 0:
         parser.error("--bump-kappa must be positive.")
+    if not (0.0 <= args.landmark_visible_prob <= 1.0):
+        parser.error("--landmark-visible-prob must be in [0, 1].")
+    if args.landmark_noise_std < 0:
+        parser.error("--landmark-noise-std must be nonnegative.")
+    if not (0.0 <= args.passive_displacement_prob <= 1.0):
+        parser.error("--passive-displacement-prob must be in [0, 1].")
+    if args.passive_displacement_scale < 0:
+        parser.error("--passive-displacement-scale must be nonnegative.")
     if not (0.0 < args.whole_brain_pool_fraction < 0.5):
         parser.error("--whole-brain-pool-fraction must be in (0, 0.5).")
 
@@ -378,6 +422,10 @@ def parse_args(argv: Sequence[str] | None = None) -> CliConfig:
             heading_bins=args.heading_bins,
             home_distance_scale=args.home_distance_scale,
             bump_kappa=args.bump_kappa,
+            landmark_visible_prob=args.landmark_visible_prob,
+            landmark_noise_std=args.landmark_noise_std,
+            passive_displacement_prob=args.passive_displacement_prob,
+            passive_displacement_scale=args.passive_displacement_scale,
         ),
     )
 
@@ -403,6 +451,14 @@ def resolve_device(requested: str) -> torch.device:
 def output_dim_for_task(task: TaskSpec) -> int:
     if task.kind == TASK_CARTESIAN:
         return OUTPUT_DIM
-    if task.kind == TASK_CX_POLAR_BUMP:
+    if task.kind in {TASK_CX_POLAR_BUMP, TASK_CX_LANDMARK_BUMP}:
         return int(task.heading_bins) + 3
+    raise ValueError(f"Unknown task kind: {task.kind}")
+
+
+def input_dim_for_task(task: TaskSpec) -> int:
+    if task.kind == TASK_CX_LANDMARK_BUMP:
+        return CX_LANDMARK_INPUT_DIM
+    if task.kind in {TASK_CARTESIAN, TASK_CX_POLAR_BUMP}:
+        return INPUT_DIM
     raise ValueError(f"Unknown task kind: {task.kind}")

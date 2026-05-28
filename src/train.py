@@ -18,10 +18,12 @@ from .config import (
     OUTPUT_DIM,
     RHO_TARGET,
     TASK_CARTESIAN,
+    TASK_CX_LANDMARK_BUMP,
     TASK_CX_POLAR_BUMP,
     OutputPaths,
     TaskSpec,
     TrainConfig,
+    input_dim_for_task,
     output_dim_for_task,
     resolve_device,
 )
@@ -183,13 +185,14 @@ def _make_model(
     if device.type == "cuda":
         torch.cuda.manual_seed_all(seed)
     output_dim = output_dim_for_task(task_spec)
+    input_dim = input_dim_for_task(task_spec)
     if model_name == "gru":
         if train_recurrent != "frozen":
             tqdm.write(
                 f"train-recurrent ignored for model=gru mode={train_recurrent}"
             )
         hidden = include_gru_hidden or min(256, int(graph.metadata["N"]))
-        return GRUBaseline(hidden_size=hidden, output_dim=output_dim).to(device)
+        return GRUBaseline(hidden_size=hidden, output_dim=output_dim, input_dim=input_dim).to(device)
     indices = pool_indices(graph.pools)
     matrix = _control_matrix(graph.matrix.astype(np.float32).tocsr(), model_name, seed)
     K = int(graph.metadata["estimated_K"])
@@ -215,6 +218,7 @@ def _make_model(
             K=K,
             reset_each_timestep=(model_name == "no_recurrence"),
             output_dim=output_dim,
+            input_dim=input_dim,
             train_recurrent=(train_recurrent == "observed"),
         ).to(device)
     else:
@@ -225,6 +229,7 @@ def _make_model(
             K=K,
             reset_each_timestep=(model_name == "no_recurrence"),
             output_dim=output_dim,
+            input_dim=input_dim,
             train_recurrent=(train_recurrent == "dense"),
         ).to(device)
     if train_recurrent == "frozen":
@@ -243,7 +248,7 @@ def _loss_fn(pred: torch.Tensor, target: torch.Tensor, task_spec: TaskSpec) -> t
         )
     if task_spec.kind == TASK_CARTESIAN:
         return torch.mean((pred - target) ** 2)
-    if task_spec.kind == TASK_CX_POLAR_BUMP:
+    if task_spec.kind in {TASK_CX_POLAR_BUMP, TASK_CX_LANDMARK_BUMP}:
         bins = task_spec.heading_bins
         pred_bump = torch.sigmoid(pred[..., :bins])
         target_bump = target[..., :bins]
@@ -549,7 +554,7 @@ def evaluate_metrics(
     target_np = np.concatenate(targets_all, axis=0)
     if task_spec.kind == TASK_CARTESIAN:
         return _evaluate_cartesian_metrics(pred_np, target_np, losses)
-    if task_spec.kind == TASK_CX_POLAR_BUMP:
+    if task_spec.kind in {TASK_CX_POLAR_BUMP, TASK_CX_LANDMARK_BUMP}:
         return _evaluate_cx_polar_bump_metrics(pred_np, target_np, losses, task_spec)
     raise ValueError(f"Unknown task kind: {task_spec.kind}")
 

@@ -26,6 +26,7 @@ class CXBPU(nn.Module):
         K: int,
         reset_each_timestep: bool = False,
         output_dim: int = OUTPUT_DIM,
+        input_dim: int = INPUT_DIM,
         train_recurrent: bool = False,
     ) -> None:
         super().__init__()
@@ -44,6 +45,7 @@ class CXBPU(nn.Module):
         self.N = int(rec_array.shape[0])
         self.K = int(K)
         self.output_dim = int(output_dim)
+        self.input_dim = int(input_dim)
         self.reset_each_timestep = bool(reset_each_timestep)
         self.train_recurrent_mode = "dense" if train_recurrent else "frozen"
         rec_tensor = torch.as_tensor(rec_array, dtype=torch.float32)
@@ -55,9 +57,9 @@ class CXBPU(nn.Module):
             "sensory_indices", torch.as_tensor(sensory_indices, dtype=torch.long)
         )
         self.register_buffer("output_indices", torch.as_tensor(output_indices, dtype=torch.long))
-        scale_in = 1.0 / math.sqrt(INPUT_DIM)
+        scale_in = 1.0 / math.sqrt(self.input_dim)
         scale_out = 1.0 / math.sqrt(max(len(output_indices), 1))
-        self.W_in = nn.Parameter(torch.empty(len(sensory_indices), INPUT_DIM))
+        self.W_in = nn.Parameter(torch.empty(len(sensory_indices), self.input_dim))
         self.b_in = nn.Parameter(torch.zeros(len(sensory_indices)))
         self.W_out = nn.Parameter(torch.empty(self.output_dim, len(output_indices)))
         self.b_out = nn.Parameter(torch.zeros(self.output_dim))
@@ -65,8 +67,8 @@ class CXBPU(nn.Module):
         nn.init.uniform_(self.W_out, -scale_out, scale_out)
 
     def forward(self, inputs: torch.Tensor, h0: torch.Tensor | None = None) -> torch.Tensor:
-        if inputs.ndim != 3 or inputs.shape[-1] != INPUT_DIM:
-            raise ValueError(f"inputs must have shape [batch, T, {INPUT_DIM}]")
+        if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
+            raise ValueError(f"inputs must have shape [batch, T, {self.input_dim}]")
         batch, T, _ = inputs.shape
         if h0 is None:
             h = inputs.new_zeros((batch, self.N))
@@ -101,6 +103,7 @@ class SparseCXBPU(nn.Module):
         K: int,
         reset_each_timestep: bool = False,
         output_dim: int = OUTPUT_DIM,
+        input_dim: int = INPUT_DIM,
         train_recurrent: bool = False,
     ) -> None:
         super().__init__()
@@ -116,6 +119,7 @@ class SparseCXBPU(nn.Module):
         self.N = int(recurrent.shape[0])
         self.K = int(K)
         self.output_dim = int(output_dim)
+        self.input_dim = int(input_dim)
         self.reset_each_timestep = bool(reset_each_timestep)
         self.train_recurrent_mode = "observed" if train_recurrent else "frozen"
         indices = torch.as_tensor(
@@ -135,9 +139,9 @@ class SparseCXBPU(nn.Module):
             "sensory_indices", torch.as_tensor(sensory_indices, dtype=torch.long)
         )
         self.register_buffer("output_indices", torch.as_tensor(output_indices, dtype=torch.long))
-        scale_in = 1.0 / math.sqrt(INPUT_DIM)
+        scale_in = 1.0 / math.sqrt(self.input_dim)
         scale_out = 1.0 / math.sqrt(max(len(output_indices), 1))
-        self.W_in = nn.Parameter(torch.empty(len(sensory_indices), INPUT_DIM))
+        self.W_in = nn.Parameter(torch.empty(len(sensory_indices), self.input_dim))
         self.b_in = nn.Parameter(torch.zeros(len(sensory_indices)))
         self.W_out = nn.Parameter(torch.empty(self.output_dim, len(output_indices)))
         self.b_out = nn.Parameter(torch.zeros(self.output_dim))
@@ -158,8 +162,8 @@ class SparseCXBPU(nn.Module):
         return self.train_recurrent_mode == "observed"
 
     def forward(self, inputs: torch.Tensor, h0: torch.Tensor | None = None) -> torch.Tensor:
-        if inputs.ndim != 3 or inputs.shape[-1] != INPUT_DIM:
-            raise ValueError(f"inputs must have shape [batch, T, {INPUT_DIM}]")
+        if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
+            raise ValueError(f"inputs must have shape [batch, T, {self.input_dim}]")
         batch, T, _ = inputs.shape
         if h0 is None:
             h = inputs.new_zeros((batch, self.N))
@@ -182,11 +186,17 @@ class SparseCXBPU(nn.Module):
 
 
 class GRUBaseline(nn.Module):
-    def __init__(self, hidden_size: int = 256, output_dim: int = OUTPUT_DIM) -> None:
+    def __init__(
+        self,
+        hidden_size: int = 256,
+        output_dim: int = OUTPUT_DIM,
+        input_dim: int = INPUT_DIM,
+    ) -> None:
         super().__init__()
         self.hidden_size = int(hidden_size)
         self.output_dim = int(output_dim)
-        self.gru = nn.GRU(INPUT_DIM, self.hidden_size, batch_first=True)
+        self.input_dim = int(input_dim)
+        self.gru = nn.GRU(self.input_dim, self.hidden_size, batch_first=True)
         self.out = nn.Linear(self.hidden_size, self.output_dim)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:

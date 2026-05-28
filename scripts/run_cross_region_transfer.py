@@ -26,6 +26,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.config import (  # noqa: E402
+    DEFAULT_LANDMARK_NOISE_STD,
+    DEFAULT_LANDMARK_VISIBLE_PROB,
+    DEFAULT_PASSIVE_DISPLACEMENT_PROB,
+    DEFAULT_PASSIVE_DISPLACEMENT_SCALE,
     RECURRENT_RUNTIME_CHOICES,
     RECURRENT_TRAIN_CHOICES,
     TASK_CX_POLAR_BUMP,
@@ -279,6 +283,10 @@ def _run_path_condition(
         heading_bins=args.heading_bins,
         home_distance_scale=args.home_distance_scale,
         bump_kappa=args.bump_kappa,
+        landmark_visible_prob=args.landmark_visible_prob,
+        landmark_noise_std=args.landmark_noise_std,
+        passive_displacement_prob=args.passive_displacement_prob,
+        passive_displacement_scale=args.passive_displacement_scale,
     )
     print(
         "condition-start "
@@ -560,6 +568,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--heading-bins", type=int, default=32)
     parser.add_argument("--home-distance-scale", type=float, default=25.0)
     parser.add_argument("--bump-kappa", type=float, default=8.0)
+    parser.add_argument("--landmark-visible-prob", type=float, default=DEFAULT_LANDMARK_VISIBLE_PROB)
+    parser.add_argument("--landmark-noise-std", type=float, default=DEFAULT_LANDMARK_NOISE_STD)
+    parser.add_argument("--passive-displacement-prob", type=float, default=DEFAULT_PASSIVE_DISPLACEMENT_PROB)
+    parser.add_argument("--passive-displacement-scale", type=float, default=DEFAULT_PASSIVE_DISPLACEMENT_SCALE)
     args = parser.parse_args(argv)
     if args.assoc_odors_per_episode > args.assoc_num_odors:
         parser.error("--assoc-odors-per-episode cannot exceed --assoc-num-odors")
@@ -569,6 +581,14 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--assoc-odor-sparsity must be in (0, 1]")
     if args.heading_bins < 4:
         parser.error("--heading-bins must be at least 4")
+    if not (0.0 <= args.landmark_visible_prob <= 1.0):
+        parser.error("--landmark-visible-prob must be in [0, 1]")
+    if args.landmark_noise_std < 0.0:
+        parser.error("--landmark-noise-std must be non-negative")
+    if not (0.0 <= args.passive_displacement_prob <= 1.0):
+        parser.error("--passive-displacement-prob must be in [0, 1]")
+    if args.passive_displacement_scale < 0.0:
+        parser.error("--passive-displacement-scale must be non-negative")
     return args
 
 
