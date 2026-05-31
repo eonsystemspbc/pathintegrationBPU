@@ -162,6 +162,10 @@ def _format_seconds(seconds: float) -> str:
     return f"{hours}h{rem:02d}m"
 
 
+def log_event(message: str) -> None:
+    print(message, flush=True)
+
+
 def select_device(requested: str) -> torch.device:
     if requested == "cuda":
         if not torch.cuda.is_available():
@@ -453,20 +457,31 @@ def model_matrix(base: sparse.csr_matrix, model_name: str, seed: int) -> sparse.
 
 
 def load_matrix(path: Path) -> sparse.csr_matrix:
+    start = time.monotonic()
+    log_event(f"matrix-load-start path={path}")
     matrix = sparse.load_npz(path).astype(np.float32).tocsr()
     if matrix.shape[0] != matrix.shape[1]:
         raise ValueError(f"matrix must be square: {matrix.shape}")
     if matrix.nnz == 0:
         raise ValueError("matrix has no edges.")
+    log_event(
+        f"matrix-load-done path={path} N={matrix.shape[0]} edges={matrix.nnz} elapsed={_format_seconds(time.monotonic() - start)}"
+    )
     return matrix
 
 
 def maybe_truncate_matrix(matrix: sparse.csr_matrix, max_neurons: int) -> sparse.csr_matrix:
     if max_neurons <= 0 or matrix.shape[0] <= max_neurons:
+        log_event(f"matrix-ready N={matrix.shape[0]} edges={matrix.nnz} max_neurons={max_neurons}")
         return matrix
+    log_event(
+        f"matrix-truncate-start N={matrix.shape[0]} edges={matrix.nnz} max_neurons={max_neurons}"
+    )
     activity = np.asarray(matrix.sum(axis=0)).ravel() + np.asarray(matrix.sum(axis=1)).ravel()
     keep = np.sort(np.argsort(activity)[-max_neurons:])
-    return matrix[keep][:, keep].tocsr()
+    truncated = matrix[keep][:, keep].tocsr()
+    log_event(f"matrix-truncate-done N={truncated.shape[0]} edges={truncated.nnz}")
+    return truncated
 
 
 def download_flywire_optic_lobe_exports(
@@ -482,18 +497,32 @@ def download_flywire_optic_lobe_exports(
         else paths.cache_dir / f"flywire_release_{release}"
     )
     download_dir.mkdir(parents=True, exist_ok=True)
+    log_event(
+        "download-start "
+        f"connectome=flywire_optic_lobe release={release} download_dir={download_dir} "
+        f"optic_rois={','.join(optic_rois)} max_neurons={max_neurons}"
+    )
     root_ids_path = _ensure_flywire_file(
         download_dir, _flywire_filename("proofread_root_ids", release)
     )
+    log_event(f"download-file-ready kind=proofread_root_ids path={root_ids_path}")
     connections_path = _ensure_flywire_file(
         download_dir, _flywire_filename("proofread_connections", release)
     )
+    log_event(f"download-file-ready kind=proofread_connections path={connections_path}")
+    start = time.monotonic()
+    log_event("flywire-read-start file=proofread_connections")
     connections = _read_flywire_connections(connections_path)
+    log_event(
+        f"flywire-read-done rows={len(connections)} elapsed={_format_seconds(time.monotonic() - start)}"
+    )
     if "neuropil" not in connections.columns:
         raise RuntimeError("FlyWire proofread connections do not include neuropil labels.")
     optic_connections = connections[connections["neuropil"].isin(optic_rois)].copy()
     if optic_connections.empty:
         raise RuntimeError(f"No FlyWire connections found in optic-lobe ROIs: {optic_rois}")
+    rois = sorted(map(str, optic_connections["neuropil"].dropna().unique()))
+    log_event(f"optic-filter-done optic_rows={len(optic_connections)} rois={','.join(rois)}")
     body_ids = pd.Index(
         pd.concat(
             [optic_connections["pre_pt_root_id"], optic_connections["post_pt_root_id"]],
@@ -503,7 +532,9 @@ def download_flywire_optic_lobe_exports(
         .astype("int64")
         .unique()
     )
+    log_event(f"optic-bodyids-ready count={len(body_ids)}")
     if max_neurons > 0 and len(body_ids) > max_neurons:
+        log_event(f"optic-bodyids-truncate-start count={len(body_ids)} max_neurons={max_neurons}")
         pre = optic_connections.groupby("pre_pt_root_id")["syn_count"].sum()
         post = optic_connections.groupby("post_pt_root_id")["syn_count"].sum()
         activity = (
@@ -520,16 +551,25 @@ def download_flywire_optic_lobe_exports(
             optic_connections["pre_pt_root_id"].isin(body_ids)
             & optic_connections["post_pt_root_id"].isin(body_ids)
         ].copy()
+        log_event(
+            f"optic-bodyids-truncate-done count={len(body_ids)} optic_rows={len(optic_connections)}"
+        )
     selected_global = connections[
         connections["pre_pt_root_id"].isin(body_ids)
         | connections["post_pt_root_id"].isin(body_ids)
     ].copy()
+    log_event(
+        f"optic-export-write-start selected_global_rows={len(selected_global)} optic_rows={len(optic_connections)}"
+    )
     paths.output_dir.mkdir(parents=True, exist_ok=True)
     neurons = _write_flywire_neurons(
         paths, root_ids_path, selected_global, body_ids_subset=body_ids
     )
     _write_flywire_roi_counts(paths, selected_global)
     aggregated = _write_flywire_connections(paths, optic_connections)
+    log_event(
+        f"optic-export-write-done neurons={len(neurons)} aggregated_edges={len(aggregated)} output_dir={paths.output_dir}"
+    )
     source_metadata = {
         "connectome": "flywire_optic_lobe",
         "release": release,
@@ -557,22 +597,43 @@ def prepare_optic_lobe_connectome(
     optic_rois: tuple[str, ...],
     signed_policy: str = "auto",
 ) -> sparse.csr_matrix:
+    start = time.monotonic()
+    log_event(
+        f"prepare-start connectome=flywire_optic_lobe output_dir={paths.output_dir} signed_policy={signed_policy}"
+    )
     neurons = pd.read_csv(paths.neurons_csv)
     roi_counts = pd.read_csv(paths.roi_counts_csv)
     connections = pd.read_csv(paths.connections_csv)
+    log_event(
+        f"prepare-read-done neurons={len(neurons)} roi_rows={len(roi_counts)} connection_rows={len(connections)}"
+    )
+    adjacency_start = time.monotonic()
     unsigned_raw, body_to_index, aggregated_edges = build_raw_adjacency(neurons, connections)
+    log_event(
+        "prepare-adjacency-built "
+        f"N={unsigned_raw.shape[0]} raw_edges={len(aggregated_edges)} nnz={unsigned_raw.nnz} "
+        f"elapsed={_format_seconds(time.monotonic() - adjacency_start)}"
+    )
     signs = assign_presynaptic_signs(neurons, body_to_index)
     signed_raw = build_signed_adjacency(unsigned_raw, signs)
     coverage = sign_coverage(unsigned_raw, signs)
     primary_name = choose_primary_matrix(signed_policy, coverage, signed_raw)
+    log_event(
+        f"prepare-signs-done signed_neurons={len(signs)} sign_coverage={coverage:.4f} primary_matrix={primary_name}"
+    )
+    scale_start = time.monotonic()
     unsigned, signed, raw_rho, scale = scale_to_spectral_radius(
         unsigned_raw,
         signed_raw,
         primary_name=primary_name,
         rho_target=RHO_TARGET,
     )
+    log_event(
+        f"prepare-scale-done raw_rho={raw_rho:.6g} scale={scale:.6g} elapsed={_format_seconds(time.monotonic() - scale_start)}"
+    )
     assignments = assign_pools(neurons, roi_counts, primary_rois=optic_rois)
     assignments.to_csv(paths.pool_assignments_csv, index=False)
+    log_event(f"prepare-pools-done pool_counts={assignments['pool'].value_counts().to_dict()}")
     primary = signed if primary_name == "signed" else unsigned
     if primary is None:
         raise RuntimeError("Primary optic-lobe adjacency could not be constructed.")
@@ -601,6 +662,11 @@ def prepare_optic_lobe_connectome(
         sparse.save_npz(paths.adjacency_signed_npz, signed)
     with paths.graph_metadata_json.open("w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2, sort_keys=True)
+    log_event(
+        "prepare-done "
+        f"N={primary.shape[0]} edges={primary.nnz} primary_matrix={primary_name} "
+        f"adjacency={paths.adjacency_unsigned_npz} elapsed={_format_seconds(time.monotonic() - start)}"
+    )
     return primary.astype(np.float32).tocsr()
 
 
@@ -618,21 +684,46 @@ def evaluate_model(
     seed: int,
     batches: int,
     batch_size: int,
+    phase: str = "eval",
+    model_name: str = "",
+    log_every_seconds: float = 0.0,
 ) -> dict[str, float]:
     rng = np.random.default_rng(seed)
     model.eval()
     losses: list[float] = []
     preds_all: list[np.ndarray] = []
     targets_all: list[np.ndarray] = []
+    start = time.monotonic()
+    last_log = start
+    data_gen_seconds = 0.0
+    eval_seconds = 0.0
+    log_event(
+        "data-gen-start "
+        f"phase={phase} model={model_name or 'unknown'} batches={batches} batch_size={batch_size} "
+        f"timesteps={spec.timesteps} input_dim={spec.input_dim} seed={seed}"
+    )
     with torch.no_grad():
-        for _ in range(batches):
+        for batch_idx in range(1, batches + 1):
+            gen_start = time.monotonic()
             batch = generate_optic_flow_batch(spec, batch_size, rng)
+            data_gen_seconds += time.monotonic() - gen_start
             x, y = _batch_to_torch(batch, device)
+            eval_start = time.monotonic()
             pred = model(x)
             loss = torch.mean((pred - y) ** 2)
+            eval_seconds += time.monotonic() - eval_start
             losses.append(float(loss.detach().cpu()))
             preds_all.append(pred.detach().cpu().numpy())
             targets_all.append(y.detach().cpu().numpy())
+            now = time.monotonic()
+            if log_every_seconds > 0 and now - last_log >= log_every_seconds:
+                log_event(
+                    "data-gen-progress "
+                    f"phase={phase} model={model_name or 'unknown'} batch={batch_idx}/{batches} "
+                    f"running_loss={np.mean(losses):.6g} data_gen_elapsed={_format_seconds(data_gen_seconds)} "
+                    f"eval_elapsed={_format_seconds(eval_seconds)} elapsed={_format_seconds(now - start)}"
+                )
+                last_log = now
     pred_np = np.concatenate(preds_all, axis=0)
     target_np = np.concatenate(targets_all, axis=0)
     err = pred_np - target_np
@@ -641,7 +732,7 @@ def evaluate_model(
     r2 = 1.0 - np.mean(err.reshape(-1, spec.output_dim) ** 2, axis=0) / target_var
     translation_err = err[..., 1:3]
     translation_rmse = float(np.sqrt(np.mean(translation_err**2)))
-    return {
+    metrics = {
         "loss": float(np.mean(losses)),
         "overall_rmse": float(np.sqrt(np.mean(err**2))),
         "yaw_rmse": float(component_rmse[0]),
@@ -652,6 +743,13 @@ def evaluate_model(
         "forward_r2": float(r2[1]),
         "lateral_r2": float(r2[2]),
     }
+    log_event(
+        "data-gen-done "
+        f"phase={phase} model={model_name or 'unknown'} loss={metrics['loss']:.6g} "
+        f"data_gen_elapsed={_format_seconds(data_gen_seconds)} eval_elapsed={_format_seconds(eval_seconds)} "
+        f"elapsed={_format_seconds(time.monotonic() - start)}"
+    )
+    return metrics
 
 
 def train_one_model(
@@ -665,7 +763,14 @@ def train_one_model(
     torch.manual_seed(seed)
     if device.type == "cuda":
         torch.cuda.manual_seed_all(seed)
+    build_start = time.monotonic()
+    log_event(
+        f"model-build-start model={model_name} seed={seed} base_N={base_matrix.shape[0]} base_edges={base_matrix.nnz}"
+    )
     recurrent = model_matrix(base_matrix, model_name, seed + 10_000)
+    log_event(
+        f"model-build-matrix-done model={model_name} seed={seed} edges={recurrent.nnz} elapsed={_format_seconds(time.monotonic() - build_start)}"
+    )
     model = SparseOpticFlowRNN(
         recurrent=recurrent,
         input_dim=spec.input_dim,
@@ -690,9 +795,20 @@ def train_one_model(
         losses: list[float] = []
         start = time.monotonic()
         last_log = start
+        data_gen_seconds = 0.0
+        train_step_seconds = 0.0
+        log_event(
+            "epoch-start "
+            f"model={model_name} seed={seed} epoch={epoch}/{train_spec.epochs} "
+            f"synthetic_train_batches={train_spec.train_batches} batch_size={train_spec.batch_size} "
+            f"timesteps={spec.timesteps} input_dim={spec.input_dim}"
+        )
         for batch_idx in range(1, train_spec.train_batches + 1):
+            gen_start = time.monotonic()
             batch = generate_optic_flow_batch(spec, train_spec.batch_size, rng)
+            data_gen_seconds += time.monotonic() - gen_start
             x, y = _batch_to_torch(batch, device)
+            step_start = time.monotonic()
             optimizer.zero_grad(set_to_none=True)
             pred = model(x)
             loss = torch.mean((pred - y) ** 2)
@@ -700,6 +816,7 @@ def train_one_model(
             if train_spec.grad_clip > 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), train_spec.grad_clip)
             optimizer.step()
+            train_step_seconds += time.monotonic() - step_start
             losses.append(float(loss.detach().cpu()))
             now = time.monotonic()
             if now - last_log >= train_spec.log_every_seconds:
@@ -707,7 +824,10 @@ def train_one_model(
                     "progress "
                     f"model={model_name} seed={seed} epoch={epoch}/{train_spec.epochs} "
                     f"batch={batch_idx}/{train_spec.train_batches} batch_loss={losses[-1]:.6g} "
-                    f"running_train_loss={np.mean(losses):.6g} elapsed={_format_seconds(now - start)}",
+                    f"running_train_loss={np.mean(losses):.6g} "
+                    f"data_gen_elapsed={_format_seconds(data_gen_seconds)} "
+                    f"train_step_elapsed={_format_seconds(train_step_seconds)} "
+                    f"elapsed={_format_seconds(now - start)}",
                     flush=True,
                 )
                 last_log = now
@@ -718,6 +838,9 @@ def train_one_model(
             seed=seed + 50_000 + epoch,
             batches=train_spec.val_batches,
             batch_size=train_spec.batch_size,
+            phase=f"val_epoch_{epoch}",
+            model_name=model_name,
+            log_every_seconds=train_spec.log_every_seconds,
         )
         train_loss = float(np.mean(losses))
         if val["loss"] < best_val:
@@ -738,6 +861,8 @@ def train_one_model(
             "val_yaw_r2": float(val["yaw_r2"]),
             "best_val_loss": float(best_val),
             "patience_wait": int(wait),
+            "train_data_gen_seconds": float(data_gen_seconds),
+            "train_step_seconds": float(train_step_seconds),
         }
         history.append(row)
         print(
@@ -745,6 +870,8 @@ def train_one_model(
             f"model={model_name} seed={seed} epoch={epoch}/{train_spec.epochs} "
             f"train_loss={train_loss:.6g} val_loss={val['loss']:.6g} "
             f"val_yaw_rmse={val['yaw_rmse']:.6g} val_translation_rmse={val['translation_rmse']:.6g} "
+            f"data_gen_elapsed={_format_seconds(data_gen_seconds)} "
+            f"train_step_elapsed={_format_seconds(train_step_seconds)} "
             f"best_val_loss={best_val:.6g} patience_wait={wait}",
             flush=True,
         )
@@ -759,6 +886,9 @@ def train_one_model(
         seed=seed + 90_000,
         batches=train_spec.test_batches,
         batch_size=train_spec.batch_size,
+        phase="test",
+        model_name=model_name,
+        log_every_seconds=train_spec.log_every_seconds,
     )
     metrics = {
         "model": model_name,
@@ -890,6 +1020,15 @@ def train_benchmark(
         f"output_dir={output_dir} device={device} N={matrix.shape[0]} edges={matrix.nnz} "
         f"input_dim={optic_spec.input_dim} timesteps={optic_spec.timesteps} models={','.join(train_spec.models)}",
         flush=True,
+    )
+    log_event(
+        "data-config "
+        f"hex_rings={optic_spec.hex_rings} samples={optic_spec.input_dim} "
+        f"panorama={optic_spec.panorama_width}x{optic_spec.panorama_height} "
+        f"acceptance_angle_deg={optic_spec.acceptance_angle_deg} blur_samples={optic_spec.blur_samples} "
+        f"contrast={optic_spec.contrast} sensor_noise_std={optic_spec.sensor_noise_std} "
+        f"train_batches={train_spec.train_batches} val_batches={train_spec.val_batches} "
+        f"test_batches={train_spec.test_batches} batch_size={train_spec.batch_size}"
     )
     metrics_rows: list[dict[str, object]] = []
     history_rows: list[dict[str, object]] = []
