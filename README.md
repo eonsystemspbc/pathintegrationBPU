@@ -216,6 +216,20 @@ All required artifacts are stable under the chosen `--output-dir`:
 Task split `.npz` files are cached under `--cache-dir/sequences` so training can
 be rerun without regenerating synthetic trajectories.
 
+## Optic-Lobe Optic Flow
+
+This repository also includes an optic-lobe visual-motion benchmark:
+
+```bash
+python scripts/run_optic_flow_benchmark.py --help
+```
+
+It can download/prep the FlyWire optic-lobe connectome, generate procedural
+hex-lattice optic-flow stimuli, and train size-matched connectome-seeded,
+topology-shuffled, and random sparse RNNs. See
+[`docs/optic_flow_benchmark.md`](docs/optic_flow_benchmark.md) for AWS commands
+and result-summary scripts.
+
 ## Scientific Notes
 
 The unsigned matrix is always built. The signed matrix is built only where the
