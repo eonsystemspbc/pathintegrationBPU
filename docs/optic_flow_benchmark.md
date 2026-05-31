@@ -156,6 +156,11 @@ The run writes:
 - `optic_flow_report.md`
 - `run_config.json`
 
+The console log includes explicit `download-*`, `prepare-*`, `matrix-*`,
+`model-build-*`, `data-gen-*`, and `progress` events, so AWS runs show where
+time is spent during graph preparation, synthetic stimulus generation, and
+training.
+
 ## Quick Summary Command
 
 ```bash
