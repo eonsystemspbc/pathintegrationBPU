@@ -1,0 +1,22 @@
+{
+  "aggregated_edge_count": 8757188,
+  "connectome": "flywire_optic_lobe",
+  "max_neurons": 0,
+  "optic_rois": [
+    "LA_L",
+    "LA_R",
+    "ME_L",
+    "ME_R",
+    "LO_L",
+    "LO_R",
+    "LOP_L",
+    "LOP_R",
+    "AME_L",
+    "AME_R"
+  ],
+  "optic_source_rows": 8961836,
+  "proofread_connections_path": "/home/ec2-user/pathintegrationBPU/flywire_cache/proofread_connections_783.feather",
+  "release": "783",
+  "root_ids_path": "/home/ec2-user/pathintegrationBPU/flywire_cache/proofread_root_ids_783.npy",
+  "source_rows": 16847997
+}
