@@ -177,6 +177,24 @@ The console log includes explicit `download-*`, `prepare-*`, `matrix-*`,
 time is spent during graph preparation, synthetic stimulus generation, and
 training.
 
+## Visualize A Training Example
+
+To inspect the generated input sequence and the corresponding target motion:
+
+```bash
+python scripts/visualize_optic_flow_training_data.py \
+  --output outputs/optic_flow_training_sample.mp4 \
+  --difficulty medium \
+  --seed 3 \
+  --timesteps 16 \
+  --hex-rings 4 \
+  --fps 4
+```
+
+The video shows the fly-like hex-lattice luminance input on the left and the
+true yaw, forward, and lateral target values on the right. Use `.gif` as the
+output extension if `ffmpeg` is not installed.
+
 ## Quick Summary Command
 
 ```bash
