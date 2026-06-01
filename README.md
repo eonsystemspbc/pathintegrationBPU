@@ -230,6 +230,17 @@ topology-shuffled, and random sparse RNNs. See
 [`docs/optic_flow_benchmark.md`](docs/optic_flow_benchmark.md) for AWS commands
 and result-summary scripts.
 
+For a real-data visual-motion benchmark on TartanAirV2 optical flow and
+pose-derived ego-motion labels, use:
+
+```bash
+python scripts/run_tartanair_optic_flow_benchmark.py --help
+```
+
+See
+[`docs/tartanair_optic_flow_benchmark.md`](docs/tartanair_optic_flow_benchmark.md)
+for download/generation notes, AWS commands, and output files.
+
 ## Scientific Notes
 
 The unsigned matrix is always built. The signed matrix is built only where the
