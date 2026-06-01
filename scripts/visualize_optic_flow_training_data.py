@@ -55,11 +55,20 @@ def spec_from_args(args: argparse.Namespace) -> optic.OpticFlowSpec:
     )
 
 
-def _target_text(target: np.ndarray) -> str:
+def _target_text(target: np.ndarray, step: int) -> str:
+    current_yaw = float(target[0] * step)
+    current_forward = float(target[1] * step)
+    current_lateral = float(target[2] * step)
     return (
+        f"per-step target\n"
         f"yaw rate: {target[0]:+.3f}\n"
         f"forward:  {target[1]:+.3f}\n"
-        f"lateral:  {target[2]:+.3f}"
+        f"lateral:  {target[2]:+.3f}\n"
+        f"\n"
+        f"current cumulative\n"
+        f"yaw:     {current_yaw:+.3f}\n"
+        f"forward: {current_forward:+.3f}\n"
+        f"lateral: {current_lateral:+.3f}"
     )
 
 
@@ -89,10 +98,14 @@ def make_visualization(args: argparse.Namespace) -> Path:
     targets = batch.targets[0]
     target = targets[0]
     lattice = optic.hex_lattice(spec.hex_rings)
+    steps = np.arange(spec.timesteps, dtype=np.float32)
+    cumulative_yaw = targets[:, 0] * steps
+    cumulative_forward = targets[:, 1] * steps
+    cumulative_lateral = targets[:, 2] * steps
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    fig = plt.figure(figsize=(10, 5.6), dpi=args.dpi)
+    fig = plt.figure(figsize=(10.5, 5.8), dpi=args.dpi)
     gs = fig.add_gridspec(2, 2, width_ratios=[1.25, 1.0], height_ratios=[1.0, 1.0])
     ax_eye = fig.add_subplot(gs[:, 0])
     ax_translation = fig.add_subplot(gs[0, 1])
@@ -129,18 +142,24 @@ def make_visualization(args: argparse.Namespace) -> Path:
 
     ax_translation.axhline(0, color="#9ca3af", linewidth=1)
     ax_translation.axvline(0, color="#9ca3af", linewidth=1)
-    lim = 1.05 * max(spec.max_forward, spec.max_lateral, abs(target[1]), abs(target[2]), 1e-3)
+    lim = 1.15 * max(
+        float(np.max(np.abs(cumulative_forward))),
+        float(np.max(np.abs(cumulative_lateral))),
+        spec.max_forward,
+        spec.max_lateral,
+        1e-3,
+    )
     ax_translation.set_xlim(-lim, lim)
     ax_translation.set_ylim(-lim, lim)
     ax_translation.set_aspect("equal")
-    ax_translation.set_xlabel("lateral target")
-    ax_translation.set_ylabel("forward target")
-    ax_translation.set_title("Target translation")
+    ax_translation.set_xlabel("cumulative lateral displacement")
+    ax_translation.set_ylabel("cumulative forward displacement")
+    ax_translation.set_title("Cumulative translation target")
     translation_arrow = ax_translation.quiver(
         [0.0],
         [0.0],
-        [target[2]],
-        [target[1]],
+        [cumulative_lateral[0]],
+        [cumulative_forward[0]],
         angles="xy",
         scale_units="xy",
         scale=1,
@@ -149,23 +168,23 @@ def make_visualization(args: argparse.Namespace) -> Path:
     )
     cumulative_trace, = ax_translation.plot([], [], color="#60a5fa", linewidth=2, alpha=0.75)
 
-    max_yaw = max(spec.max_yaw_rate, abs(float(target[0])), 1e-3)
-    ax_yaw.set_xlim(-max_yaw * 1.1, max_yaw * 1.1)
+    max_yaw = max(float(np.max(np.abs(cumulative_yaw))), abs(float(target[0])), 1e-3)
+    ax_yaw.set_xlim(-max_yaw * 1.15, max_yaw * 1.15)
     ax_yaw.set_ylim(-0.5, 0.5)
     ax_yaw.axvline(0, color="#9ca3af", linewidth=1)
     ax_yaw.set_yticks([])
-    ax_yaw.set_xlabel("yaw-rate target")
-    ax_yaw.set_title("Target yaw")
+    ax_yaw.set_xlabel("cumulative yaw")
+    ax_yaw.set_title("Cumulative yaw target")
     yaw_bar = ax_yaw.barh(
         [0.0],
-        [target[0]],
+        [cumulative_yaw[0]],
         height=0.35,
         color="#dc2626" if target[0] >= 0 else "#7c3aed",
     )
     target_label = ax_yaw.text(
         0.02,
         -0.15,
-        _target_text(target),
+        _target_text(target, 0),
         transform=ax_yaw.transAxes,
         va="top",
         ha="left",
@@ -180,23 +199,21 @@ def make_visualization(args: argparse.Namespace) -> Path:
     )
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
-    cumulative_x: list[float] = []
-    cumulative_y: list[float] = []
-
     def update(t: int):
         scatter.set_array(frames[t])
-        frac = t / max(spec.timesteps - 1, 1)
-        cumulative_x.append(float(target[2] * frac * spec.timesteps))
-        cumulative_y.append(float(target[1] * frac * spec.timesteps))
-        cumulative_trace.set_data(cumulative_x, cumulative_y)
+        cumulative_trace.set_data(cumulative_lateral[: t + 1], cumulative_forward[: t + 1])
+        translation_arrow.set_UVC(
+            np.asarray([cumulative_lateral[t]], dtype=np.float32),
+            np.asarray([cumulative_forward[t]], dtype=np.float32),
+        )
         time_text.set_text(
             f"timestep {t + 1}/{spec.timesteps}\n"
             f"input_dim={spec.input_dim}\n"
             f"contrast={spec.contrast:.2f}, noise={spec.sensor_noise_std:.2f}"
         )
-        yaw_bar.patches[0].set_width(float(targets[t, 0]))
-        target_label.set_text(_target_text(targets[t]))
-        return scatter, cumulative_trace, time_text, yaw_bar.patches[0], target_label
+        yaw_bar.patches[0].set_width(float(cumulative_yaw[t]))
+        target_label.set_text(_target_text(targets[t], t))
+        return scatter, translation_arrow, cumulative_trace, time_text, yaw_bar.patches[0], target_label
 
     anim = animation.FuncAnimation(
         fig,
