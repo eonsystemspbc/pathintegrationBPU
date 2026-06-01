@@ -50,6 +50,79 @@ def target_flow_field(
     return (flow / denom * arrow_length).astype(np.float32)
 
 
+def render_fov_background(
+    pano: np.ndarray,
+    yaw: float,
+    forward: float,
+    lateral: float,
+    spec: optic.OpticFlowSpec,
+    grid_size: int,
+) -> np.ndarray:
+    """Render the same moving panorama over the retinal field of view."""
+    axis = np.linspace(-1.0, 1.0, grid_size, dtype=np.float32)
+    xx, yy = np.meshgrid(axis, axis, indexing="xy")
+    az = xx * math.radians(spec.fov_azimuth_deg) / 2.0
+    el = yy * math.radians(spec.fov_elevation_deg) / 2.0
+    depth_gain = 0.65 + 0.35 * np.cos(el)
+    trans_az = spec.motion_scale * (forward * np.sin(az) - lateral * np.cos(az)) * depth_gain
+    trans_el = spec.motion_scale * forward * np.sin(el) * np.cos(az)
+    rendered = optic._sample_periodic_bilinear(
+        pano,
+        (az + yaw + trans_az).reshape(-1),
+        (el + trans_el).reshape(-1),
+    )
+    return rendered.reshape(grid_size, grid_size).astype(np.float32)
+
+
+def generate_visual_sample(
+    spec: optic.OpticFlowSpec,
+    rng: np.random.Generator,
+    background_grid_size: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    base_angles = optic.lattice_angles(spec)
+    pano = optic.make_panorama(rng, spec)
+    yaw_rate = float(rng.uniform(-spec.max_yaw_rate, spec.max_yaw_rate))
+    forward = float(rng.uniform(-spec.max_forward, spec.max_forward))
+    lateral = float(rng.uniform(-spec.max_lateral, spec.max_lateral))
+    if abs(forward) + abs(lateral) < 0.08 and abs(yaw_rate) < 0.04:
+        forward += 0.12 * np.sign(rng.normal() or 1.0)
+    target = np.array([yaw_rate, forward, lateral], dtype=np.float32)
+    phase = float(rng.uniform(-math.pi, math.pi))
+    frames = np.zeros((spec.timesteps, spec.input_dim), dtype=np.float32)
+    backgrounds = np.zeros((spec.timesteps, background_grid_size, background_grid_size), dtype=np.float32)
+    targets = np.repeat(target[None, :], spec.timesteps, axis=0)
+    for t in range(spec.timesteps):
+        frac = t / max(spec.timesteps - 1, 1)
+        jitter = 1.0 + spec.temporal_contrast_jitter * math.sin(2.0 * math.pi * frac + phase)
+        yaw = yaw_rate * t
+        frame = optic.render_hex_frame(
+            pano,
+            base_angles,
+            yaw=yaw,
+            forward=forward * t,
+            lateral=lateral * t,
+            spec=spec,
+            rng=rng,
+        )
+        frame = 0.5 + jitter * (frame - 0.5)
+        if spec.sensor_noise_std > 0:
+            frame = frame + rng.normal(0.0, spec.sensor_noise_std, size=frame.shape).astype(
+                np.float32
+            )
+        background = render_fov_background(
+            pano,
+            yaw=yaw,
+            forward=forward * t,
+            lateral=lateral * t,
+            spec=spec,
+            grid_size=background_grid_size,
+        )
+        background = 0.5 + jitter * (background - 0.5)
+        frames[t] = np.clip(frame, 0.0, 1.0)
+        backgrounds[t] = np.clip(background, 0.0, 1.0)
+    return frames, targets, backgrounds
+
+
 def apply_difficulty(args: argparse.Namespace) -> argparse.Namespace:
     preset = optic.DIFFICULTY_PRESETS[args.difficulty]
     for key, value in preset.items():
@@ -99,9 +172,11 @@ def _writer_for(path: Path, fps: int) -> animation.AbstractMovieWriter:
 def make_visualization(args: argparse.Namespace) -> Path:
     spec = spec_from_args(args)
     rng = np.random.default_rng(args.seed)
-    batch = optic.generate_optic_flow_batch(spec, batch_size=1, rng=rng)
-    frames = batch.inputs[0]
-    targets = batch.targets[0]
+    frames, targets, backgrounds = generate_visual_sample(
+        spec,
+        rng,
+        background_grid_size=args.background_grid_size,
+    )
     target = targets[0]
     lattice = optic.hex_lattice(spec.hex_rings)
     steps = np.arange(spec.timesteps, dtype=np.float32)
@@ -124,6 +199,19 @@ def make_visualization(args: argparse.Namespace) -> Path:
     ax_yaw = fig.add_subplot(gs[1, 1])
 
     marker_size = max(120, 900 / max(spec.hex_rings + 1, 1))
+    background_image = None
+    if args.show_panorama_background:
+        background_image = ax_eye.imshow(
+            backgrounds[0],
+            extent=(-1.0, 1.0, -1.0, 1.0),
+            origin="lower",
+            cmap="gray",
+            vmin=0.0,
+            vmax=1.0,
+            alpha=args.background_alpha,
+            interpolation="bilinear",
+            zorder=0,
+        )
     scatter = ax_eye.scatter(
         lattice[:, 0],
         lattice[:, 1],
@@ -134,6 +222,7 @@ def make_visualization(args: argparse.Namespace) -> Path:
         vmax=1.0,
         edgecolors="#1f2937",
         linewidths=0.45,
+        zorder=4,
     )
     flow_arrows = None
     if args.show_flow_arrows:
@@ -219,24 +308,31 @@ def make_visualization(args: argparse.Namespace) -> Path:
 
     def update(t: int):
         scatter.set_array(frames[t])
+        if background_image is not None:
+            background_image.set_array(backgrounds[t])
         cumulative_trace.set_data(cumulative_lateral[: t + 1], cumulative_forward[: t + 1])
         translation_arrow.set_UVC(
             np.asarray([cumulative_lateral[t]], dtype=np.float32),
             np.asarray([cumulative_forward[t]], dtype=np.float32),
         )
-        time_text.set_text(
-            f"frame {t + 1}/{spec.timesteps}\n"
-            f"samples {spec.input_dim}\n"
-            f"contrast {spec.contrast:.2f}, noise {spec.sensor_noise_std:.2f}\n"
-            f"blue arrows: target-implied flow"
-        )
+        text_lines = [
+            f"frame {t + 1}/{spec.timesteps}",
+            f"samples {spec.input_dim}",
+            f"contrast {spec.contrast:.2f}, noise {spec.sensor_noise_std:.2f}",
+        ]
+        if background_image is not None:
+            text_lines.append("faint texture: moving panorama")
+        if flow_arrows is not None:
+            text_lines.append("blue arrows: target-implied flow")
+        time_text.set_text("\n".join(text_lines))
         yaw_bar.patches[0].set_width(float(cumulative_yaw[t]))
         translation_title.set_text(
             f"Translation: fwd {cumulative_forward[t]:+.2f}, lat {cumulative_lateral[t]:+.2f}\n"
             f"per step: fwd {target[1]:+.2f}, lat {target[2]:+.2f}"
         )
         yaw_title.set_text(f"Yaw: {cumulative_yaw[t]:+.2f} rad | rate {target[0]:+.2f}")
-        return (
+        artists = (
+            background_image,
             scatter,
             flow_arrows,
             translation_arrow,
@@ -246,6 +342,7 @@ def make_visualization(args: argparse.Namespace) -> Path:
             translation_title,
             yaw_title,
         )
+        return tuple(artist for artist in artists if artist is not None)
 
     anim = animation.FuncAnimation(
         fig,
@@ -291,9 +388,17 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-lateral", type=float, default=0.35)
     parser.add_argument("--motion-scale", type=float, default=0.55)
     parser.add_argument(
-        "--show-flow-arrows",
+        "--show-panorama-background",
         action=argparse.BooleanOptionalAction,
         default=True,
+        help="Show the moving continuous panorama behind the fixed hex receptor samples.",
+    )
+    parser.add_argument("--background-grid-size", type=int, default=160)
+    parser.add_argument("--background-alpha", type=float, default=0.42)
+    parser.add_argument(
+        "--show-flow-arrows",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Overlay a clean optic-flow sketch implied by the target motion.",
     )
     parser.add_argument("--flow-arrow-length", type=float, default=0.16)
@@ -304,6 +409,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--hex-rings must be non-negative")
     if args.fps < 1:
         parser.error("--fps must be positive")
+    if args.background_grid_size < 16:
+        parser.error("--background-grid-size must be at least 16")
+    if not 0.0 <= args.background_alpha <= 1.0:
+        parser.error("--background-alpha must be between 0 and 1")
     if args.flow_arrow_length <= 0:
         parser.error("--flow-arrow-length must be positive")
     return args
