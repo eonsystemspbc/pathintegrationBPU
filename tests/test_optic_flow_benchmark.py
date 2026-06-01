@@ -58,16 +58,31 @@ def test_hex_lattice_and_optic_flow_batch_have_expected_shapes() -> None:
 def test_optic_flow_controls_are_size_matched() -> None:
     optic = _load_module()
     base = _toy_matrix()
+    same_topology_random_weights = optic.model_matrix(
+        base, optic.MODEL_RANDOM_WEIGHT_TOPOLOGY, seed=5
+    )
     shuffled = optic.model_matrix(base, optic.MODEL_SHUFFLED, seed=5)
     random = optic.model_matrix(base, optic.MODEL_RANDOM, seed=5)
 
-    assert shuffled.shape == base.shape == random.shape
-    assert shuffled.nnz == base.nnz == random.nnz
+    assert same_topology_random_weights.shape == shuffled.shape == base.shape == random.shape
+    assert same_topology_random_weights.nnz == shuffled.nnz == base.nnz == random.nnz
+    np.testing.assert_array_equal(
+        same_topology_random_weights.tocoo().row,
+        base.tocoo().row,
+    )
+    np.testing.assert_array_equal(
+        same_topology_random_weights.tocoo().col,
+        base.tocoo().col,
+    )
     np.testing.assert_allclose(
         np.sort(np.abs(shuffled.data)),
         np.sort(np.abs(base.data)),
         rtol=0,
         atol=1e-7,
+    )
+    assert not np.allclose(
+        np.sort(same_topology_random_weights.data),
+        np.sort(base.data),
     )
     assert not np.allclose(np.sort(random.data), np.sort(base.data))
 
