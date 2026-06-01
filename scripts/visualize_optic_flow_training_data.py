@@ -27,6 +27,51 @@ if str(ROOT) not in sys.path:
 import run_optic_flow_benchmark as optic  # noqa: E402
 
 
+def nearest_neighbors(points: np.ndarray, k: int) -> np.ndarray:
+    if k < 1:
+        raise ValueError("neighbor count must be positive")
+    diff = points[:, None, :] - points[None, :, :]
+    dist = np.sum(diff * diff, axis=-1)
+    order = np.argsort(dist, axis=1)
+    return order[:, 1 : min(k + 1, points.shape[0])]
+
+
+def estimate_lattice_flow(
+    frames: np.ndarray,
+    lattice: np.ndarray,
+    neighbor_count: int,
+    arrow_length: float,
+) -> np.ndarray:
+    """Estimate apparent local motion with a simple brightness-constancy proxy.
+
+    This is only for visualization. The model itself receives luminance samples,
+    not these arrows.
+    """
+    neighbors = nearest_neighbors(lattice, neighbor_count)
+    flows = np.zeros((frames.shape[0], lattice.shape[0], 2), dtype=np.float32)
+    for t in range(frames.shape[0] - 1):
+        current = frames[t]
+        nxt = frames[t + 1]
+        raw = np.zeros((lattice.shape[0], 2), dtype=np.float32)
+        for i, idx in enumerate(neighbors):
+            offsets = lattice[idx] - lattice[i]
+            contrast = current[idx] - current[i]
+            grad, *_ = np.linalg.lstsq(offsets, contrast, rcond=None)
+            grad = grad.astype(np.float32)
+            grad_norm_sq = float(np.dot(grad, grad))
+            if grad_norm_sq < 1e-5:
+                continue
+            temporal = float(nxt[i] - current[i])
+            raw[i] = -temporal * grad / grad_norm_sq
+        smoothed = 0.5 * raw + 0.5 * raw[neighbors].mean(axis=1)
+        flows[t] = smoothed
+    flows[-1] = flows[-2] if frames.shape[0] > 1 else 0.0
+    magnitudes = np.linalg.norm(flows, axis=-1)
+    denom = float(np.percentile(magnitudes[magnitudes > 0], 90)) if np.any(magnitudes > 0) else 1.0
+    scaled = np.clip(flows / max(denom, 1e-6), -1.0, 1.0) * arrow_length
+    return scaled.astype(np.float32)
+
+
 def apply_difficulty(args: argparse.Namespace) -> argparse.Namespace:
     preset = optic.DIFFICULTY_PRESETS[args.difficulty]
     for key, value in preset.items():
@@ -85,6 +130,12 @@ def make_visualization(args: argparse.Namespace) -> Path:
     cumulative_yaw = targets[:, 0] * steps
     cumulative_forward = targets[:, 1] * steps
     cumulative_lateral = targets[:, 2] * steps
+    apparent_flow = estimate_lattice_flow(
+        frames,
+        lattice,
+        neighbor_count=args.flow_neighbors,
+        arrow_length=args.flow_arrow_length,
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -106,6 +157,24 @@ def make_visualization(args: argparse.Namespace) -> Path:
         edgecolors="#1f2937",
         linewidths=0.45,
     )
+    flow_arrows = None
+    if args.show_flow_arrows:
+        flow_arrows = ax_eye.quiver(
+            lattice[:, 0],
+            lattice[:, 1],
+            apparent_flow[0, :, 0],
+            apparent_flow[0, :, 1],
+            angles="xy",
+            scale_units="xy",
+            scale=1,
+            color="#2563eb",
+            alpha=0.78,
+            width=0.006,
+            headwidth=4.0,
+            headlength=5.0,
+            headaxislength=4.2,
+            zorder=5,
+        )
     ax_eye.set_aspect("equal")
     ax_eye.set_xticks([])
     ax_eye.set_yticks([])
@@ -170,6 +239,8 @@ def make_visualization(args: argparse.Namespace) -> Path:
 
     def update(t: int):
         scatter.set_array(frames[t])
+        if flow_arrows is not None:
+            flow_arrows.set_UVC(apparent_flow[t, :, 0], apparent_flow[t, :, 1])
         cumulative_trace.set_data(cumulative_lateral[: t + 1], cumulative_forward[: t + 1])
         translation_arrow.set_UVC(
             np.asarray([cumulative_lateral[t]], dtype=np.float32),
@@ -178,7 +249,8 @@ def make_visualization(args: argparse.Namespace) -> Path:
         time_text.set_text(
             f"frame {t + 1}/{spec.timesteps}\n"
             f"samples {spec.input_dim}\n"
-            f"contrast {spec.contrast:.2f}, noise {spec.sensor_noise_std:.2f}"
+            f"contrast {spec.contrast:.2f}, noise {spec.sensor_noise_std:.2f}\n"
+            f"blue arrows: estimated local motion"
         )
         yaw_bar.patches[0].set_width(float(cumulative_yaw[t]))
         translation_title.set_text(
@@ -188,6 +260,7 @@ def make_visualization(args: argparse.Namespace) -> Path:
         yaw_title.set_text(f"Yaw: {cumulative_yaw[t]:+.2f} rad | rate {target[0]:+.2f}")
         return (
             scatter,
+            flow_arrows,
             translation_arrow,
             cumulative_trace,
             time_text,
@@ -239,6 +312,14 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-forward", type=float, default=0.55)
     parser.add_argument("--max-lateral", type=float, default=0.35)
     parser.add_argument("--motion-scale", type=float, default=0.55)
+    parser.add_argument(
+        "--show-flow-arrows",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Overlay approximate local motion arrows estimated from brightness changes.",
+    )
+    parser.add_argument("--flow-neighbors", type=int, default=6)
+    parser.add_argument("--flow-arrow-length", type=float, default=0.16)
     args = apply_difficulty(parser.parse_args(argv))
     if args.timesteps < 2:
         parser.error("--timesteps must be at least 2")
@@ -246,6 +327,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--hex-rings must be non-negative")
     if args.fps < 1:
         parser.error("--fps must be positive")
+    if args.flow_neighbors < 2:
+        parser.error("--flow-neighbors must be at least 2")
+    if args.flow_arrow_length <= 0:
+        parser.error("--flow-arrow-length must be positive")
     return args
 
 
