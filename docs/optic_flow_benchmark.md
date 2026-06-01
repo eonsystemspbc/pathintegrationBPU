@@ -60,6 +60,22 @@ weights = scaled optic-lobe synapse weights
 
 The recurrent edge values are trainable.
 
+### `random_weight_topology`
+
+The model preserves:
+
+```text
+same neuron count
+same edge count
+same optic-lobe recurrent support/topology
+```
+
+but replaces the optic-lobe synaptic weights with Gaussian random edge weights
+matched to the average absolute scale of the prepared adjacency.
+
+This asks whether the optic-lobe graph support alone is helpful when the actual
+synaptic weight organization is removed.
+
 ### `shuffled_topology`
 
 The model preserves:
@@ -107,7 +123,7 @@ python scripts/run_optic_flow_benchmark.py \
   --flywire-download-dir /home/ec2-user/pathintegrationBPU/flywire_cache \
   --device cuda \
   --difficulty medium \
-  --models optic_lobe_seeded shuffled_topology random_sparse \
+  --models optic_lobe_seeded random_weight_topology shuffled_topology random_sparse \
   --seeds 0 1 2 \
   --epochs 30 \
   --patience 8 \
@@ -127,7 +143,7 @@ python scripts/run_optic_flow_benchmark.py \
   --device cuda \
   --difficulty easy \
   --max-neurons 5000 \
-  --models optic_lobe_seeded shuffled_topology random_sparse \
+  --models optic_lobe_seeded random_weight_topology shuffled_topology random_sparse \
   --seeds 0 \
   --epochs 3 \
   --batch-size 16 \

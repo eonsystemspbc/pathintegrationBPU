@@ -51,9 +51,15 @@ from src.pools import assign_pools  # noqa: E402
 
 
 MODEL_OPTIC_LOBE = "optic_lobe_seeded"
+MODEL_RANDOM_WEIGHT_TOPOLOGY = "random_weight_topology"
 MODEL_SHUFFLED = "shuffled_topology"
 MODEL_RANDOM = "random_sparse"
-MODEL_CHOICES = (MODEL_OPTIC_LOBE, MODEL_SHUFFLED, MODEL_RANDOM)
+MODEL_CHOICES = (
+    MODEL_OPTIC_LOBE,
+    MODEL_RANDOM_WEIGHT_TOPOLOGY,
+    MODEL_SHUFFLED,
+    MODEL_RANDOM,
+)
 DEFAULT_MODELS = MODEL_CHOICES
 
 DEFAULT_OPTIC_ROIS = (
@@ -441,6 +447,14 @@ def random_sparse_normal_like(matrix: sparse.csr_matrix, seed: int) -> sparse.cs
     return sparse.coo_matrix((random_weights, (out_rows, out_cols)), shape=matrix.shape).tocsr()
 
 
+def random_weight_same_topology(matrix: sparse.csr_matrix, seed: int) -> sparse.csr_matrix:
+    rows, cols, weights = _matrix_triplets(matrix)
+    rng = np.random.default_rng(seed)
+    mean_abs = float(np.mean(np.abs(weights))) if len(weights) else 1.0
+    random_weights = rng.normal(0.0, mean_abs, size=len(weights)).astype(np.float32)
+    return sparse.coo_matrix((random_weights, (rows, cols)), shape=matrix.shape).tocsr()
+
+
 def _matrix_triplets(matrix: sparse.spmatrix) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     coo = matrix.tocoo()
     return coo.row.astype(np.int64), coo.col.astype(np.int64), coo.data.astype(np.float32)
@@ -449,6 +463,8 @@ def _matrix_triplets(matrix: sparse.spmatrix) -> tuple[np.ndarray, np.ndarray, n
 def model_matrix(base: sparse.csr_matrix, model_name: str, seed: int) -> sparse.csr_matrix:
     if model_name == MODEL_OPTIC_LOBE:
         return base.copy().astype(np.float32).tocsr()
+    if model_name == MODEL_RANDOM_WEIGHT_TOPOLOGY:
+        return random_weight_same_topology(base, seed).astype(np.float32).tocsr()
     if model_name == MODEL_SHUFFLED:
         return random_control_matrix(base, seed).astype(np.float32).tocsr()
     if model_name == MODEL_RANDOM:
@@ -987,6 +1003,7 @@ def write_report(output_dir: Path, config: dict[str, object], summary: pd.DataFr
         "## Models",
         "",
         "- `optic_lobe_seeded`: observed optic-lobe support and scaled connectome weights.",
+        "- `random_weight_topology`: observed optic-lobe support with random Gaussian edge weights.",
         "- `shuffled_topology`: same neuron and edge count, randomized support, same weight multiset.",
         "- `random_sparse`: same neuron and edge count, randomized support, Gaussian random weights.",
         "",
