@@ -55,23 +55,6 @@ def spec_from_args(args: argparse.Namespace) -> optic.OpticFlowSpec:
     )
 
 
-def _target_text(target: np.ndarray, step: int) -> str:
-    current_yaw = float(target[0] * step)
-    current_forward = float(target[1] * step)
-    current_lateral = float(target[2] * step)
-    return (
-        f"per-step target\n"
-        f"yaw rate: {target[0]:+.3f}\n"
-        f"forward:  {target[1]:+.3f}\n"
-        f"lateral:  {target[2]:+.3f}\n"
-        f"\n"
-        f"current cumulative\n"
-        f"yaw:     {current_yaw:+.3f}\n"
-        f"forward: {current_forward:+.3f}\n"
-        f"lateral: {current_lateral:+.3f}"
-    )
-
-
 def _writer_for(path: Path, fps: int) -> animation.AbstractMovieWriter:
     suffix = path.suffix.lower()
     if suffix == ".gif":
@@ -105,8 +88,8 @@ def make_visualization(args: argparse.Namespace) -> Path:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    fig = plt.figure(figsize=(10.5, 5.8), dpi=args.dpi)
-    gs = fig.add_gridspec(2, 2, width_ratios=[1.25, 1.0], height_ratios=[1.0, 1.0])
+    fig = plt.figure(figsize=(11.2, 5.9), dpi=args.dpi, constrained_layout=True)
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.35, 1.0], height_ratios=[1.0, 1.0])
     ax_eye = fig.add_subplot(gs[:, 0])
     ax_translation = fig.add_subplot(gs[0, 1])
     ax_yaw = fig.add_subplot(gs[1, 1])
@@ -126,7 +109,7 @@ def make_visualization(args: argparse.Namespace) -> Path:
     ax_eye.set_aspect("equal")
     ax_eye.set_xticks([])
     ax_eye.set_yticks([])
-    ax_eye.set_title("Input: fly-like hex retinal samples")
+    ax_eye.set_title("Hex retinal input", fontsize=13, pad=8)
     time_text = ax_eye.text(
         0.02,
         0.98,
@@ -134,11 +117,9 @@ def make_visualization(args: argparse.Namespace) -> Path:
         transform=ax_eye.transAxes,
         va="top",
         ha="left",
-        fontsize=10,
-        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.75, "pad": 4},
+        fontsize=9,
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.82, "pad": 3},
     )
-    cbar = fig.colorbar(scatter, ax=ax_eye, fraction=0.046, pad=0.02)
-    cbar.set_label("sampled luminance")
 
     ax_translation.axhline(0, color="#9ca3af", linewidth=1)
     ax_translation.axvline(0, color="#9ca3af", linewidth=1)
@@ -152,9 +133,9 @@ def make_visualization(args: argparse.Namespace) -> Path:
     ax_translation.set_xlim(-lim, lim)
     ax_translation.set_ylim(-lim, lim)
     ax_translation.set_aspect("equal")
-    ax_translation.set_xlabel("cumulative lateral displacement")
-    ax_translation.set_ylabel("cumulative forward displacement")
-    ax_translation.set_title("Cumulative translation target")
+    ax_translation.set_xlabel("lateral")
+    ax_translation.set_ylabel("forward")
+    translation_title = ax_translation.set_title("Translation target", fontsize=13)
     translation_arrow = ax_translation.quiver(
         [0.0],
         [0.0],
@@ -173,31 +154,19 @@ def make_visualization(args: argparse.Namespace) -> Path:
     ax_yaw.set_ylim(-0.5, 0.5)
     ax_yaw.axvline(0, color="#9ca3af", linewidth=1)
     ax_yaw.set_yticks([])
-    ax_yaw.set_xlabel("cumulative yaw")
-    ax_yaw.set_title("Cumulative yaw target")
+    ax_yaw.set_xlabel("yaw")
+    yaw_title = ax_yaw.set_title("Yaw target", fontsize=13)
     yaw_bar = ax_yaw.barh(
         [0.0],
         [cumulative_yaw[0]],
         height=0.35,
         color="#dc2626" if target[0] >= 0 else "#7c3aed",
     )
-    target_label = ax_yaw.text(
-        0.02,
-        -0.15,
-        _target_text(target, 0),
-        transform=ax_yaw.transAxes,
-        va="top",
-        ha="left",
-        family="monospace",
-        fontsize=10,
-        bbox={"facecolor": "white", "edgecolor": "#d1d5db", "alpha": 0.9, "pad": 5},
-    )
 
     fig.suptitle(
         f"Synthetic optic-flow training example ({args.difficulty}, seed={args.seed})",
         fontsize=13,
     )
-    fig.tight_layout(rect=[0, 0, 1, 0.95])
 
     def update(t: int):
         scatter.set_array(frames[t])
@@ -207,13 +176,25 @@ def make_visualization(args: argparse.Namespace) -> Path:
             np.asarray([cumulative_forward[t]], dtype=np.float32),
         )
         time_text.set_text(
-            f"timestep {t + 1}/{spec.timesteps}\n"
-            f"input_dim={spec.input_dim}\n"
-            f"contrast={spec.contrast:.2f}, noise={spec.sensor_noise_std:.2f}"
+            f"frame {t + 1}/{spec.timesteps}\n"
+            f"samples {spec.input_dim}\n"
+            f"contrast {spec.contrast:.2f}, noise {spec.sensor_noise_std:.2f}"
         )
         yaw_bar.patches[0].set_width(float(cumulative_yaw[t]))
-        target_label.set_text(_target_text(targets[t], t))
-        return scatter, translation_arrow, cumulative_trace, time_text, yaw_bar.patches[0], target_label
+        translation_title.set_text(
+            f"Translation: fwd {cumulative_forward[t]:+.2f}, lat {cumulative_lateral[t]:+.2f}\n"
+            f"per step: fwd {target[1]:+.2f}, lat {target[2]:+.2f}"
+        )
+        yaw_title.set_text(f"Yaw: {cumulative_yaw[t]:+.2f} rad | rate {target[0]:+.2f}")
+        return (
+            scatter,
+            translation_arrow,
+            cumulative_trace,
+            time_text,
+            yaw_bar.patches[0],
+            translation_title,
+            yaw_title,
+        )
 
     anim = animation.FuncAnimation(
         fig,
