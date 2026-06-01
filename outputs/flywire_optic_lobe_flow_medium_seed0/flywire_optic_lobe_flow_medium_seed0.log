@@ -1,0 +1,857 @@
+/home/ec2-user/pathintegrationBPU/pathintegrationBPU/scripts/run_optic_flow_benchmark.py:24: UserWarning: A NumPy version >=1.22.4 and <2.3.0 is required for this version of SciPy (detected version 2.4.4)
+  from scipy import sparse
+download-start connectome=flywire_optic_lobe release=783 download_dir=/home/ec2-user/pathintegrationBPU/flywire_cache optic_rois=LA_L,LA_R,ME_L,ME_R,LO_L,LO_R,LOP_L,LOP_R,AME_L,AME_R max_neurons=0
+download-file-ready kind=proofread_root_ids path=/home/ec2-user/pathintegrationBPU/flywire_cache/proofread_root_ids_783.npy
+Downloading FlyWire file proofread_connections_783.feather from Zenodo...
+download-file-ready kind=proofread_connections path=/home/ec2-user/pathintegrationBPU/flywire_cache/proofread_connections_783.feather
+flywire-read-start file=proofread_connections
+flywire-read-done rows=16847997 elapsed=0s
+optic-filter-done optic_rows=8961836 rois=AME_L,AME_R,LA_L,LA_R,LOP_L,LOP_R,LO_L,LO_R,ME_L,ME_R
+optic-bodyids-ready count=96816
+optic-export-write-start selected_global_rows=10062471 optic_rows=8961836
+optic-export-write-done neurons=96816 aggregated_edges=8757188 output_dir=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0
+download-complete {'primary_rois': ('LA_L', 'LA_R', 'ME_L', 'ME_R', 'LO_L', 'LO_R', 'LOP_L', 'LOP_R', 'AME_L', 'AME_R'), 'neuron_count': 96816, 'edge_count': 8757188, 'flywire_sources_path': '/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0/flywire_sources.json', 'download_dir': '/home/ec2-user/pathintegrationBPU/flywire_cache'}
+prepare-start connectome=flywire_optic_lobe output_dir=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0 signed_policy=auto
+prepare-read-done neurons=96816 roi_rows=293968 connection_rows=8757188
+prepare-adjacency-built N=96816 raw_edges=8757188 nnz=8757188 elapsed=3s
+prepare-signs-done signed_neurons=40267 sign_coverage=0.5278 primary_matrix=unsigned
+prepare-scale-done raw_rho=2447.37 scale=0.000388171 elapsed=3s
+prepare-pools-done pool_counts={'internal': 89644, 'output': 6545, 'sensory': 627}
+prepare-done N=96816 edges=8757188 primary_matrix=unsigned adjacency=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0/adjacency_unsigned.npz elapsed=24s
+prepare-complete matrix=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0/adjacency_unsigned.npz N=96816 edges=8757188
+matrix-load-start path=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0/adjacency_unsigned.npz
+matrix-load-done path=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0/adjacency_unsigned.npz N=96816 edges=8757188 elapsed=0s
+matrix-ready N=96816 edges=8757188 max_neurons=0
+run-start output_dir=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0 device=cuda N=96816 edges=8757188 input_dim=61 timesteps=16 models=optic_lobe_seeded,shuffled_topology,random_sparse
+data-config hex_rings=4 samples=61 panorama=256x96 acceptance_angle_deg=4.0 blur_samples=6 contrast=0.65 sensor_noise_std=0.07 train_batches=140 val_batches=30 test_batches=60 batch_size=64
+model-build-start model=optic_lobe_seeded seed=0 base_N=96816 base_edges=8757188
+model-build-matrix-done model=optic_lobe_seeded seed=0 edges=8757188 elapsed=0s
+model-start model=optic_lobe_seeded seed=0 N=96816 edges=8757188 trainable_params=15050231 recurrent_params=8757188
+epoch-start model=optic_lobe_seeded seed=0 epoch=1/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+/home/ec2-user/pathintegrationBPU/pathintegrationBPU/scripts/run_optic_flow_benchmark.py:391: UserWarning: Sparse invariant checks are implicitly disabled. Memory errors (e.g. SEGFAULT) will occur when operating on a sparse tensor which violates the invariants, but checks incur performance overhead. To silence this warning, explicitly opt in or out. See `torch.sparse.check_sparse_tensor_invariants.__doc__` for guidance.  (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:760.)
+  W = torch.sparse_coo_tensor(
+progress model=optic_lobe_seeded seed=0 epoch=1/30 batch=24/140 batch_loss=0.0616944 running_train_loss=19.9915 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=1/30 batch=49/140 batch_loss=0.0610886 running_train_loss=9.84979 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m00s
+progress model=optic_lobe_seeded seed=0 epoch=1/30 batch=74/140 batch_loss=0.0464851 running_train_loss=6.54207 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=1/30 batch=99/140 batch_loss=0.0347916 running_train_loss=4.90066 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=1/30 batch=124/140 batch_loss=0.0343053 running_train_loss=3.92038 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_1 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50001
+data-gen-done phase=val_epoch_1 model=optic_lobe_seeded loss=0.0386134 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=1/30 train_loss=3.47667 val_loss=0.0386134 val_yaw_rmse=0.146408 val_translation_rmse=0.217261 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0386134 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=2/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=2/30 batch=25/140 batch_loss=0.032835 running_train_loss=0.0353338 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=2/30 batch=50/140 batch_loss=0.0338966 running_train_loss=0.0353748 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=2/30 batch=75/140 batch_loss=0.0283512 running_train_loss=0.0350199 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=2/30 batch=100/140 batch_loss=0.035158 running_train_loss=0.0351381 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=2/30 batch=125/140 batch_loss=0.0363237 running_train_loss=0.0351246 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_2 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50002
+data-gen-done phase=val_epoch_2 model=optic_lobe_seeded loss=0.032695 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=2/30 train_loss=0.0349184 val_loss=0.032695 val_yaw_rmse=0.145251 val_translation_rmse=0.196198 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.032695 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=3/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=3/30 batch=25/140 batch_loss=0.0319862 running_train_loss=0.0334939 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=3/30 batch=50/140 batch_loss=0.0328239 running_train_loss=0.033263 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=3/30 batch=75/140 batch_loss=0.0296597 running_train_loss=0.0331224 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=3/30 batch=100/140 batch_loss=0.0338838 running_train_loss=0.0328102 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=3/30 batch=125/140 batch_loss=0.0288871 running_train_loss=0.0327848 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_3 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50003
+data-gen-done phase=val_epoch_3 model=optic_lobe_seeded loss=0.029846 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=3/30 train_loss=0.0325679 val_loss=0.029846 val_yaw_rmse=0.139627 val_translation_rmse=0.187139 data_gen_elapsed=43s train_step_elapsed=1m53s best_val_loss=0.029846 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=4/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=4/30 batch=25/140 batch_loss=0.0305879 running_train_loss=0.0314153 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=4/30 batch=50/140 batch_loss=0.0304657 running_train_loss=0.0314453 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=4/30 batch=75/140 batch_loss=0.0285893 running_train_loss=0.0309674 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=4/30 batch=100/140 batch_loss=0.024806 running_train_loss=0.0302807 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=4/30 batch=125/140 batch_loss=0.0279051 running_train_loss=0.0299781 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_4 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50004
+data-gen-done phase=val_epoch_4 model=optic_lobe_seeded loss=0.0268711 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=4/30 train_loss=0.0298517 val_loss=0.0268711 val_yaw_rmse=0.1303 val_translation_rmse=0.178375 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0268711 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=5/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=5/30 batch=25/140 batch_loss=0.0299584 running_train_loss=0.0282254 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=5/30 batch=50/140 batch_loss=0.0272857 running_train_loss=0.0277562 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=5/30 batch=75/140 batch_loss=0.0245441 running_train_loss=0.0275513 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=5/30 batch=100/140 batch_loss=0.0315478 running_train_loss=0.0274202 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=5/30 batch=125/140 batch_loss=0.0281195 running_train_loss=0.0270856 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_5 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50005
+data-gen-done phase=val_epoch_5 model=optic_lobe_seeded loss=0.0270991 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=5/30 train_loss=0.0268665 val_loss=0.0270991 val_yaw_rmse=0.138792 val_translation_rmse=0.176116 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0268711 patience_wait=1
+epoch-start model=optic_lobe_seeded seed=0 epoch=6/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=6/30 batch=25/140 batch_loss=0.0252457 running_train_loss=0.0264377 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=6/30 batch=50/140 batch_loss=0.026557 running_train_loss=0.0262532 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=6/30 batch=75/140 batch_loss=0.0239572 running_train_loss=0.0256386 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=6/30 batch=100/140 batch_loss=0.0226057 running_train_loss=0.0255489 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=6/30 batch=125/140 batch_loss=0.0253524 running_train_loss=0.0254425 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_6 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50006
+data-gen-done phase=val_epoch_6 model=optic_lobe_seeded loss=0.0220442 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=6/30 train_loss=0.025258 val_loss=0.0220442 val_yaw_rmse=0.110626 val_translation_rmse=0.164156 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0220442 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=7/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=7/30 batch=25/140 batch_loss=0.0240278 running_train_loss=0.0232087 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=7/30 batch=50/140 batch_loss=0.0260341 running_train_loss=0.0232878 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=7/30 batch=75/140 batch_loss=0.0234531 running_train_loss=0.0230749 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=7/30 batch=100/140 batch_loss=0.024427 running_train_loss=0.0229537 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=7/30 batch=125/140 batch_loss=0.022733 running_train_loss=0.0232808 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_7 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50007
+data-gen-done phase=val_epoch_7 model=optic_lobe_seeded loss=0.0223048 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=7/30 train_loss=0.0232072 val_loss=0.0223048 val_yaw_rmse=0.11088 val_translation_rmse=0.165258 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0220442 patience_wait=1
+epoch-start model=optic_lobe_seeded seed=0 epoch=8/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=8/30 batch=25/140 batch_loss=0.0214949 running_train_loss=0.0219469 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=8/30 batch=50/140 batch_loss=0.0215011 running_train_loss=0.022139 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=8/30 batch=75/140 batch_loss=0.0220379 running_train_loss=0.0218891 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=8/30 batch=100/140 batch_loss=0.0226545 running_train_loss=0.0219388 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=8/30 batch=125/140 batch_loss=0.0203591 running_train_loss=0.0217871 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_8 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50008
+data-gen-done phase=val_epoch_8 model=optic_lobe_seeded loss=0.0224408 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=8/30 train_loss=0.0217265 val_loss=0.0224408 val_yaw_rmse=0.108012 val_translation_rmse=0.166817 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0220442 patience_wait=2
+epoch-start model=optic_lobe_seeded seed=0 epoch=9/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=9/30 batch=25/140 batch_loss=0.0208587 running_train_loss=0.0207842 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=9/30 batch=50/140 batch_loss=0.0254044 running_train_loss=0.0213009 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=9/30 batch=75/140 batch_loss=0.0236424 running_train_loss=0.0210965 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=9/30 batch=100/140 batch_loss=0.0222442 running_train_loss=0.0213093 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=9/30 batch=125/140 batch_loss=0.0200897 running_train_loss=0.0213356 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_9 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50009
+data-gen-done phase=val_epoch_9 model=optic_lobe_seeded loss=0.019931 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=9/30 train_loss=0.0211961 val_loss=0.019931 val_yaw_rmse=0.103376 val_translation_rmse=0.156694 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.019931 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=10/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=10/30 batch=25/140 batch_loss=0.0223774 running_train_loss=0.0203493 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=10/30 batch=50/140 batch_loss=0.0228907 running_train_loss=0.0212477 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=10/30 batch=75/140 batch_loss=0.019047 running_train_loss=0.0212885 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=10/30 batch=100/140 batch_loss=0.0220706 running_train_loss=0.0212353 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=10/30 batch=125/140 batch_loss=0.0199709 running_train_loss=0.0209936 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_10 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50010
+data-gen-done phase=val_epoch_10 model=optic_lobe_seeded loss=0.0206341 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=10/30 train_loss=0.0210164 val_loss=0.0206341 val_yaw_rmse=0.105701 val_translation_rmse=0.159263 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.019931 patience_wait=1
+epoch-start model=optic_lobe_seeded seed=0 epoch=11/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=11/30 batch=25/140 batch_loss=0.019425 running_train_loss=0.020326 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=11/30 batch=50/140 batch_loss=0.0189481 running_train_loss=0.0203076 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=11/30 batch=75/140 batch_loss=0.0192208 running_train_loss=0.0200005 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=11/30 batch=100/140 batch_loss=0.0181241 running_train_loss=0.0202185 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=11/30 batch=125/140 batch_loss=0.0189392 running_train_loss=0.0201267 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_11 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50011
+data-gen-done phase=val_epoch_11 model=optic_lobe_seeded loss=0.0197733 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=11/30 train_loss=0.0200742 val_loss=0.0197733 val_yaw_rmse=0.0986192 val_translation_rmse=0.157471 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0197733 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=12/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=12/30 batch=25/140 batch_loss=0.0181786 running_train_loss=0.0194493 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=12/30 batch=50/140 batch_loss=0.0209523 running_train_loss=0.0194492 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=12/30 batch=75/140 batch_loss=0.016552 running_train_loss=0.0193259 data_gen_elapsed=24s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=12/30 batch=100/140 batch_loss=0.0228568 running_train_loss=0.0193915 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=12/30 batch=125/140 batch_loss=0.0199344 running_train_loss=0.0191514 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_12 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50012
+data-gen-done phase=val_epoch_12 model=optic_lobe_seeded loss=0.0183991 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=12/30 train_loss=0.0191473 val_loss=0.0183991 val_yaw_rmse=0.0992833 val_translation_rmse=0.150566 data_gen_elapsed=45s train_step_elapsed=1m53s best_val_loss=0.0183991 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=13/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=13/30 batch=25/140 batch_loss=0.0195705 running_train_loss=0.0188441 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=13/30 batch=50/140 batch_loss=0.017898 running_train_loss=0.0189836 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=13/30 batch=75/140 batch_loss=0.0223933 running_train_loss=0.0189667 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=13/30 batch=100/140 batch_loss=0.0175618 running_train_loss=0.0190339 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=13/30 batch=125/140 batch_loss=0.0233361 running_train_loss=0.0189725 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_13 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50013
+data-gen-done phase=val_epoch_13 model=optic_lobe_seeded loss=0.0182997 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=13/30 train_loss=0.0189497 val_loss=0.0182997 val_yaw_rmse=0.101361 val_translation_rmse=0.149374 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0182997 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=14/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=14/30 batch=25/140 batch_loss=0.0186268 running_train_loss=0.0180537 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=14/30 batch=50/140 batch_loss=0.0197204 running_train_loss=0.0175642 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=14/30 batch=75/140 batch_loss=0.0181961 running_train_loss=0.0177813 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=14/30 batch=100/140 batch_loss=0.0172472 running_train_loss=0.0181926 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=14/30 batch=125/140 batch_loss=0.019042 running_train_loss=0.0183187 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_14 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50014
+data-gen-done phase=val_epoch_14 model=optic_lobe_seeded loss=0.0174187 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=14/30 train_loss=0.0182651 val_loss=0.0174187 val_yaw_rmse=0.0967042 val_translation_rmse=0.146466 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0174187 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=15/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=15/30 batch=25/140 batch_loss=0.0165319 running_train_loss=0.0177472 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=15/30 batch=50/140 batch_loss=0.0159384 running_train_loss=0.0177593 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=15/30 batch=75/140 batch_loss=0.016993 running_train_loss=0.0175935 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=15/30 batch=100/140 batch_loss=0.0167034 running_train_loss=0.0174789 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=15/30 batch=125/140 batch_loss=0.0206341 running_train_loss=0.0176884 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_15 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50015
+data-gen-done phase=val_epoch_15 model=optic_lobe_seeded loss=0.0164418 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=15/30 train_loss=0.0175884 val_loss=0.0164418 val_yaw_rmse=0.0916668 val_translation_rmse=0.143043 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0164418 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=16/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=16/30 batch=25/140 batch_loss=0.0148898 running_train_loss=0.0166449 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=16/30 batch=50/140 batch_loss=0.0174965 running_train_loss=0.0171935 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=16/30 batch=75/140 batch_loss=0.0179226 running_train_loss=0.0171629 data_gen_elapsed=24s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=16/30 batch=100/140 batch_loss=0.016562 running_train_loss=0.0172406 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=16/30 batch=125/140 batch_loss=0.0184348 running_train_loss=0.0171154 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_16 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50016
+data-gen-done phase=val_epoch_16 model=optic_lobe_seeded loss=0.0167085 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=16/30 train_loss=0.0171729 val_loss=0.0167085 val_yaw_rmse=0.097086 val_translation_rmse=0.142653 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0164418 patience_wait=1
+epoch-start model=optic_lobe_seeded seed=0 epoch=17/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=17/30 batch=25/140 batch_loss=0.016498 running_train_loss=0.0172794 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=17/30 batch=50/140 batch_loss=0.0177997 running_train_loss=0.0169231 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=17/30 batch=75/140 batch_loss=0.0164164 running_train_loss=0.0171384 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=17/30 batch=100/140 batch_loss=0.0166403 running_train_loss=0.0169119 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=17/30 batch=125/140 batch_loss=0.0181062 running_train_loss=0.0169154 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_17 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50017
+data-gen-done phase=val_epoch_17 model=optic_lobe_seeded loss=0.0190212 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=17/30 train_loss=0.0168971 val_loss=0.0190212 val_yaw_rmse=0.0900098 val_translation_rmse=0.156464 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0164418 patience_wait=2
+epoch-start model=optic_lobe_seeded seed=0 epoch=18/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=18/30 batch=25/140 batch_loss=0.0173712 running_train_loss=0.0179333 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=18/30 batch=50/140 batch_loss=0.020251 running_train_loss=0.0176596 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=18/30 batch=75/140 batch_loss=0.0164695 running_train_loss=0.0172662 data_gen_elapsed=24s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=18/30 batch=100/140 batch_loss=0.0170836 running_train_loss=0.0169283 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m03s
+progress model=optic_lobe_seeded seed=0 epoch=18/30 batch=125/140 batch_loss=0.0163403 running_train_loss=0.0167536 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_18 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50018
+data-gen-done phase=val_epoch_18 model=optic_lobe_seeded loss=0.0153716 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=18/30 train_loss=0.0166404 val_loss=0.0153716 val_yaw_rmse=0.0870377 val_translation_rmse=0.138815 data_gen_elapsed=45s train_step_elapsed=1m53s best_val_loss=0.0153716 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=19/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=19/30 batch=25/140 batch_loss=0.0154378 running_train_loss=0.0164847 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=19/30 batch=50/140 batch_loss=0.0187231 running_train_loss=0.0162499 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=19/30 batch=75/140 batch_loss=0.0140115 running_train_loss=0.0162342 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=19/30 batch=100/140 batch_loss=0.0141499 running_train_loss=0.0162836 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=19/30 batch=125/140 batch_loss=0.0136722 running_train_loss=0.0161331 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_19 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50019
+data-gen-done phase=val_epoch_19 model=optic_lobe_seeded loss=0.0166405 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=19/30 train_loss=0.0161346 val_loss=0.0166405 val_yaw_rmse=0.0858977 val_translation_rmse=0.145848 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0153716 patience_wait=1
+epoch-start model=optic_lobe_seeded seed=0 epoch=20/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=20/30 batch=25/140 batch_loss=0.0145245 running_train_loss=0.0155869 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=20/30 batch=50/140 batch_loss=0.0158118 running_train_loss=0.0158388 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=20/30 batch=75/140 batch_loss=0.0191406 running_train_loss=0.0160325 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=20/30 batch=100/140 batch_loss=0.0167607 running_train_loss=0.0160527 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=20/30 batch=125/140 batch_loss=0.0181357 running_train_loss=0.0160041 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_20 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50020
+data-gen-done phase=val_epoch_20 model=optic_lobe_seeded loss=0.0165995 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=20/30 train_loss=0.015982 val_loss=0.0165995 val_yaw_rmse=0.0890202 val_translation_rmse=0.144696 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0153716 patience_wait=2
+epoch-start model=optic_lobe_seeded seed=0 epoch=21/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=21/30 batch=25/140 batch_loss=0.0140449 running_train_loss=0.0161782 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=21/30 batch=50/140 batch_loss=0.0150703 running_train_loss=0.0158587 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=21/30 batch=75/140 batch_loss=0.017293 running_train_loss=0.0158984 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=21/30 batch=100/140 batch_loss=0.0154849 running_train_loss=0.0158659 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=21/30 batch=125/140 batch_loss=0.0162523 running_train_loss=0.0157329 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_21 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50021
+data-gen-done phase=val_epoch_21 model=optic_lobe_seeded loss=0.0154212 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=21/30 train_loss=0.0156902 val_loss=0.0154212 val_yaw_rmse=0.091737 val_translation_rmse=0.137565 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0153716 patience_wait=3
+epoch-start model=optic_lobe_seeded seed=0 epoch=22/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=22/30 batch=25/140 batch_loss=0.0154519 running_train_loss=0.0153611 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=22/30 batch=50/140 batch_loss=0.0128864 running_train_loss=0.0157481 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=22/30 batch=75/140 batch_loss=0.0148735 running_train_loss=0.015578 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=22/30 batch=100/140 batch_loss=0.0156512 running_train_loss=0.0156471 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=22/30 batch=125/140 batch_loss=0.0150336 running_train_loss=0.015557 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_22 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50022
+data-gen-done phase=val_epoch_22 model=optic_lobe_seeded loss=0.014624 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=22/30 train_loss=0.0154631 val_loss=0.014624 val_yaw_rmse=0.0846813 val_translation_rmse=0.135464 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.014624 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=23/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=23/30 batch=25/140 batch_loss=0.0148176 running_train_loss=0.0146167 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=23/30 batch=50/140 batch_loss=0.0158298 running_train_loss=0.0149552 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=23/30 batch=75/140 batch_loss=0.0165379 running_train_loss=0.0148614 data_gen_elapsed=24s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=23/30 batch=100/140 batch_loss=0.0182912 running_train_loss=0.0152696 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=23/30 batch=125/140 batch_loss=0.0138739 running_train_loss=0.0151845 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_23 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50023
+data-gen-done phase=val_epoch_23 model=optic_lobe_seeded loss=0.0157865 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=23/30 train_loss=0.0152074 val_loss=0.0157865 val_yaw_rmse=0.0918089 val_translation_rmse=0.139518 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.014624 patience_wait=1
+epoch-start model=optic_lobe_seeded seed=0 epoch=24/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=24/30 batch=25/140 batch_loss=0.016929 running_train_loss=0.0161461 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=24/30 batch=50/140 batch_loss=0.016071 running_train_loss=0.0156867 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=24/30 batch=75/140 batch_loss=0.0161488 running_train_loss=0.0154499 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=24/30 batch=100/140 batch_loss=0.0165884 running_train_loss=0.0153618 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=24/30 batch=125/140 batch_loss=0.0128 running_train_loss=0.0153741 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_24 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50024
+data-gen-done phase=val_epoch_24 model=optic_lobe_seeded loss=0.0147948 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=24/30 train_loss=0.0152447 val_loss=0.0147948 val_yaw_rmse=0.0829528 val_translation_rmse=0.136936 data_gen_elapsed=43s train_step_elapsed=1m53s best_val_loss=0.014624 patience_wait=2
+epoch-start model=optic_lobe_seeded seed=0 epoch=25/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=25/30 batch=25/140 batch_loss=0.0161597 running_train_loss=0.0147856 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=25/30 batch=50/140 batch_loss=0.0149839 running_train_loss=0.0152729 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=25/30 batch=75/140 batch_loss=0.0141718 running_train_loss=0.0150582 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=25/30 batch=100/140 batch_loss=0.0140927 running_train_loss=0.0150398 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=25/30 batch=125/140 batch_loss=0.0161253 running_train_loss=0.0150887 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_25 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50025
+data-gen-done phase=val_epoch_25 model=optic_lobe_seeded loss=0.0149184 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=optic_lobe_seeded seed=0 epoch=25/30 train_loss=0.0150853 val_loss=0.0149184 val_yaw_rmse=0.0846083 val_translation_rmse=0.137107 data_gen_elapsed=43s train_step_elapsed=1m53s best_val_loss=0.014624 patience_wait=3
+epoch-start model=optic_lobe_seeded seed=0 epoch=26/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=26/30 batch=25/140 batch_loss=0.0154839 running_train_loss=0.0147141 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=26/30 batch=50/140 batch_loss=0.0134326 running_train_loss=0.0144777 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=26/30 batch=75/140 batch_loss=0.0156787 running_train_loss=0.0145099 data_gen_elapsed=24s train_step_elapsed=1m00s elapsed=1m32s
+progress model=optic_lobe_seeded seed=0 epoch=26/30 batch=100/140 batch_loss=0.01713 running_train_loss=0.0148156 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=26/30 batch=125/140 batch_loss=0.015769 running_train_loss=0.0148569 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_26 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50026
+data-gen-done phase=val_epoch_26 model=optic_lobe_seeded loss=0.015072 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=optic_lobe_seeded seed=0 epoch=26/30 train_loss=0.0149118 val_loss=0.015072 val_yaw_rmse=0.0834667 val_translation_rmse=0.138292 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.014624 patience_wait=4
+epoch-start model=optic_lobe_seeded seed=0 epoch=27/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=27/30 batch=25/140 batch_loss=0.0147737 running_train_loss=0.0150392 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=27/30 batch=50/140 batch_loss=0.0132661 running_train_loss=0.0147298 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=27/30 batch=75/140 batch_loss=0.0152789 running_train_loss=0.0146879 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=27/30 batch=100/140 batch_loss=0.0145822 running_train_loss=0.014514 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=27/30 batch=125/140 batch_loss=0.0139788 running_train_loss=0.0144385 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_27 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50027
+data-gen-done phase=val_epoch_27 model=optic_lobe_seeded loss=0.0140055 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=27/30 train_loss=0.0144054 val_loss=0.0140055 val_yaw_rmse=0.0870413 val_translation_rmse=0.131226 data_gen_elapsed=43s train_step_elapsed=1m53s best_val_loss=0.0140055 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=28/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=28/30 batch=25/140 batch_loss=0.0172585 running_train_loss=0.0149238 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=28/30 batch=50/140 batch_loss=0.0155462 running_train_loss=0.0148842 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=28/30 batch=75/140 batch_loss=0.0145813 running_train_loss=0.0146359 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=28/30 batch=100/140 batch_loss=0.0147614 running_train_loss=0.0145287 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=28/30 batch=125/140 batch_loss=0.0148426 running_train_loss=0.0145967 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_28 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50028
+data-gen-done phase=val_epoch_28 model=optic_lobe_seeded loss=0.0145605 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=28/30 train_loss=0.0145958 val_loss=0.0145605 val_yaw_rmse=0.0818772 val_translation_rmse=0.135974 data_gen_elapsed=43s train_step_elapsed=1m53s best_val_loss=0.0140055 patience_wait=1
+epoch-start model=optic_lobe_seeded seed=0 epoch=29/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=29/30 batch=25/140 batch_loss=0.0142025 running_train_loss=0.013692 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=29/30 batch=50/140 batch_loss=0.0140366 running_train_loss=0.0143978 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=29/30 batch=75/140 batch_loss=0.0146006 running_train_loss=0.0144514 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=29/30 batch=100/140 batch_loss=0.0148021 running_train_loss=0.0143695 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=29/30 batch=125/140 batch_loss=0.0154972 running_train_loss=0.0144082 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_29 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50029
+data-gen-done phase=val_epoch_29 model=optic_lobe_seeded loss=0.0137529 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=29/30 train_loss=0.0143408 val_loss=0.0137529 val_yaw_rmse=0.0793534 val_translation_rmse=0.132215 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0137529 patience_wait=0
+epoch-start model=optic_lobe_seeded seed=0 epoch=30/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=optic_lobe_seeded seed=0 epoch=30/30 batch=25/140 batch_loss=0.0121406 running_train_loss=0.0138048 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=optic_lobe_seeded seed=0 epoch=30/30 batch=50/140 batch_loss=0.013915 running_train_loss=0.0142463 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=optic_lobe_seeded seed=0 epoch=30/30 batch=75/140 batch_loss=0.0145929 running_train_loss=0.0140505 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=optic_lobe_seeded seed=0 epoch=30/30 batch=100/140 batch_loss=0.0130722 running_train_loss=0.0141403 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=optic_lobe_seeded seed=0 epoch=30/30 batch=125/140 batch_loss=0.0124013 running_train_loss=0.0140005 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_30 model=optic_lobe_seeded batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50030
+data-gen-done phase=val_epoch_30 model=optic_lobe_seeded loss=0.0141839 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=optic_lobe_seeded seed=0 epoch=30/30 train_loss=0.0139945 val_loss=0.0141839 val_yaw_rmse=0.0804878 val_translation_rmse=0.134301 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0137529 patience_wait=1
+data-gen-start phase=test model=optic_lobe_seeded batches=60 batch_size=64 timesteps=16 input_dim=61 seed=90000
+data-gen-done phase=test model=optic_lobe_seeded loss=0.0138693 data_gen_elapsed=18s eval_elapsed=0s elapsed=21s
+model-done model=optic_lobe_seeded seed=0 best_val_loss=0.0137529 test_overall_rmse=0.117768 test_yaw_rmse=0.0806797
+model-build-start model=shuffled_topology seed=0 base_N=96816 base_edges=8757188
+model-build-matrix-done model=shuffled_topology seed=0 edges=8757188 elapsed=3s
+model-start model=shuffled_topology seed=0 N=96816 edges=8757188 trainable_params=15050231 recurrent_params=8757188
+epoch-start model=shuffled_topology seed=0 epoch=1/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=1/30 batch=25/140 batch_loss=0.113485 running_train_loss=17.6849 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=1/30 batch=50/140 batch_loss=0.0882375 running_train_loss=8.88622 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=1/30 batch=75/140 batch_loss=0.0434549 running_train_loss=5.94439 data_gen_elapsed=24s train_step_elapsed=1m01s elapsed=1m32s
+progress model=shuffled_topology seed=0 epoch=1/30 batch=100/140 batch_loss=0.0410027 running_train_loss=4.46875 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m03s
+progress model=shuffled_topology seed=0 epoch=1/30 batch=125/140 batch_loss=0.0366909 running_train_loss=3.58247 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_1 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50001
+data-gen-done phase=val_epoch_1 model=shuffled_topology loss=0.0365784 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=1/30 train_loss=3.20287 val_loss=0.0365784 val_yaw_rmse=0.146972 val_translation_rmse=0.209922 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0365784 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=2/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=2/30 batch=25/140 batch_loss=0.0341237 running_train_loss=0.0361526 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=2/30 batch=50/140 batch_loss=0.0361758 running_train_loss=0.0360253 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=2/30 batch=75/140 batch_loss=0.0287743 running_train_loss=0.0353886 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=2/30 batch=100/140 batch_loss=0.0343658 running_train_loss=0.0354315 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=2/30 batch=125/140 batch_loss=0.0373713 running_train_loss=0.0354158 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_2 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50002
+data-gen-done phase=val_epoch_2 model=shuffled_topology loss=0.0331639 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=2/30 train_loss=0.0352208 val_loss=0.0331639 val_yaw_rmse=0.147288 val_translation_rmse=0.197229 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0331639 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=3/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=3/30 batch=25/140 batch_loss=0.0336446 running_train_loss=0.0344561 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=3/30 batch=50/140 batch_loss=0.0342677 running_train_loss=0.0341992 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=3/30 batch=75/140 batch_loss=0.0303565 running_train_loss=0.0340223 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=3/30 batch=100/140 batch_loss=0.0337291 running_train_loss=0.0339248 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=3/30 batch=125/140 batch_loss=0.0312207 running_train_loss=0.0339328 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_3 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50003
+data-gen-done phase=val_epoch_3 model=shuffled_topology loss=0.0332251 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=3/30 train_loss=0.0338506 val_loss=0.0332251 val_yaw_rmse=0.145454 val_translation_rmse=0.198139 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0331639 patience_wait=1
+epoch-start model=shuffled_topology seed=0 epoch=4/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=4/30 batch=25/140 batch_loss=0.0328086 running_train_loss=0.033055 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=4/30 batch=50/140 batch_loss=0.0318394 running_train_loss=0.0333583 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=4/30 batch=75/140 batch_loss=0.0322368 running_train_loss=0.033276 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=4/30 batch=100/140 batch_loss=0.0281898 running_train_loss=0.0328979 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=4/30 batch=125/140 batch_loss=0.0334247 running_train_loss=0.0328633 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_4 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50004
+data-gen-done phase=val_epoch_4 model=shuffled_topology loss=0.0344781 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=4/30 train_loss=0.0329779 val_loss=0.0344781 val_yaw_rmse=0.142746 val_translation_rmse=0.203787 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0331639 patience_wait=2
+epoch-start model=shuffled_topology seed=0 epoch=5/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=5/30 batch=25/140 batch_loss=0.0323808 running_train_loss=0.0327736 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=5/30 batch=50/140 batch_loss=0.0309515 running_train_loss=0.0322225 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=5/30 batch=75/140 batch_loss=0.0297829 running_train_loss=0.0320497 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=5/30 batch=100/140 batch_loss=0.0379604 running_train_loss=0.0321853 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=5/30 batch=125/140 batch_loss=0.0311035 running_train_loss=0.0320528 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_5 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50005
+data-gen-done phase=val_epoch_5 model=shuffled_topology loss=0.0303572 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=5/30 train_loss=0.0318919 val_loss=0.0303572 val_yaw_rmse=0.138153 val_translation_rmse=0.189717 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0303572 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=6/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=6/30 batch=25/140 batch_loss=0.0339547 running_train_loss=0.032023 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=6/30 batch=50/140 batch_loss=0.0316409 running_train_loss=0.0316183 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=6/30 batch=75/140 batch_loss=0.0314204 running_train_loss=0.0310378 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=6/30 batch=100/140 batch_loss=0.0297411 running_train_loss=0.0311604 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=6/30 batch=125/140 batch_loss=0.0321146 running_train_loss=0.0311552 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_6 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50006
+data-gen-done phase=val_epoch_6 model=shuffled_topology loss=0.028623 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=6/30 train_loss=0.0310421 val_loss=0.028623 val_yaw_rmse=0.136399 val_translation_rmse=0.183391 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.028623 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=7/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=7/30 batch=25/140 batch_loss=0.0296875 running_train_loss=0.030441 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=7/30 batch=50/140 batch_loss=0.0343516 running_train_loss=0.0299159 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=7/30 batch=75/140 batch_loss=0.033058 running_train_loss=0.0297194 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=7/30 batch=100/140 batch_loss=0.0324091 running_train_loss=0.0298736 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=7/30 batch=125/140 batch_loss=0.0294091 running_train_loss=0.0299391 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_7 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50007
+data-gen-done phase=val_epoch_7 model=shuffled_topology loss=0.0287997 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=7/30 train_loss=0.0298003 val_loss=0.0287997 val_yaw_rmse=0.134378 val_translation_rmse=0.184853 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.028623 patience_wait=1
+epoch-start model=shuffled_topology seed=0 epoch=8/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=8/30 batch=25/140 batch_loss=0.0277101 running_train_loss=0.0289593 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=8/30 batch=50/140 batch_loss=0.0273677 running_train_loss=0.0293268 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=8/30 batch=75/140 batch_loss=0.0336988 running_train_loss=0.029231 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=8/30 batch=101/140 batch_loss=0.0283368 running_train_loss=0.0291355 data_gen_elapsed=32s train_step_elapsed=1m20s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=8/30 batch=128/140 batch_loss=0.0263575 running_train_loss=0.028788 data_gen_elapsed=40s train_step_elapsed=1m40s elapsed=2m33s
+data-gen-start phase=val_epoch_8 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50008
+data-gen-done phase=val_epoch_8 model=shuffled_topology loss=0.027447 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=8/30 train_loss=0.0286765 val_loss=0.027447 val_yaw_rmse=0.128591 val_translation_rmse=0.181391 data_gen_elapsed=44s train_step_elapsed=1m49s best_val_loss=0.027447 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=9/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=9/30 batch=25/140 batch_loss=0.0290961 running_train_loss=0.027136 data_gen_elapsed=7s train_step_elapsed=19s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=9/30 batch=50/140 batch_loss=0.0327851 running_train_loss=0.0275396 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m00s
+progress model=shuffled_topology seed=0 epoch=9/30 batch=75/140 batch_loss=0.0311197 running_train_loss=0.0275792 data_gen_elapsed=23s train_step_elapsed=1m00s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=9/30 batch=100/140 batch_loss=0.0280951 running_train_loss=0.027674 data_gen_elapsed=31s train_step_elapsed=1m20s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=9/30 batch=125/140 batch_loss=0.0246784 running_train_loss=0.0275616 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_9 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50009
+data-gen-done phase=val_epoch_9 model=shuffled_topology loss=0.026883 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=9/30 train_loss=0.0274871 val_loss=0.026883 val_yaw_rmse=0.127829 val_translation_rmse=0.179316 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.026883 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=10/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=10/30 batch=25/140 batch_loss=0.0291469 running_train_loss=0.0271404 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=10/30 batch=50/140 batch_loss=0.0262873 running_train_loss=0.0280106 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=10/30 batch=75/140 batch_loss=0.0264274 running_train_loss=0.027885 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=shuffled_topology seed=0 epoch=10/30 batch=100/140 batch_loss=0.0272967 running_train_loss=0.0278035 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=10/30 batch=125/140 batch_loss=0.029489 running_train_loss=0.0277473 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_10 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50010
+data-gen-done phase=val_epoch_10 model=shuffled_topology loss=0.027571 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=10/30 train_loss=0.0277662 val_loss=0.027571 val_yaw_rmse=0.135525 val_translation_rmse=0.179368 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.026883 patience_wait=1
+epoch-start model=shuffled_topology seed=0 epoch=11/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=11/30 batch=25/140 batch_loss=0.0274828 running_train_loss=0.0279005 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=11/30 batch=50/140 batch_loss=0.025378 running_train_loss=0.0273905 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=11/30 batch=75/140 batch_loss=0.0251536 running_train_loss=0.0270162 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=11/30 batch=100/140 batch_loss=0.0242672 running_train_loss=0.0271851 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=11/30 batch=125/140 batch_loss=0.0253951 running_train_loss=0.0271947 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_11 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50011
+data-gen-done phase=val_epoch_11 model=shuffled_topology loss=0.0276281 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=11/30 train_loss=0.0271799 val_loss=0.0276281 val_yaw_rmse=0.129007 val_translation_rmse=0.181991 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.026883 patience_wait=2
+epoch-start model=shuffled_topology seed=0 epoch=12/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=12/30 batch=25/140 batch_loss=0.023846 running_train_loss=0.0267876 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=12/30 batch=50/140 batch_loss=0.027467 running_train_loss=0.0268521 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=12/30 batch=75/140 batch_loss=0.0228664 running_train_loss=0.0266615 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=12/30 batch=100/140 batch_loss=0.0318262 running_train_loss=0.0266694 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=12/30 batch=125/140 batch_loss=0.0281858 running_train_loss=0.026529 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_12 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50012
+data-gen-done phase=val_epoch_12 model=shuffled_topology loss=0.0260337 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=12/30 train_loss=0.0265029 val_loss=0.0260337 val_yaw_rmse=0.134036 val_translation_rmse=0.1734 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0260337 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=13/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=13/30 batch=25/140 batch_loss=0.0256115 running_train_loss=0.0261417 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=13/30 batch=50/140 batch_loss=0.0244236 running_train_loss=0.0259288 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=13/30 batch=75/140 batch_loss=0.0280702 running_train_loss=0.0262039 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=13/30 batch=100/140 batch_loss=0.024567 running_train_loss=0.0261422 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=13/30 batch=125/140 batch_loss=0.0283876 running_train_loss=0.0260069 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_13 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50013
+data-gen-done phase=val_epoch_13 model=shuffled_topology loss=0.0254275 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=13/30 train_loss=0.0259443 val_loss=0.0254275 val_yaw_rmse=0.122946 val_translation_rmse=0.174881 data_gen_elapsed=44s train_step_elapsed=1m53s best_val_loss=0.0254275 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=14/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=14/30 batch=25/140 batch_loss=0.0260528 running_train_loss=0.0249547 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=14/30 batch=50/140 batch_loss=0.0280573 running_train_loss=0.0244823 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=14/30 batch=75/140 batch_loss=0.0237257 running_train_loss=0.0249502 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=14/30 batch=100/140 batch_loss=0.0239865 running_train_loss=0.0252349 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=14/30 batch=125/140 batch_loss=0.0252942 running_train_loss=0.0252772 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_14 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50014
+data-gen-done phase=val_epoch_14 model=shuffled_topology loss=0.0259104 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=14/30 train_loss=0.0252957 val_loss=0.0259104 val_yaw_rmse=0.119269 val_translation_rmse=0.178194 data_gen_elapsed=43s train_step_elapsed=1m53s best_val_loss=0.0254275 patience_wait=1
+epoch-start model=shuffled_topology seed=0 epoch=15/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=15/30 batch=25/140 batch_loss=0.025838 running_train_loss=0.025909 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=15/30 batch=50/140 batch_loss=0.0228305 running_train_loss=0.0259599 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=15/30 batch=75/140 batch_loss=0.0258739 running_train_loss=0.0259488 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=shuffled_topology seed=0 epoch=15/30 batch=100/140 batch_loss=0.0231343 running_train_loss=0.0255593 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=15/30 batch=125/140 batch_loss=0.0270829 running_train_loss=0.0256647 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_15 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50015
+data-gen-done phase=val_epoch_15 model=shuffled_topology loss=0.0243708 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=15/30 train_loss=0.0255229 val_loss=0.0243708 val_yaw_rmse=0.11812 val_translation_rmse=0.171989 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0243708 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=16/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=16/30 batch=25/140 batch_loss=0.0206843 running_train_loss=0.0244376 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=16/30 batch=50/140 batch_loss=0.0262838 running_train_loss=0.0246174 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=16/30 batch=75/140 batch_loss=0.0283191 running_train_loss=0.0246048 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=shuffled_topology seed=0 epoch=16/30 batch=100/140 batch_loss=0.0217288 running_train_loss=0.0247842 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=16/30 batch=125/140 batch_loss=0.0260558 running_train_loss=0.024746 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_16 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50016
+data-gen-done phase=val_epoch_16 model=shuffled_topology loss=0.0235668 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=16/30 train_loss=0.0247178 val_loss=0.0235668 val_yaw_rmse=0.11775 val_translation_rmse=0.168576 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0235668 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=17/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=17/30 batch=25/140 batch_loss=0.0228653 running_train_loss=0.0243251 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=17/30 batch=50/140 batch_loss=0.0243078 running_train_loss=0.0237462 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=17/30 batch=75/140 batch_loss=0.02349 running_train_loss=0.0240118 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=17/30 batch=100/140 batch_loss=0.0241938 running_train_loss=0.0238865 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=17/30 batch=125/140 batch_loss=0.0250151 running_train_loss=0.0238972 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_17 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50017
+data-gen-done phase=val_epoch_17 model=shuffled_topology loss=0.0245082 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=17/30 train_loss=0.0239266 val_loss=0.0245082 val_yaw_rmse=0.117825 val_translation_rmse=0.172687 data_gen_elapsed=43s train_step_elapsed=1m54s best_val_loss=0.0235668 patience_wait=1
+epoch-start model=shuffled_topology seed=0 epoch=18/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=18/30 batch=25/140 batch_loss=0.0233671 running_train_loss=0.0240198 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=18/30 batch=50/140 batch_loss=0.0256696 running_train_loss=0.0240043 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=18/30 batch=75/140 batch_loss=0.0237907 running_train_loss=0.0237628 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=18/30 batch=100/140 batch_loss=0.0260253 running_train_loss=0.0238523 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=18/30 batch=125/140 batch_loss=0.025895 running_train_loss=0.0237637 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_18 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50018
+data-gen-done phase=val_epoch_18 model=shuffled_topology loss=0.0240393 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=18/30 train_loss=0.0237688 val_loss=0.0240393 val_yaw_rmse=0.116588 val_translation_rmse=0.171063 data_gen_elapsed=43s train_step_elapsed=1m54s best_val_loss=0.0235668 patience_wait=2
+epoch-start model=shuffled_topology seed=0 epoch=19/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=19/30 batch=25/140 batch_loss=0.0228976 running_train_loss=0.0242418 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=19/30 batch=50/140 batch_loss=0.026299 running_train_loss=0.0238924 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=19/30 batch=75/140 batch_loss=0.0220745 running_train_loss=0.0240897 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=19/30 batch=100/140 batch_loss=0.0225182 running_train_loss=0.024097 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=19/30 batch=125/140 batch_loss=0.0222746 running_train_loss=0.0239543 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_19 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50019
+data-gen-done phase=val_epoch_19 model=shuffled_topology loss=0.0233242 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=19/30 train_loss=0.0238689 val_loss=0.0233242 val_yaw_rmse=0.120405 val_translation_rmse=0.166546 data_gen_elapsed=43s train_step_elapsed=1m54s best_val_loss=0.0233242 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=20/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=20/30 batch=25/140 batch_loss=0.023222 running_train_loss=0.0234089 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=20/30 batch=50/140 batch_loss=0.0226492 running_train_loss=0.0236729 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=20/30 batch=75/140 batch_loss=0.025851 running_train_loss=0.0237341 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=shuffled_topology seed=0 epoch=20/30 batch=100/140 batch_loss=0.0244062 running_train_loss=0.0235058 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=20/30 batch=125/140 batch_loss=0.0241597 running_train_loss=0.0233538 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_20 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50020
+data-gen-done phase=val_epoch_20 model=shuffled_topology loss=0.0226879 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=20/30 train_loss=0.0233038 val_loss=0.0226879 val_yaw_rmse=0.113959 val_translation_rmse=0.165947 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0226879 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=21/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=21/30 batch=25/140 batch_loss=0.0215347 running_train_loss=0.0234085 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=21/30 batch=50/140 batch_loss=0.0238263 running_train_loss=0.0233926 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=21/30 batch=75/140 batch_loss=0.0214812 running_train_loss=0.0234605 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=21/30 batch=100/140 batch_loss=0.0225431 running_train_loss=0.0232748 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=21/30 batch=125/140 batch_loss=0.0245393 running_train_loss=0.0231301 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_21 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50021
+data-gen-done phase=val_epoch_21 model=shuffled_topology loss=0.0222238 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=21/30 train_loss=0.0230986 val_loss=0.0222238 val_yaw_rmse=0.112295 val_translation_rmse=0.16441 data_gen_elapsed=43s train_step_elapsed=1m54s best_val_loss=0.0222238 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=22/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=22/30 batch=25/140 batch_loss=0.0243714 running_train_loss=0.0231871 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=22/30 batch=50/140 batch_loss=0.0196961 running_train_loss=0.0231708 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=22/30 batch=75/140 batch_loss=0.0206579 running_train_loss=0.0228954 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=22/30 batch=100/140 batch_loss=0.0211172 running_train_loss=0.0227653 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=22/30 batch=125/140 batch_loss=0.0230613 running_train_loss=0.0226655 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_22 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50022
+data-gen-done phase=val_epoch_22 model=shuffled_topology loss=0.0235098 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=22/30 train_loss=0.0226421 val_loss=0.0235098 val_yaw_rmse=0.113347 val_translation_rmse=0.169826 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0222238 patience_wait=1
+epoch-start model=shuffled_topology seed=0 epoch=23/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=23/30 batch=25/140 batch_loss=0.0226459 running_train_loss=0.0220212 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=23/30 batch=50/140 batch_loss=0.0244782 running_train_loss=0.0224623 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=23/30 batch=75/140 batch_loss=0.0237926 running_train_loss=0.0226682 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=23/30 batch=100/140 batch_loss=0.023128 running_train_loss=0.0229136 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=23/30 batch=125/140 batch_loss=0.0232168 running_train_loss=0.0228353 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_23 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50023
+data-gen-done phase=val_epoch_23 model=shuffled_topology loss=0.0253259 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=23/30 train_loss=0.0228567 val_loss=0.0253259 val_yaw_rmse=0.113693 val_translation_rmse=0.177555 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0222238 patience_wait=2
+epoch-start model=shuffled_topology seed=0 epoch=24/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=24/30 batch=25/140 batch_loss=0.0226968 running_train_loss=0.0229913 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=24/30 batch=50/140 batch_loss=0.0257117 running_train_loss=0.0230062 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=24/30 batch=75/140 batch_loss=0.023977 running_train_loss=0.0227874 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=24/30 batch=100/140 batch_loss=0.026506 running_train_loss=0.0228723 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=24/30 batch=125/140 batch_loss=0.0206913 running_train_loss=0.0228779 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_24 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50024
+data-gen-done phase=val_epoch_24 model=shuffled_topology loss=0.0230379 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=24/30 train_loss=0.0227588 val_loss=0.0230379 val_yaw_rmse=0.110701 val_translation_rmse=0.16861 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0222238 patience_wait=3
+epoch-start model=shuffled_topology seed=0 epoch=25/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=25/30 batch=25/140 batch_loss=0.0245283 running_train_loss=0.0231038 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=25/30 batch=50/140 batch_loss=0.0236184 running_train_loss=0.0225096 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=25/30 batch=75/140 batch_loss=0.022292 running_train_loss=0.022365 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=25/30 batch=100/140 batch_loss=0.0192491 running_train_loss=0.0223804 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=25/30 batch=125/140 batch_loss=0.0240203 running_train_loss=0.0224766 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_25 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50025
+data-gen-done phase=val_epoch_25 model=shuffled_topology loss=0.0231195 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=25/30 train_loss=0.0224972 val_loss=0.0231195 val_yaw_rmse=0.109625 val_translation_rmse=0.169323 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0222238 patience_wait=4
+epoch-start model=shuffled_topology seed=0 epoch=26/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=26/30 batch=25/140 batch_loss=0.0225148 running_train_loss=0.0221729 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=26/30 batch=50/140 batch_loss=0.0207819 running_train_loss=0.0220322 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=26/30 batch=75/140 batch_loss=0.0246634 running_train_loss=0.0219953 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=26/30 batch=100/140 batch_loss=0.0229935 running_train_loss=0.0220374 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=26/30 batch=125/140 batch_loss=0.0216905 running_train_loss=0.0221039 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_26 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50026
+data-gen-done phase=val_epoch_26 model=shuffled_topology loss=0.0227293 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=26/30 train_loss=0.0221381 val_loss=0.0227293 val_yaw_rmse=0.107315 val_translation_rmse=0.168332 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0222238 patience_wait=5
+epoch-start model=shuffled_topology seed=0 epoch=27/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=27/30 batch=25/140 batch_loss=0.0213146 running_train_loss=0.0225262 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=27/30 batch=50/140 batch_loss=0.0191329 running_train_loss=0.022341 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=27/30 batch=75/140 batch_loss=0.0230905 running_train_loss=0.0220559 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=27/30 batch=100/140 batch_loss=0.0220241 running_train_loss=0.0218583 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=27/30 batch=125/140 batch_loss=0.0213907 running_train_loss=0.0217477 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_27 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50027
+data-gen-done phase=val_epoch_27 model=shuffled_topology loss=0.0206092 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=shuffled_topology seed=0 epoch=27/30 train_loss=0.0217413 val_loss=0.0206092 val_yaw_rmse=0.106716 val_translation_rmse=0.158807 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0206092 patience_wait=0
+epoch-start model=shuffled_topology seed=0 epoch=28/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=28/30 batch=25/140 batch_loss=0.0250994 running_train_loss=0.0222358 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=28/30 batch=50/140 batch_loss=0.0231216 running_train_loss=0.0219318 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=28/30 batch=75/140 batch_loss=0.0225147 running_train_loss=0.0219741 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=28/30 batch=100/140 batch_loss=0.023131 running_train_loss=0.0221113 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=28/30 batch=125/140 batch_loss=0.0210551 running_train_loss=0.0222871 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m32s
+data-gen-start phase=val_epoch_28 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50028
+data-gen-done phase=val_epoch_28 model=shuffled_topology loss=0.0229845 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=28/30 train_loss=0.0222574 val_loss=0.0229845 val_yaw_rmse=0.106753 val_translation_rmse=0.169643 data_gen_elapsed=43s train_step_elapsed=1m54s best_val_loss=0.0206092 patience_wait=1
+epoch-start model=shuffled_topology seed=0 epoch=29/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=29/30 batch=25/140 batch_loss=0.0246525 running_train_loss=0.0214913 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=29/30 batch=50/140 batch_loss=0.021103 running_train_loss=0.0218716 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=29/30 batch=75/140 batch_loss=0.0217085 running_train_loss=0.0217956 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=29/30 batch=100/140 batch_loss=0.0218071 running_train_loss=0.0216611 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=29/30 batch=125/140 batch_loss=0.0226336 running_train_loss=0.0217491 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_29 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50029
+data-gen-done phase=val_epoch_29 model=shuffled_topology loss=0.0215622 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=29/30 train_loss=0.021733 val_loss=0.0215622 val_yaw_rmse=0.109532 val_translation_rmse=0.16231 data_gen_elapsed=43s train_step_elapsed=1m54s best_val_loss=0.0206092 patience_wait=2
+epoch-start model=shuffled_topology seed=0 epoch=30/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=shuffled_topology seed=0 epoch=30/30 batch=25/140 batch_loss=0.0238901 running_train_loss=0.0221035 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=shuffled_topology seed=0 epoch=30/30 batch=50/140 batch_loss=0.0196015 running_train_loss=0.0222831 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=shuffled_topology seed=0 epoch=30/30 batch=75/140 batch_loss=0.0266581 running_train_loss=0.0220065 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=shuffled_topology seed=0 epoch=30/30 batch=100/140 batch_loss=0.0171952 running_train_loss=0.0217072 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=shuffled_topology seed=0 epoch=30/30 batch=125/140 batch_loss=0.0206642 running_train_loss=0.0214765 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_30 model=shuffled_topology batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50030
+data-gen-done phase=val_epoch_30 model=shuffled_topology loss=0.0209604 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=shuffled_topology seed=0 epoch=30/30 train_loss=0.021413 val_loss=0.0209604 val_yaw_rmse=0.105265 val_translation_rmse=0.160935 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0206092 patience_wait=3
+data-gen-start phase=test model=shuffled_topology batches=60 batch_size=64 timesteps=16 input_dim=61 seed=90000
+data-gen-done phase=test model=shuffled_topology loss=0.0212043 data_gen_elapsed=18s eval_elapsed=0s elapsed=21s
+model-done model=shuffled_topology seed=0 best_val_loss=0.0206092 test_overall_rmse=0.145617 test_yaw_rmse=0.107963
+model-build-start model=random_sparse seed=0 base_N=96816 base_edges=8757188
+model-build-matrix-done model=random_sparse seed=0 edges=8757188 elapsed=3s
+model-start model=random_sparse seed=0 N=96816 edges=8757188 trainable_params=15050231 recurrent_params=8757188
+epoch-start model=random_sparse seed=0 epoch=1/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=1/30 batch=25/140 batch_loss=0.453149 running_train_loss=16.0894 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=1/30 batch=50/140 batch_loss=0.0561797 running_train_loss=8.11457 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=1/30 batch=75/140 batch_loss=0.0432939 running_train_loss=5.42569 data_gen_elapsed=24s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=1/30 batch=100/140 batch_loss=0.0402174 running_train_loss=4.07915 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m03s
+progress model=random_sparse seed=0 epoch=1/30 batch=125/140 batch_loss=0.0375246 running_train_loss=3.27078 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m34s
+data-gen-start phase=val_epoch_1 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50001
+data-gen-done phase=val_epoch_1 model=random_sparse loss=0.0350084 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=1/30 train_loss=2.92428 val_loss=0.0350084 val_yaw_rmse=0.149939 val_translation_rmse=0.203154 data_gen_elapsed=45s train_step_elapsed=1m54s best_val_loss=0.0350084 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=2/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=2/30 batch=25/140 batch_loss=0.0332413 running_train_loss=0.0354364 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=2/30 batch=50/140 batch_loss=0.0354121 running_train_loss=0.0355126 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=2/30 batch=75/140 batch_loss=0.0283871 running_train_loss=0.035025 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=2/30 batch=100/140 batch_loss=0.0347147 running_train_loss=0.0351595 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=2/30 batch=125/140 batch_loss=0.0389589 running_train_loss=0.035239 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_2 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50002
+data-gen-done phase=val_epoch_2 model=random_sparse loss=0.033538 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=random_sparse seed=0 epoch=2/30 train_loss=0.035055 val_loss=0.033538 val_yaw_rmse=0.145966 val_translation_rmse=0.199133 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.033538 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=3/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=3/30 batch=25/140 batch_loss=0.0323441 running_train_loss=0.0340898 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=3/30 batch=50/140 batch_loss=0.0343308 running_train_loss=0.0339683 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=3/30 batch=75/140 batch_loss=0.0317854 running_train_loss=0.0339618 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=random_sparse seed=0 epoch=3/30 batch=100/140 batch_loss=0.0346101 running_train_loss=0.0337331 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=3/30 batch=125/140 batch_loss=0.0309796 running_train_loss=0.0338187 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_3 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50003
+data-gen-done phase=val_epoch_3 model=random_sparse loss=0.0335105 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=random_sparse seed=0 epoch=3/30 train_loss=0.0337533 val_loss=0.0335105 val_yaw_rmse=0.145488 val_translation_rmse=0.199204 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0335105 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=4/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=4/30 batch=25/140 batch_loss=0.0332201 running_train_loss=0.0331007 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=4/30 batch=50/140 batch_loss=0.0333081 running_train_loss=0.033574 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=4/30 batch=75/140 batch_loss=0.0319539 running_train_loss=0.0333276 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=4/30 batch=100/140 batch_loss=0.0293079 running_train_loss=0.0329603 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=4/30 batch=125/140 batch_loss=0.0336831 running_train_loss=0.0329546 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_4 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50004
+data-gen-done phase=val_epoch_4 model=random_sparse loss=0.0320952 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=4/30 train_loss=0.033035 val_loss=0.0320952 val_yaw_rmse=0.143244 val_translation_rmse=0.194637 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0320952 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=5/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=5/30 batch=25/140 batch_loss=0.0318431 running_train_loss=0.0324435 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=5/30 batch=50/140 batch_loss=0.0316247 running_train_loss=0.0320022 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=5/30 batch=75/140 batch_loss=0.0293243 running_train_loss=0.0318423 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=random_sparse seed=0 epoch=5/30 batch=100/140 batch_loss=0.0378202 running_train_loss=0.0319948 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=5/30 batch=125/140 batch_loss=0.0307343 running_train_loss=0.0318732 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_5 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50005
+data-gen-done phase=val_epoch_5 model=random_sparse loss=0.0306278 data_gen_elapsed=9s eval_elapsed=0s elapsed=10s
+loss model=random_sparse seed=0 epoch=5/30 train_loss=0.0317176 val_loss=0.0306278 val_yaw_rmse=0.13891 val_translation_rmse=0.190509 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0306278 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=6/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=6/30 batch=25/140 batch_loss=0.0341042 running_train_loss=0.0319211 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=6/30 batch=50/140 batch_loss=0.0321209 running_train_loss=0.0315862 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=6/30 batch=75/140 batch_loss=0.0310537 running_train_loss=0.0309936 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=6/30 batch=100/140 batch_loss=0.0296316 running_train_loss=0.0310543 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=6/30 batch=125/140 batch_loss=0.0313955 running_train_loss=0.0310596 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_6 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50006
+data-gen-done phase=val_epoch_6 model=random_sparse loss=0.0284517 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=6/30 train_loss=0.0309646 val_loss=0.0284517 val_yaw_rmse=0.135375 val_translation_rmse=0.183069 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0284517 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=7/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=7/30 batch=25/140 batch_loss=0.0300876 running_train_loss=0.0304482 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=7/30 batch=50/140 batch_loss=0.0338507 running_train_loss=0.0299475 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=7/30 batch=75/140 batch_loss=0.0313489 running_train_loss=0.0297219 data_gen_elapsed=24s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=7/30 batch=100/140 batch_loss=0.0323476 running_train_loss=0.029975 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m03s
+progress model=random_sparse seed=0 epoch=7/30 batch=125/140 batch_loss=0.0288943 running_train_loss=0.0299995 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m34s
+data-gen-start phase=val_epoch_7 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50007
+data-gen-done phase=val_epoch_7 model=random_sparse loss=0.028267 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=7/30 train_loss=0.0298155 val_loss=0.028267 val_yaw_rmse=0.13327 val_translation_rmse=0.183085 data_gen_elapsed=45s train_step_elapsed=1m54s best_val_loss=0.028267 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=8/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=8/30 batch=25/140 batch_loss=0.0276089 running_train_loss=0.0286321 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=8/30 batch=50/140 batch_loss=0.0273274 running_train_loss=0.0288889 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=8/30 batch=75/140 batch_loss=0.0316761 running_train_loss=0.0288111 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=random_sparse seed=0 epoch=8/30 batch=100/140 batch_loss=0.0282701 running_train_loss=0.0287362 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=8/30 batch=125/140 batch_loss=0.0266416 running_train_loss=0.0285006 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_8 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50008
+data-gen-done phase=val_epoch_8 model=random_sparse loss=0.0273195 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=8/30 train_loss=0.028391 val_loss=0.0273195 val_yaw_rmse=0.128519 val_translation_rmse=0.180888 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0273195 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=9/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=9/30 batch=25/140 batch_loss=0.02792 running_train_loss=0.0272097 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=9/30 batch=50/140 batch_loss=0.0323904 running_train_loss=0.0275003 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=9/30 batch=75/140 batch_loss=0.0305909 running_train_loss=0.0275161 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m31s
+progress model=random_sparse seed=0 epoch=9/30 batch=100/140 batch_loss=0.0282986 running_train_loss=0.0276073 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=9/30 batch=125/140 batch_loss=0.0242223 running_train_loss=0.0275259 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_9 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50009
+data-gen-done phase=val_epoch_9 model=random_sparse loss=0.0268739 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=9/30 train_loss=0.0274584 val_loss=0.0268739 val_yaw_rmse=0.128381 val_translation_rmse=0.179081 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0268739 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=10/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=10/30 batch=25/140 batch_loss=0.0293867 running_train_loss=0.0271817 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=10/30 batch=50/140 batch_loss=0.0263114 running_train_loss=0.0279138 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=10/30 batch=75/140 batch_loss=0.0265892 running_train_loss=0.0277909 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=10/30 batch=100/140 batch_loss=0.0272705 running_train_loss=0.0277436 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=10/30 batch=125/140 batch_loss=0.0291457 running_train_loss=0.0277019 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_10 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50010
+data-gen-done phase=val_epoch_10 model=random_sparse loss=0.0282249 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=10/30 train_loss=0.027731 val_loss=0.0282249 val_yaw_rmse=0.137314 val_translation_rmse=0.18141 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0268739 patience_wait=1
+epoch-start model=random_sparse seed=0 epoch=11/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=11/30 batch=25/140 batch_loss=0.0274313 running_train_loss=0.0280138 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=11/30 batch=50/140 batch_loss=0.0252192 running_train_loss=0.0274695 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=11/30 batch=75/140 batch_loss=0.0264422 running_train_loss=0.0271717 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=11/30 batch=100/140 batch_loss=0.023585 running_train_loss=0.0271718 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=11/30 batch=125/140 batch_loss=0.025084 running_train_loss=0.0271803 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_11 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50011
+data-gen-done phase=val_epoch_11 model=random_sparse loss=0.0284669 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=11/30 train_loss=0.027171 val_loss=0.0284669 val_yaw_rmse=0.129287 val_translation_rmse=0.185318 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0268739 patience_wait=2
+epoch-start model=random_sparse seed=0 epoch=12/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=12/30 batch=25/140 batch_loss=0.0238089 running_train_loss=0.0268269 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=12/30 batch=50/140 batch_loss=0.0277084 running_train_loss=0.026939 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=12/30 batch=75/140 batch_loss=0.0230324 running_train_loss=0.0266961 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=12/30 batch=100/140 batch_loss=0.0316288 running_train_loss=0.0266926 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=12/30 batch=125/140 batch_loss=0.0278825 running_train_loss=0.0265471 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_12 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50012
+data-gen-done phase=val_epoch_12 model=random_sparse loss=0.0264555 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=12/30 train_loss=0.0265269 val_loss=0.0264555 val_yaw_rmse=0.140483 val_translation_rmse=0.172672 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0264555 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=13/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=13/30 batch=25/140 batch_loss=0.0256916 running_train_loss=0.0262529 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=13/30 batch=50/140 batch_loss=0.0243293 running_train_loss=0.0259473 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=13/30 batch=75/140 batch_loss=0.0276594 running_train_loss=0.026211 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=13/30 batch=100/140 batch_loss=0.023953 running_train_loss=0.0261746 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=13/30 batch=125/140 batch_loss=0.0285912 running_train_loss=0.0260634 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_13 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50013
+data-gen-done phase=val_epoch_13 model=random_sparse loss=0.0256917 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=13/30 train_loss=0.0260176 val_loss=0.0256917 val_yaw_rmse=0.124076 val_translation_rmse=0.175613 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0256917 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=14/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=14/30 batch=25/140 batch_loss=0.0257835 running_train_loss=0.025061 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=14/30 batch=50/140 batch_loss=0.0277355 running_train_loss=0.0245266 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=14/30 batch=75/140 batch_loss=0.0234484 running_train_loss=0.0248953 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=14/30 batch=100/140 batch_loss=0.0258025 running_train_loss=0.0253383 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=14/30 batch=125/140 batch_loss=0.0257255 running_train_loss=0.0253905 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_14 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50014
+data-gen-done phase=val_epoch_14 model=random_sparse loss=0.0259244 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=14/30 train_loss=0.0254042 val_loss=0.0259244 val_yaw_rmse=0.121197 val_translation_rmse=0.177601 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0256917 patience_wait=1
+epoch-start model=random_sparse seed=0 epoch=15/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=15/30 batch=25/140 batch_loss=0.0259653 running_train_loss=0.0261997 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=15/30 batch=50/140 batch_loss=0.0228099 running_train_loss=0.0259994 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=15/30 batch=75/140 batch_loss=0.0266121 running_train_loss=0.0260491 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=15/30 batch=100/140 batch_loss=0.0228554 running_train_loss=0.0256506 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=15/30 batch=125/140 batch_loss=0.0269602 running_train_loss=0.0257378 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_15 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50015
+data-gen-done phase=val_epoch_15 model=random_sparse loss=0.0241169 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=15/30 train_loss=0.0255593 val_loss=0.0241169 val_yaw_rmse=0.118991 val_translation_rmse=0.170575 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0241169 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=16/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=16/30 batch=25/140 batch_loss=0.021174 running_train_loss=0.0243352 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=16/30 batch=50/140 batch_loss=0.0259968 running_train_loss=0.024704 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=16/30 batch=75/140 batch_loss=0.0284098 running_train_loss=0.0247011 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=16/30 batch=100/140 batch_loss=0.0221514 running_train_loss=0.024818 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=16/30 batch=125/140 batch_loss=0.0262235 running_train_loss=0.0248281 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_16 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50016
+data-gen-done phase=val_epoch_16 model=random_sparse loss=0.0236405 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=16/30 train_loss=0.0248171 val_loss=0.0236405 val_yaw_rmse=0.118475 val_translation_rmse=0.168649 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0236405 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=17/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=17/30 batch=25/140 batch_loss=0.0222935 running_train_loss=0.0243805 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=17/30 batch=50/140 batch_loss=0.024603 running_train_loss=0.0237824 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=17/30 batch=75/140 batch_loss=0.0235861 running_train_loss=0.0240296 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=17/30 batch=100/140 batch_loss=0.024497 running_train_loss=0.0239605 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=17/30 batch=125/140 batch_loss=0.0254972 running_train_loss=0.0239895 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_17 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50017
+data-gen-done phase=val_epoch_17 model=random_sparse loss=0.0249483 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=17/30 train_loss=0.024013 val_loss=0.0249483 val_yaw_rmse=0.120991 val_translation_rmse=0.173502 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0236405 patience_wait=1
+epoch-start model=random_sparse seed=0 epoch=18/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=18/30 batch=25/140 batch_loss=0.0244039 running_train_loss=0.0241092 data_gen_elapsed=8s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=18/30 batch=50/140 batch_loss=0.0261777 running_train_loss=0.0240354 data_gen_elapsed=16s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=18/30 batch=75/140 batch_loss=0.0240666 running_train_loss=0.023845 data_gen_elapsed=24s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=18/30 batch=100/140 batch_loss=0.0265597 running_train_loss=0.0239487 data_gen_elapsed=32s train_step_elapsed=1m21s elapsed=2m03s
+progress model=random_sparse seed=0 epoch=18/30 batch=125/140 batch_loss=0.0256783 running_train_loss=0.0238276 data_gen_elapsed=40s train_step_elapsed=1m41s elapsed=2m34s
+data-gen-start phase=val_epoch_18 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50018
+data-gen-done phase=val_epoch_18 model=random_sparse loss=0.0241054 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=18/30 train_loss=0.023842 val_loss=0.0241054 val_yaw_rmse=0.121305 val_translation_rmse=0.169708 data_gen_elapsed=45s train_step_elapsed=1m54s best_val_loss=0.0236405 patience_wait=2
+epoch-start model=random_sparse seed=0 epoch=19/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=19/30 batch=25/140 batch_loss=0.0233016 running_train_loss=0.0243911 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=19/30 batch=50/140 batch_loss=0.0261214 running_train_loss=0.0240197 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=19/30 batch=75/140 batch_loss=0.0223288 running_train_loss=0.0242739 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=19/30 batch=100/140 batch_loss=0.0220046 running_train_loss=0.0242287 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=19/30 batch=125/140 batch_loss=0.0224104 running_train_loss=0.0240737 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_19 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50019
+data-gen-done phase=val_epoch_19 model=random_sparse loss=0.0236668 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=19/30 train_loss=0.0240076 val_loss=0.0236668 val_yaw_rmse=0.12371 val_translation_rmse=0.166878 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0236405 patience_wait=3
+epoch-start model=random_sparse seed=0 epoch=20/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=20/30 batch=25/140 batch_loss=0.0235272 running_train_loss=0.0236034 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=20/30 batch=50/140 batch_loss=0.022288 running_train_loss=0.0236748 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=20/30 batch=75/140 batch_loss=0.026928 running_train_loss=0.0238902 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=20/30 batch=100/140 batch_loss=0.0252657 running_train_loss=0.0236656 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=20/30 batch=125/140 batch_loss=0.02359 running_train_loss=0.0234894 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_20 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50020
+data-gen-done phase=val_epoch_20 model=random_sparse loss=0.0232628 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=20/30 train_loss=0.0234601 val_loss=0.0232628 val_yaw_rmse=0.115716 val_translation_rmse=0.167926 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0232628 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=21/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=21/30 batch=25/140 batch_loss=0.0215355 running_train_loss=0.0235201 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=21/30 batch=50/140 batch_loss=0.023571 running_train_loss=0.0234836 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=21/30 batch=75/140 batch_loss=0.0220259 running_train_loss=0.0235405 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=21/30 batch=100/140 batch_loss=0.0222508 running_train_loss=0.0233247 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=21/30 batch=125/140 batch_loss=0.0246484 running_train_loss=0.0232274 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_21 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50021
+data-gen-done phase=val_epoch_21 model=random_sparse loss=0.0227435 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=21/30 train_loss=0.0232235 val_loss=0.0227435 val_yaw_rmse=0.112305 val_translation_rmse=0.166761 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0227435 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=22/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=22/30 batch=25/140 batch_loss=0.0238428 running_train_loss=0.0235881 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=22/30 batch=50/140 batch_loss=0.0196848 running_train_loss=0.0235462 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=22/30 batch=75/140 batch_loss=0.0206304 running_train_loss=0.0232391 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=22/30 batch=100/140 batch_loss=0.0210529 running_train_loss=0.023073 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=22/30 batch=125/140 batch_loss=0.0227604 running_train_loss=0.0229106 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_22 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50022
+data-gen-done phase=val_epoch_22 model=random_sparse loss=0.02278 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=22/30 train_loss=0.022845 val_loss=0.02278 val_yaw_rmse=0.112923 val_translation_rmse=0.166716 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0227435 patience_wait=1
+epoch-start model=random_sparse seed=0 epoch=23/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=23/30 batch=25/140 batch_loss=0.0228727 running_train_loss=0.0220157 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=23/30 batch=50/140 batch_loss=0.0245579 running_train_loss=0.0224889 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=23/30 batch=75/140 batch_loss=0.0244215 running_train_loss=0.0227485 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=23/30 batch=100/140 batch_loss=0.0237587 running_train_loss=0.0230897 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=23/30 batch=125/140 batch_loss=0.0230404 running_train_loss=0.0230151 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_23 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50023
+data-gen-done phase=val_epoch_23 model=random_sparse loss=0.0243091 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=23/30 train_loss=0.0230038 val_loss=0.0243091 val_yaw_rmse=0.113118 val_translation_rmse=0.173395 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0227435 patience_wait=2
+epoch-start model=random_sparse seed=0 epoch=24/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=24/30 batch=25/140 batch_loss=0.0223393 running_train_loss=0.0226626 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=24/30 batch=50/140 batch_loss=0.0258702 running_train_loss=0.0228716 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=24/30 batch=75/140 batch_loss=0.0239499 running_train_loss=0.0228555 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=24/30 batch=100/140 batch_loss=0.0260167 running_train_loss=0.0229631 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=24/30 batch=125/140 batch_loss=0.0202201 running_train_loss=0.0229728 data_gen_elapsed=39s train_step_elapsed=1m42s elapsed=2m33s
+data-gen-start phase=val_epoch_24 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50024
+data-gen-done phase=val_epoch_24 model=random_sparse loss=0.0239346 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=24/30 train_loss=0.0229163 val_loss=0.0239346 val_yaw_rmse=0.113802 val_translation_rmse=0.171541 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0227435 patience_wait=3
+epoch-start model=random_sparse seed=0 epoch=25/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=25/30 batch=25/140 batch_loss=0.0237774 running_train_loss=0.0233424 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=25/30 batch=50/140 batch_loss=0.0234675 running_train_loss=0.0226288 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=25/30 batch=75/140 batch_loss=0.022211 running_train_loss=0.0224575 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=25/30 batch=100/140 batch_loss=0.0194634 running_train_loss=0.0224315 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=25/30 batch=125/140 batch_loss=0.0230957 running_train_loss=0.0225334 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_25 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50025
+data-gen-done phase=val_epoch_25 model=random_sparse loss=0.0230864 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=25/30 train_loss=0.0225505 val_loss=0.0230864 val_yaw_rmse=0.112909 val_translation_rmse=0.168093 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0227435 patience_wait=4
+epoch-start model=random_sparse seed=0 epoch=26/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=26/30 batch=25/140 batch_loss=0.0227002 running_train_loss=0.0221706 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=26/30 batch=50/140 batch_loss=0.0211855 running_train_loss=0.021995 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=26/30 batch=75/140 batch_loss=0.0252469 running_train_loss=0.0220345 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=26/30 batch=100/140 batch_loss=0.0232625 running_train_loss=0.0221846 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=26/30 batch=125/140 batch_loss=0.0224721 running_train_loss=0.0222747 data_gen_elapsed=39s train_step_elapsed=1m42s elapsed=2m33s
+data-gen-start phase=val_epoch_26 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50026
+data-gen-done phase=val_epoch_26 model=random_sparse loss=0.0234895 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=26/30 train_loss=0.0223382 val_loss=0.0234895 val_yaw_rmse=0.110733 val_translation_rmse=0.170597 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0227435 patience_wait=5
+epoch-start model=random_sparse seed=0 epoch=27/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=27/30 batch=25/140 batch_loss=0.0217238 running_train_loss=0.0229938 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=27/30 batch=50/140 batch_loss=0.0205216 running_train_loss=0.022777 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=27/30 batch=75/140 batch_loss=0.0233267 running_train_loss=0.0225104 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=27/30 batch=100/140 batch_loss=0.0220205 running_train_loss=0.0223266 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=27/30 batch=125/140 batch_loss=0.0207899 running_train_loss=0.022128 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_27 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50027
+data-gen-done phase=val_epoch_27 model=random_sparse loss=0.0210443 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=27/30 train_loss=0.0220675 val_loss=0.0210443 val_yaw_rmse=0.107962 val_translation_rmse=0.160432 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0210443 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=28/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=28/30 batch=25/140 batch_loss=0.0265246 running_train_loss=0.0223643 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=28/30 batch=50/140 batch_loss=0.0240764 running_train_loss=0.0221735 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=28/30 batch=75/140 batch_loss=0.0230453 running_train_loss=0.0221081 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=28/30 batch=100/140 batch_loss=0.0224177 running_train_loss=0.0221178 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=28/30 batch=125/140 batch_loss=0.0200002 running_train_loss=0.0222601 data_gen_elapsed=39s train_step_elapsed=1m41s elapsed=2m33s
+data-gen-start phase=val_epoch_28 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50028
+data-gen-done phase=val_epoch_28 model=random_sparse loss=0.0225708 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=28/30 train_loss=0.0222084 val_loss=0.0225708 val_yaw_rmse=0.107147 val_translation_rmse=0.167678 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0210443 patience_wait=1
+epoch-start model=random_sparse seed=0 epoch=29/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=29/30 batch=25/140 batch_loss=0.0245624 running_train_loss=0.0213173 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=29/30 batch=50/140 batch_loss=0.0208833 running_train_loss=0.0218828 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=29/30 batch=75/140 batch_loss=0.0210833 running_train_loss=0.0218079 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=29/30 batch=100/140 batch_loss=0.0220672 running_train_loss=0.0216577 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=29/30 batch=125/140 batch_loss=0.0222467 running_train_loss=0.0217889 data_gen_elapsed=39s train_step_elapsed=1m42s elapsed=2m33s
+data-gen-start phase=val_epoch_29 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50029
+data-gen-done phase=val_epoch_29 model=random_sparse loss=0.0208685 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=29/30 train_loss=0.0217848 val_loss=0.0208685 val_yaw_rmse=0.11011 val_translation_rmse=0.158873 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0208685 patience_wait=0
+epoch-start model=random_sparse seed=0 epoch=30/30 synthetic_train_batches=140 batch_size=64 timesteps=16 input_dim=61
+progress model=random_sparse seed=0 epoch=30/30 batch=25/140 batch_loss=0.0233726 running_train_loss=0.0216934 data_gen_elapsed=7s train_step_elapsed=20s elapsed=30s
+progress model=random_sparse seed=0 epoch=30/30 batch=50/140 batch_loss=0.0198131 running_train_loss=0.0220033 data_gen_elapsed=15s train_step_elapsed=40s elapsed=1m01s
+progress model=random_sparse seed=0 epoch=30/30 batch=75/140 batch_loss=0.026791 running_train_loss=0.0218648 data_gen_elapsed=23s train_step_elapsed=1m01s elapsed=1m32s
+progress model=random_sparse seed=0 epoch=30/30 batch=100/140 batch_loss=0.0180452 running_train_loss=0.021688 data_gen_elapsed=31s train_step_elapsed=1m21s elapsed=2m02s
+progress model=random_sparse seed=0 epoch=30/30 batch=125/140 batch_loss=0.0202157 running_train_loss=0.0214761 data_gen_elapsed=39s train_step_elapsed=1m42s elapsed=2m33s
+data-gen-start phase=val_epoch_30 model=random_sparse batches=30 batch_size=64 timesteps=16 input_dim=61 seed=50030
+data-gen-done phase=val_epoch_30 model=random_sparse loss=0.0213702 data_gen_elapsed=9s eval_elapsed=0s elapsed=11s
+loss model=random_sparse seed=0 epoch=30/30 train_loss=0.021428 val_loss=0.0213702 val_yaw_rmse=0.1066 val_translation_rmse=0.162399 data_gen_elapsed=44s train_step_elapsed=1m54s best_val_loss=0.0208685 patience_wait=1
+data-gen-start phase=test model=random_sparse batches=60 batch_size=64 timesteps=16 input_dim=61 seed=90000
+data-gen-done phase=test model=random_sparse loss=0.0211564 data_gen_elapsed=19s eval_elapsed=0s elapsed=22s
+model-done model=random_sparse seed=0 best_val_loss=0.0208685 test_overall_rmse=0.145452 test_yaw_rmse=0.111422
+complete metrics=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0/metrics_by_seed.csv summary=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_seed0/metrics_summary.csv
