@@ -231,6 +231,7 @@ To summarize a completed sweep without rerunning it:
 ```bash
 python scripts/summarize_associative_sweep.py "$OUT"
 cat "$OUT/leaderboard.csv"
+cat "$OUT/paired_comparisons.csv"
 ```
 
 Fast-memory models are also available here because Meta-Album reuses the same
@@ -246,6 +247,10 @@ running the fast-memory variants:
   --fast-memory-temperature 0.2 \
   --fast-memory-encoder-steps 2
 ```
+
+Use `--freeze-recurrent` for a strict prior test, or
+`--recurrent-prior-l2 1e-3` to allow recurrent learning while penalizing drift
+from the initialized connectome/control weights.
 
 ## OpenML Prefetch
 
@@ -294,6 +299,7 @@ python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark
 - `metrics_by_seed.csv`
 - `metrics_summary.csv`
 - `leaderboard.csv`
+- `paired_comparisons.csv`
 - `sweep_report.md`
 - `loss_history.csv`
 - `meta_album_associative_report.md`

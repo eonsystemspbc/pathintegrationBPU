@@ -519,6 +519,17 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--state-clip", type=float, default=5.0)
     parser.add_argument(
+        "--freeze-recurrent",
+        action="store_true",
+        help="Freeze recurrent connectome/control weights and train only input/readout or fast-memory encoder parameters.",
+    )
+    parser.add_argument(
+        "--recurrent-prior-l2",
+        type=float,
+        default=0.0,
+        help="L2 penalty weight that keeps trainable recurrent weights near their initialization.",
+    )
+    parser.add_argument(
         "--fast-memory-decay",
         type=float,
         default=0.92,
@@ -593,6 +604,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--fast-memory-temperature must be positive")
     if args.fast_memory_encoder_steps < 1:
         parser.error("--fast-memory-encoder-steps must be at least 1")
+    if args.recurrent_prior_l2 < 0:
+        parser.error("--recurrent-prior-l2 must be nonnegative")
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:

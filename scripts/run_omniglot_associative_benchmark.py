@@ -134,6 +134,7 @@ class MatrixEpisodicRNN(nn.Module):
         runtime: str,
         state_clip: float,
         seed: int,
+        freeze_recurrent: bool = False,
     ) -> None:
         super().__init__()
         if runtime not in mb.RUNTIME_CHOICES:
@@ -165,11 +166,19 @@ class MatrixEpisodicRNN(nn.Module):
         if runtime == "dense":
             dense = recurrent.toarray().astype(np.float32)
             self.W_rec = nn.Parameter(torch.from_numpy(dense))
+            self.register_buffer("W_rec_initial", torch.from_numpy(dense.copy()))
             self.register_buffer("edge_indices", torch.empty(2, 0, dtype=torch.long))
         else:
             indices = np.vstack([recurrent.row, recurrent.col]).astype(np.int64)
             self.register_buffer("edge_indices", torch.from_numpy(indices))
-            self.W_rec_values = nn.Parameter(torch.from_numpy(recurrent.data.astype(np.float32)))
+            values = recurrent.data.astype(np.float32)
+            self.W_rec_values = nn.Parameter(torch.from_numpy(values))
+            self.register_buffer("W_rec_initial_values", torch.from_numpy(values.copy()))
+        if freeze_recurrent:
+            if runtime == "dense":
+                self.W_rec.requires_grad_(False)
+            else:
+                self.W_rec_values.requires_grad_(False)
 
     def recurrent_parameter_count(self) -> int:
         if self.runtime == "dense":
@@ -178,6 +187,11 @@ class MatrixEpisodicRNN(nn.Module):
 
     def trainable_parameter_count(self) -> int:
         return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
+
+    def recurrent_prior_loss(self) -> torch.Tensor:
+        if self.runtime == "dense":
+            return nn.functional.mse_loss(self.W_rec, self.W_rec_initial)
+        return nn.functional.mse_loss(self.W_rec_values, self.W_rec_initial_values)
 
     def _recurrent_step(self, h: torch.Tensor) -> torch.Tensor:
         if self.runtime == "dense":
@@ -219,6 +233,7 @@ class MatrixFastMemoryRNN(nn.Module):
         memory_temperature: float,
         encoder_steps: int,
         seed: int,
+        freeze_recurrent: bool = False,
     ) -> None:
         super().__init__()
         if runtime not in mb.RUNTIME_CHOICES:
@@ -252,11 +267,19 @@ class MatrixFastMemoryRNN(nn.Module):
         if runtime == "dense":
             dense = recurrent.toarray().astype(np.float32)
             self.W_rec = nn.Parameter(torch.from_numpy(dense))
+            self.register_buffer("W_rec_initial", torch.from_numpy(dense.copy()))
             self.register_buffer("edge_indices", torch.empty(2, 0, dtype=torch.long))
         else:
             indices = np.vstack([recurrent.row, recurrent.col]).astype(np.int64)
             self.register_buffer("edge_indices", torch.from_numpy(indices))
-            self.W_rec_values = nn.Parameter(torch.from_numpy(recurrent.data.astype(np.float32)))
+            values = recurrent.data.astype(np.float32)
+            self.W_rec_values = nn.Parameter(torch.from_numpy(values))
+            self.register_buffer("W_rec_initial_values", torch.from_numpy(values.copy()))
+        if freeze_recurrent:
+            if runtime == "dense":
+                self.W_rec.requires_grad_(False)
+            else:
+                self.W_rec_values.requires_grad_(False)
 
     def recurrent_parameter_count(self) -> int:
         if self.runtime == "dense":
@@ -265,6 +288,11 @@ class MatrixFastMemoryRNN(nn.Module):
 
     def trainable_parameter_count(self) -> int:
         return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
+
+    def recurrent_prior_loss(self) -> torch.Tensor:
+        if self.runtime == "dense":
+            return nn.functional.mse_loss(self.W_rec, self.W_rec_initial)
+        return nn.functional.mse_loss(self.W_rec_values, self.W_rec_initial_values)
 
     def _recurrent_step(self, h: torch.Tensor) -> torch.Tensor:
         if self.runtime == "dense":
@@ -863,10 +891,16 @@ def build_model(
             memory_temperature=args.fast_memory_temperature,
             encoder_steps=args.fast_memory_encoder_steps,
             seed=args.init_seed + seed,
+            freeze_recurrent=args.freeze_recurrent,
         ).to(device)
+        runtime_label = f"{runtime}_fast_memory"
+        if args.freeze_recurrent:
+            runtime_label += "_frozen"
+        elif args.recurrent_prior_l2 > 0:
+            runtime_label += "_prior_l2"
         return (
             model,
-            f"{runtime}_fast_memory",
+            runtime_label,
             model.recurrent_parameter_count(),
             model.trainable_parameter_count(),
         )
@@ -880,8 +914,14 @@ def build_model(
         runtime=runtime,
         state_clip=args.state_clip,
         seed=args.init_seed + seed,
+        freeze_recurrent=args.freeze_recurrent,
     ).to(device)
-    return model, runtime, model.recurrent_parameter_count(), model.trainable_parameter_count()
+    runtime_label = runtime
+    if args.freeze_recurrent:
+        runtime_label += "_frozen"
+    elif args.recurrent_prior_l2 > 0:
+        runtime_label += "_prior_l2"
+    return model, runtime_label, model.recurrent_parameter_count(), model.trainable_parameter_count()
 
 
 def train_one_model(
@@ -921,6 +961,8 @@ def train_one_model(
             "recurrent_params": 0,
             "trainable_params": 0,
             "timesteps": spec.timesteps,
+            "freeze_recurrent": int(bool(args.freeze_recurrent)),
+            "recurrent_prior_l2": float(args.recurrent_prior_l2),
             "best_val_loss": val_metrics["loss"],
             "test_loss": test_metrics["loss"],
             "test_query_accuracy": test_metrics["query_accuracy"],
@@ -952,24 +994,31 @@ def train_one_model(
         started = time.time()
         last_log = started
         train_loss_sum = 0.0
+        train_prior_sum = 0.0
         for batch_idx in range(1, args.train_batches + 1):
             batch = generate_episode_batch(train_bank, spec, args.batch_size, train_rng)
             x, targets, query_mask, _, _, _ = batch_to_torch(batch, device)
             optimizer.zero_grad(set_to_none=True)
             logits = model(x)
-            loss = masked_cross_entropy(logits, targets, query_mask)
+            task_loss = masked_cross_entropy(logits, targets, query_mask)
+            prior_loss = task_loss.new_tensor(0.0)
+            if args.recurrent_prior_l2 > 0 and hasattr(model, "recurrent_prior_loss"):
+                prior_loss = model.recurrent_prior_loss()
+            loss = task_loss + args.recurrent_prior_l2 * prior_loss
             loss.backward()
             if args.grad_clip > 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
             optimizer.step()
-            train_loss_sum += float(loss.item())
+            train_loss_sum += float(task_loss.item())
+            train_prior_sum += float(prior_loss.item())
             now = time.time()
             if args.log_every_seconds > 0 and now - last_log >= args.log_every_seconds:
                 print(
                     "progress "
                     f"model={model_name} seed={seed} epoch={epoch}/{args.epochs} "
                     f"batch={batch_idx}/{args.train_batches} "
-                    f"batch_loss={loss.item():.6g} "
+                    f"batch_loss={task_loss.item():.6g} "
+                    f"prior_loss={prior_loss.item():.6g} "
                     f"running_train_loss={train_loss_sum / batch_idx:.6g} "
                     f"elapsed={_format_seconds(now - started)}",
                     flush=True,
@@ -977,6 +1026,7 @@ def train_one_model(
                 last_log = now
 
         train_loss = train_loss_sum / max(args.train_batches, 1)
+        train_prior_loss = train_prior_sum / max(args.train_batches, 1)
         val_metrics = evaluate_model(
             model,
             val_bank,
@@ -1005,6 +1055,7 @@ def train_one_model(
                 "val_initial_query_accuracy": val_metrics["initial_query_accuracy"],
                 "val_reversal_query_accuracy": val_metrics["reversal_query_accuracy"],
                 "best_val_loss": best_val_loss,
+                "recurrent_prior_loss": train_prior_loss,
                 "patience_wait": patience_wait,
             }
         )
@@ -1012,6 +1063,7 @@ def train_one_model(
             "loss "
             f"model={model_name} seed={seed} epoch={epoch}/{args.epochs} "
             f"train_loss={train_loss:.6g} val_loss={val_metrics['loss']:.6g} "
+            f"prior_loss={train_prior_loss:.6g} "
             f"val_acc={val_metrics['query_accuracy']:.4f} "
             f"best_val_loss={best_val_loss:.6g} patience_wait={patience_wait}",
             flush=True,
@@ -1044,6 +1096,8 @@ def train_one_model(
         "recurrent_params": recurrent_params,
         "trainable_params": trainable_params,
         "timesteps": spec.timesteps,
+        "freeze_recurrent": int(bool(args.freeze_recurrent)),
+        "recurrent_prior_l2": float(args.recurrent_prior_l2),
         "best_val_loss": best_val_loss,
         "test_loss": test_metrics["loss"],
         "test_query_accuracy": test_metrics["query_accuracy"],
@@ -1197,6 +1251,8 @@ def write_outputs(
             recurrent_params=("recurrent_params", "first"),
             N=("N", "first"),
             timesteps=("timesteps", "first"),
+            freeze_recurrent=("freeze_recurrent", "first"),
+            recurrent_prior_l2=("recurrent_prior_l2", "first"),
         )
         .reset_index()
     )
@@ -1341,6 +1397,17 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--state-clip", type=float, default=5.0)
     parser.add_argument(
+        "--freeze-recurrent",
+        action="store_true",
+        help="Freeze recurrent connectome/control weights and train only input/readout or fast-memory encoder parameters.",
+    )
+    parser.add_argument(
+        "--recurrent-prior-l2",
+        type=float,
+        default=0.0,
+        help="L2 penalty weight that keeps trainable recurrent weights near their initialization.",
+    )
+    parser.add_argument(
         "--fast-memory-decay",
         type=float,
         default=0.92,
@@ -1408,6 +1475,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--fast-memory-temperature must be positive")
     if args.fast_memory_encoder_steps < 1:
         parser.error("--fast-memory-encoder-steps must be at least 1")
+    if args.recurrent_prior_l2 < 0:
+        parser.error("--recurrent-prior-l2 must be nonnegative")
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:
