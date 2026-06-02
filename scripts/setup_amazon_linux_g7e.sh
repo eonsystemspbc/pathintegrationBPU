@@ -76,10 +76,21 @@ else
 fi
 
 cd "$CHECKOUT_DIR"
-"$PYTHON_BIN" -m venv experiments/hemibrain_cx_bpu/.venv
-source experiments/hemibrain_cx_bpu/.venv/bin/activate
+
+if [[ -f "$CHECKOUT_DIR/requirements.txt" && -d "$CHECKOUT_DIR/scripts" ]]; then
+  PROJECT_DIR="$CHECKOUT_DIR"
+elif [[ -f "$CHECKOUT_DIR/experiments/hemibrain_cx_bpu/requirements.txt" ]]; then
+  PROJECT_DIR="$CHECKOUT_DIR/experiments/hemibrain_cx_bpu"
+else
+  echo "Could not find the hemibrain_cx_bpu project root under $CHECKOUT_DIR" >&2
+  exit 1
+fi
+
+cd "$PROJECT_DIR"
+"$PYTHON_BIN" -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip wheel setuptools
-python -m pip install -r experiments/hemibrain_cx_bpu/requirements.txt
+python -m pip install -r requirements.txt
 
 python - <<'PY'
 import torch
@@ -94,7 +105,7 @@ if not torch.cuda.is_available():
     raise SystemExit("CUDA is not available to PyTorch")
 PY
 
-python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
+python scripts/run_multi_gpu_associative_sweep.py \
   --benchmark meta_album \
   --output-dir /tmp/meta_album_multi_gpu_dry_run \
   --models hemibrain_seeded random_sparse \
@@ -112,5 +123,5 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
 
 echo
 echo "Setup complete. Activate with:"
-echo "  cd $CHECKOUT_DIR"
-echo "  source experiments/hemibrain_cx_bpu/.venv/bin/activate"
+echo "  cd $PROJECT_DIR"
+echo "  source .venv/bin/activate"

@@ -25,7 +25,7 @@ sudo dnf install -y git
 git clone https://github.com/eonsystemspbc/pathintegrationBPU.git ~/pathintegrationBPU
 cd ~/pathintegrationBPU
 
-experiments/hemibrain_cx_bpu/scripts/setup_amazon_linux_g7e.sh --install-driver
+scripts/setup_amazon_linux_g7e.sh --install-driver
 sudo reboot
 ```
 
@@ -45,19 +45,19 @@ After the reboot:
 
 ```bash
 cd ~/pathintegrationBPU
-experiments/hemibrain_cx_bpu/scripts/setup_amazon_linux_g7e.sh
+scripts/setup_amazon_linux_g7e.sh
 ```
 
 This installs system packages, creates:
 
 ```text
-~/pathintegrationBPU/experiments/hemibrain_cx_bpu/.venv
+~/pathintegrationBPU/.venv
 ```
 
 and installs:
 
 ```text
-experiments/hemibrain_cx_bpu/requirements.txt
+requirements.txt
 ```
 
 It also checks:
@@ -101,13 +101,13 @@ Activate the environment:
 
 ```bash
 cd ~/pathintegrationBPU
-source experiments/hemibrain_cx_bpu/.venv/bin/activate
+source .venv/bin/activate
 ```
 
 Run a tiny two-GPU synthetic sweep:
 
 ```bash
-python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
+python scripts/run_multi_gpu_associative_sweep.py \
   --benchmark meta_album \
   --output-dir /tmp/meta_album_gpu_smoke \
   --gpus 0 1 \
@@ -115,7 +115,7 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
   --seeds 0 1 \
   -- \
   --dataset synthetic \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --epochs 1 \
   --batch-size 2 \
   --train-batches 1 \
@@ -142,7 +142,7 @@ For `g7e.12xlarge`, use both GPUs:
 OUT=/mnt/fast/outputs/meta_album_10way_1shot_reversal5_expand2_sweep
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
+python scripts/run_multi_gpu_associative_sweep.py \
   --benchmark meta_album \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -151,7 +151,7 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
   -- \
   --dataset meta_album \
   --data-root /mnt/fast/meta_album \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --split-mode dataset \
   --way 10 \
   --shot 1 \
