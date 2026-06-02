@@ -173,6 +173,49 @@ launcher writes merged `metrics_by_seed.csv`, `loss_history.csv`,
 sweep output root. Use `--status-seconds 15` for more frequent launcher status
 updates, or `--tail-lines-on-failure 160` to print more of a failed child log.
 
+## Fast-Memory Variant
+
+The vanilla connectome RNN readout can fail to learn one-shot label binding.
+Use the fast-memory variants to keep the same recurrent connectome/control
+cores while adding an online associative memory updated on support and reversal
+steps:
+
+```bash
+OUT=/mnt/fast/outputs/omniglot_5way_reversal2_fast_memory
+mkdir -p "$OUT"
+
+python scripts/run_multi_gpu_associative_sweep.py \
+  --benchmark omniglot \
+  --output-dir "$OUT" \
+  --gpus 0 1 \
+  --status-seconds 15 \
+  --models hemibrain_fast_memory random_sparse_fast_memory weight_shuffle_fast_memory nearest_support \
+  --seeds 0 \
+  -- \
+  --dataset omniglot \
+  --download \
+  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --way 5 \
+  --shot 1 \
+  --queries-per-class 2 \
+  --reversal-count 2 \
+  --embedding random_projection \
+  --embedding-dim 128 \
+  --embedding-sparsity 0.25 \
+  --fast-memory-decay 0.92 \
+  --fast-memory-temperature 0.2 \
+  --epochs 15 \
+  --batch-size 32 \
+  --train-batches 120 \
+  --val-batches 30 \
+  --test-batches 80 \
+  --patience 5 \
+  --log-every-seconds 30
+```
+
+The key comparison becomes `hemibrain_fast_memory` against
+`random_sparse_fast_memory` and `weight_shuffle_fast_memory`.
+
 ## Smoke Test
 
 Use this to verify the pipeline without downloading Omniglot:

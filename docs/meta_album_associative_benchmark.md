@@ -226,6 +226,11 @@ writes timestamped lifecycle/status messages to `sweep.log`; tune frequency
 with `--status-seconds`, and use `--tail-lines-on-failure` to control how much
 of a failed child log is copied into the sweep log.
 
+Fast-memory models are also available here because Meta-Album reuses the same
+episodic scaffold: `hemibrain_fast_memory`, `random_sparse_fast_memory`, and
+`weight_shuffle_fast_memory`. These keep the connectome/control recurrent core
+but add an online associative memory head for support/reversal label binding.
+
 ## OpenML Prefetch
 
 If you know the OpenML dataset IDs, the script can prefetch them and then scan
