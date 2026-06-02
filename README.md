@@ -45,6 +45,11 @@ python experiments/hemibrain_cx_bpu/scripts/plan_patent_experiments.py \
 See `docs/patent_evidence_workflow.md` for the selector, manifest, AWS run, and
 final evidence-report workflow.
 
+For Amazon Linux 2023 on G7e, especially `g7e.12xlarge`, use
+`docs/aws_g7e_amazon_linux_setup.md`. It covers the NVIDIA driver/CUDA phase,
+Python environment setup, local NVMe storage, and the two-GPU associative sweep
+command shape.
+
 ## CLI
 
 ```bash
