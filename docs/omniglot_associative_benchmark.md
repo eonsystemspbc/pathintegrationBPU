@@ -169,7 +169,9 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
 
 Each child run gets its own output directory and `run.log` under `jobs/`; the
 launcher writes merged `metrics_by_seed.csv`, `loss_history.csv`,
-`metrics_summary.csv`, and `sweep_jobs.csv` at the sweep output root.
+`metrics_summary.csv`, `sweep_jobs.csv`, and timestamped `sweep.log` at the
+sweep output root. Use `--status-seconds 15` for more frequent launcher status
+updates, or `--tail-lines-on-failure 160` to print more of a failed child log.
 
 ## Smoke Test
 
@@ -211,6 +213,8 @@ The script writes:
 - `connectome_expansion.json` when `--expand-factor > 1` or
   `--expand-target-neurons` is used
 - `sweep_jobs.csv` in multi-GPU launcher outputs, with one row per child job
+- `sweep.log` in multi-GPU launcher outputs, with timestamped job lifecycle and
+  failure-tail messages
 
 Primary metrics:
 
