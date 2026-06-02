@@ -221,7 +221,10 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
 
 Use `--dry-run` before the real launch to print the child commands without
 starting them. The launcher manages `--output-dir`, `--device`, `--models`, and
-`--seeds` for each child; benchmark-specific flags go after `--`.
+`--seeds` for each child; benchmark-specific flags go after `--`. The launcher
+writes timestamped lifecycle/status messages to `sweep.log`; tune frequency
+with `--status-seconds`, and use `--tail-lines-on-failure` to control how much
+of a failed child log is copied into the sweep log.
 
 ## OpenML Prefetch
 
@@ -278,6 +281,8 @@ python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark
 - `connectome_expansion.json` when `--expand-factor > 1` or
   `--expand-target-neurons` is used
 - `sweep_jobs.csv` in multi-GPU launcher outputs, with one row per child job
+- `sweep.log` in multi-GPU launcher outputs, with timestamped job lifecycle and
+  failure-tail messages
 
 Primary comparison:
 

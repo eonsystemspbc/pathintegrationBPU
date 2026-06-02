@@ -72,6 +72,40 @@ def test_build_jobs_and_child_command(tmp_path: Path) -> None:
     ]
 
 
+def test_dry_run_writes_sweep_log(tmp_path: Path) -> None:
+    sweep = _load_module()
+    output_dir = tmp_path / "dry_run"
+
+    code = sweep.main(
+        [
+            "--benchmark",
+            "omniglot",
+            "--output-dir",
+            str(output_dir),
+            "--models",
+            "hemibrain_seeded",
+            "--seeds",
+            "0",
+            "--gpus",
+            "0",
+            "--python",
+            "python",
+            "--dry-run",
+            "--",
+            "--dataset",
+            "synthetic",
+            "--epochs",
+            "1",
+        ]
+    )
+
+    text = (output_dir / "sweep.log").read_text(encoding="utf-8")
+    assert code == 0
+    assert "sweep-start" in text
+    assert "dry-run gpu=0 model=hemibrain_seeded seed=0" in text
+    assert "run_omniglot_associative_benchmark.py" in text
+
+
 def test_merge_job_outputs_writes_combined_metrics_and_summary(tmp_path: Path) -> None:
     sweep = _load_module()
     output_dir = tmp_path / "sweep"

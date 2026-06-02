@@ -44,6 +44,44 @@ def _write_artifact_manifest(
     )
 
 
+def _timestamp() -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+
+def _format_duration(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    minutes, sec = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{sec:02d}s"
+    if minutes:
+        return f"{minutes}m{sec:02d}s"
+    return f"{sec}s"
+
+
+def _tail_lines(path: Path, line_count: int) -> list[str]:
+    if line_count <= 0 or not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    return lines[-line_count:]
+
+
+class SweepLogger:
+    def __init__(self, output_dir: Path) -> None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        self.path = output_dir / "sweep.log"
+        self.handle = self.path.open("w", encoding="utf-8")
+
+    def log(self, message: str) -> None:
+        line = f"{_timestamp()} {message}"
+        print(line, flush=True)
+        self.handle.write(line + "\n")
+        self.handle.flush()
+
+    def close(self) -> None:
+        self.handle.close()
+
+
 @dataclass(frozen=True)
 class SweepJob:
     index: int
@@ -137,7 +175,9 @@ def launch_job(job: SweepJob, gpu: str, args: argparse.Namespace) -> RunningJob:
     env["CUDA_VISIBLE_DEVICES"] = str(gpu)
     env["PYTHONUNBUFFERED"] = "1"
     log_handle = job.log_path.open("w", encoding="utf-8")
+    log_handle.write(f"started_at={_timestamp()}\n")
     log_handle.write(f"gpu={gpu}\n")
+    log_handle.write(f"cuda_visible_devices={env['CUDA_VISIBLE_DEVICES']}\n")
     log_handle.write(f"command={shlex.join(command)}\n\n")
     log_handle.flush()
     process = subprocess.Popen(
@@ -175,9 +215,34 @@ def _record_for_finished_job(
     }
 
 
-def _terminate_running(running: list[RunningJob]) -> list[dict[str, object]]:
+def _log_failure_tail(
+    logger: SweepLogger,
+    entry: RunningJob,
+    line_count: int,
+) -> None:
+    tail = _tail_lines(entry.job.log_path, line_count)
+    if not tail:
+        return
+    logger.log(
+        "job-log-tail "
+        f"index={entry.job.index} model={entry.job.model} seed={entry.job.seed} "
+        f"path={entry.job.log_path} lines={len(tail)}"
+    )
+    for line in tail:
+        logger.log(f"job-log index={entry.job.index} {line}")
+
+
+def _terminate_running(
+    running: list[RunningJob],
+    logger: SweepLogger,
+) -> list[dict[str, object]]:
     for entry in running:
         if entry.process.poll() is None:
+            logger.log(
+                "job-terminate "
+                f"index={entry.job.index} model={entry.job.model} seed={entry.job.seed} "
+                f"gpu={entry.gpu}"
+            )
             entry.process.terminate()
     deadline = time.time() + 10.0
     records: list[dict[str, object]] = []
@@ -192,7 +257,31 @@ def _terminate_running(running: list[RunningJob]) -> list[dict[str, object]]:
     return records
 
 
-def run_sweep(args: argparse.Namespace, jobs: list[SweepJob]) -> list[dict[str, object]]:
+def _log_status(
+    logger: SweepLogger,
+    running: list[RunningJob],
+    pending: list[SweepJob],
+    records: list[dict[str, object]],
+) -> None:
+    running_bits = [
+        (
+            f"{entry.job.index}:{entry.job.model}/seed{entry.job.seed}"
+            f"/gpu{entry.gpu}/elapsed={_format_duration(time.time() - entry.started_at)}"
+        )
+        for entry in running
+    ]
+    logger.log(
+        "sweep-status "
+        f"done={len(records)} running={len(running)} pending={len(pending)} "
+        f"active=[{';'.join(running_bits)}]"
+    )
+
+
+def run_sweep(
+    args: argparse.Namespace,
+    jobs: list[SweepJob],
+    logger: SweepLogger,
+) -> list[dict[str, object]]:
     pending = list(jobs)
     running: list[RunningJob] = []
     records: list[dict[str, object]] = []
@@ -201,16 +290,16 @@ def run_sweep(args: argparse.Namespace, jobs: list[SweepJob]) -> list[dict[str, 
         raise RuntimeError("No GPUs were provided or detected.")
     max_parallel = min(int(args.max_parallel_jobs), len(available_gpus))
     failed = False
+    last_status = time.time()
 
     while pending or running:
         while pending and len(running) < max_parallel and available_gpus and not failed:
             gpu = available_gpus.pop(0)
             job = pending.pop(0)
-            print(
+            logger.log(
                 "job-start "
                 f"index={job.index} model={job.model} seed={job.seed} gpu={gpu} "
-                f"output_dir={job.output_dir}",
-                flush=True,
+                f"output_dir={job.output_dir} log={job.log_path}"
             )
             running.append(launch_job(job, gpu, args))
 
@@ -218,6 +307,10 @@ def run_sweep(args: argparse.Namespace, jobs: list[SweepJob]) -> list[dict[str, 
             break
 
         time.sleep(args.poll_seconds)
+        now = time.time()
+        if args.status_seconds > 0 and now - last_status >= args.status_seconds:
+            _log_status(logger, running, pending, records)
+            last_status = now
         for entry in list(running):
             return_code = entry.process.poll()
             if return_code is None:
@@ -227,17 +320,18 @@ def run_sweep(args: argparse.Namespace, jobs: list[SweepJob]) -> list[dict[str, 
             available_gpus.append(entry.gpu)
             elapsed = time.time() - entry.started_at
             status = "ok" if return_code == 0 else "failed"
-            print(
+            logger.log(
                 "job-done "
                 f"index={entry.job.index} model={entry.job.model} seed={entry.job.seed} "
                 f"gpu={entry.gpu} status={status} return_code={return_code} "
-                f"elapsed_seconds={elapsed:.1f}",
-                flush=True,
+                f"elapsed={_format_duration(elapsed)} log={entry.job.log_path}"
             )
             records.append(_record_for_finished_job(entry, int(return_code), status))
+            if return_code != 0:
+                _log_failure_tail(logger, entry, args.tail_lines_on_failure)
             if return_code != 0 and not args.keep_going:
                 failed = True
-                records.extend(_terminate_running(running))
+                records.extend(_terminate_running(running, logger))
                 running.clear()
                 pending.clear()
                 break
@@ -349,6 +443,8 @@ def write_run_config(
         "max_parallel_jobs": args.max_parallel_jobs,
         "child_device": args.child_device,
         "runner_args": runner_args(args),
+        "status_seconds": args.status_seconds,
+        "tail_lines_on_failure": args.tail_lines_on_failure,
         "job_count": len(records),
         "failed_job_count": sum(1 for record in records if int(record.get("return_code", 1)) != 0),
     }
@@ -380,6 +476,18 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--child-device", choices=("cuda", "cpu"), default="cuda")
     parser.add_argument("--poll-seconds", type=float, default=5.0)
+    parser.add_argument(
+        "--status-seconds",
+        type=float,
+        default=30.0,
+        help="Emit sweep-level running job status at this interval. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--tail-lines-on-failure",
+        type=int,
+        default=80,
+        help="Print this many lines from a failed child run.log into sweep.log.",
+    )
     parser.add_argument("--keep-going", action="store_true")
     parser.add_argument(
         "--dry-run",
@@ -404,6 +512,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--max-parallel-jobs must be positive")
     if args.poll_seconds <= 0:
         parser.error("--poll-seconds must be positive")
+    if args.status_seconds < 0:
+        parser.error("--status-seconds must be nonnegative")
+    if args.tail_lines_on_failure < 0:
+        parser.error("--tail-lines-on-failure must be nonnegative")
     if not runner_args(args):
         parser.error("Pass benchmark-specific arguments after `--`.")
     return args
@@ -413,35 +525,37 @@ def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(argv)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     jobs = build_jobs(args)
-    print(
-        "sweep-start "
-        f"benchmark={args.benchmark} jobs={len(jobs)} gpus={','.join(args.gpus)} "
-        f"max_parallel_jobs={args.max_parallel_jobs} output_dir={args.output_dir}",
-        flush=True,
-    )
-    if args.dry_run:
-        for job in jobs:
-            gpu = args.gpus[job.index % max(len(args.gpus), 1)] if args.gpus else "cpu"
-            print(
-                f"dry-run gpu={gpu} model={job.model} seed={job.seed} "
-                f"command={shlex.join(command_for_job(job, args))}",
-                flush=True,
-            )
-        return 0
+    logger = SweepLogger(args.output_dir)
+    try:
+        logger.log(
+            "sweep-start "
+            f"benchmark={args.benchmark} jobs={len(jobs)} gpus={','.join(args.gpus)} "
+            f"max_parallel_jobs={args.max_parallel_jobs} output_dir={args.output_dir} "
+            f"sweep_log={logger.path}"
+        )
+        if args.dry_run:
+            for job in jobs:
+                gpu = args.gpus[job.index % max(len(args.gpus), 1)] if args.gpus else "cpu"
+                logger.log(
+                    f"dry-run gpu={gpu} model={job.model} seed={job.seed} "
+                    f"command={shlex.join(command_for_job(job, args))}"
+                )
+            return 0
 
-    records = run_sweep(args, jobs)
-    write_job_table(args.output_dir, records)
-    metrics, _, summary = merge_job_outputs(args.output_dir, records)
-    write_run_config(args.output_dir, args, records)
-    failed = [record for record in records if int(record.get("return_code", 1)) != 0]
-    print(
-        "sweep-complete "
-        f"jobs={len(records)} failed={len(failed)} "
-        f"metrics_rows={len(metrics)} summary_rows={len(summary)} "
-        f"output_dir={args.output_dir}",
-        flush=True,
-    )
-    return 1 if failed else 0
+        records = run_sweep(args, jobs, logger)
+        write_job_table(args.output_dir, records)
+        metrics, _, summary = merge_job_outputs(args.output_dir, records)
+        write_run_config(args.output_dir, args, records)
+        failed = [record for record in records if int(record.get("return_code", 1)) != 0]
+        logger.log(
+            "sweep-complete "
+            f"jobs={len(records)} failed={len(failed)} "
+            f"metrics_rows={len(metrics)} summary_rows={len(summary)} "
+            f"output_dir={args.output_dir}"
+        )
+        return 1 if failed else 0
+    finally:
+        logger.close()
 
 
 if __name__ == "__main__":
