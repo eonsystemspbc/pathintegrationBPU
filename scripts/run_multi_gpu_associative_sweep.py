@@ -419,6 +419,153 @@ def _summary_from_metrics(metrics: object) -> object:
     return metrics.groupby("model", as_index=False).agg(**aggregations)
 
 
+def _primary_metric(summary: object) -> str | None:
+    preferred = [
+        "test_query_accuracy_mean",
+        "test_reversal_query_accuracy_mean",
+        "test_initial_query_accuracy_mean",
+        "test_initial_probe_accuracy_mean",
+        "test_reversal_probe_accuracy_mean",
+    ]
+    for column in preferred:
+        if column in summary:
+            return column
+    for column in summary.columns:
+        if column.endswith("_accuracy_mean"):
+            return str(column)
+    return None
+
+
+def _leaderboard_from_summary(summary: object) -> object:
+    pd = _pandas()
+    if summary.empty:
+        return pd.DataFrame()
+    leaderboard = summary.copy()
+    metric = _primary_metric(leaderboard)
+    if metric is not None:
+        leaderboard = leaderboard.sort_values(metric, ascending=False, na_position="last")
+    else:
+        leaderboard = leaderboard.sort_values("model")
+    leaderboard = leaderboard.reset_index(drop=True)
+    leaderboard.insert(0, "rank", range(1, len(leaderboard) + 1))
+    if metric is not None:
+        for baseline in (
+            "nearest_support",
+            "random_sparse_fast_memory",
+            "weight_shuffle_fast_memory",
+            "random_sparse",
+            "weight_shuffle",
+        ):
+            matches = leaderboard.loc[leaderboard["model"] == baseline, metric]
+            if not matches.empty:
+                leaderboard[f"delta_vs_{baseline}"] = leaderboard[metric] - float(matches.iloc[0])
+    return leaderboard
+
+
+def _format_metric(value: object) -> str:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if number != number:
+        return "nan"
+    return f"{number:.4f}"
+
+
+def _markdown_table(frame: object, columns: list[str]) -> str:
+    available = [column for column in columns if column in frame]
+    if frame.empty or not available:
+        return "_No rows._"
+    lines = [
+        "| " + " | ".join(available) + " |",
+        "| " + " | ".join("---" for _ in available) + " |",
+    ]
+    for _, row in frame[available].iterrows():
+        values = [_format_metric(row[column]) for column in available]
+        lines.append("| " + " | ".join(values) + " |")
+    return "\n".join(lines)
+
+
+def write_sweep_report(
+    output_dir: Path,
+    records: list[dict[str, object]],
+    metrics: object,
+    history: object,
+    summary: object,
+) -> object:
+    leaderboard = _leaderboard_from_summary(summary)
+    if not leaderboard.empty:
+        leaderboard.to_csv(output_dir / "leaderboard.csv", index=False)
+    failed = [record for record in records if int(record.get("return_code", 1)) != 0]
+    metric = _primary_metric(summary) if not summary.empty else None
+    table_columns = [
+        "rank",
+        "model",
+        "test_query_accuracy_mean",
+        "test_query_accuracy_std",
+        "test_initial_query_accuracy_mean",
+        "test_reversal_query_accuracy_mean",
+        "delta_vs_random_sparse_fast_memory",
+        "delta_vs_weight_shuffle_fast_memory",
+        "delta_vs_nearest_support",
+        "N",
+        "trainable_params",
+    ]
+    lines = [
+        "# Associative Sweep Report",
+        "",
+        f"Output directory: `{output_dir}`",
+        f"Jobs: `{len(records)}`; failed: `{len(failed)}`; metric rows: `{len(metrics)}`; history rows: `{len(history)}`.",
+        f"Primary ranking metric: `{metric or 'none'}`.",
+        "",
+        "## Leaderboard",
+        "",
+        _markdown_table(leaderboard, table_columns),
+        "",
+        "## Interpretation",
+        "",
+        (
+            "A useful connectome signal is `hemibrain_fast_memory` beating both "
+            "size-matched random controls across several seeds. A nearest-support "
+            "win means the current image embedding/metric baseline is still stronger "
+            "than the trained recurrent key encoder on this task."
+        ),
+        "",
+    ]
+    if failed:
+        lines.extend(
+            [
+                "## Failed Jobs",
+                "",
+                _markdown_table(
+                    _pandas().DataFrame(failed),
+                    ["index", "benchmark", "model", "seed", "gpu", "return_code", "log_path"],
+                ),
+                "",
+            ]
+        )
+    (output_dir / "sweep_report.md").write_text("\n".join(lines), encoding="utf-8")
+    return leaderboard
+
+
+def log_leaderboard(logger: SweepLogger, leaderboard: object, topn: int = 8) -> None:
+    if leaderboard.empty:
+        return
+    metric = _primary_metric(leaderboard)
+    for _, row in leaderboard.head(topn).iterrows():
+        parts = [f"rank={int(row['rank'])}", f"model={row['model']}"]
+        if metric is not None and metric in row:
+            parts.append(f"{metric}={_format_metric(row[metric])}")
+        for column in (
+            "delta_vs_random_sparse_fast_memory",
+            "delta_vs_weight_shuffle_fast_memory",
+            "delta_vs_nearest_support",
+        ):
+            if column in row:
+                parts.append(f"{column}={_format_metric(row[column])}")
+        logger.log("leaderboard " + " ".join(parts))
+
+
 def merge_job_outputs(
     output_dir: Path,
     records: list[dict[str, object]],
@@ -426,12 +573,15 @@ def merge_job_outputs(
     metrics = _read_job_csv(records, "metrics_by_seed.csv")
     history = _read_job_csv(records, "loss_history.csv")
     summary = _summary_from_metrics(metrics)
+    leaderboard = _leaderboard_from_summary(summary)
     if not metrics.empty:
         metrics.to_csv(output_dir / "metrics_by_seed.csv", index=False)
     if not history.empty:
         history.to_csv(output_dir / "loss_history.csv", index=False)
     if not summary.empty:
         summary.to_csv(output_dir / "metrics_summary.csv", index=False)
+    if not leaderboard.empty:
+        leaderboard.to_csv(output_dir / "leaderboard.csv", index=False)
     return metrics, history, summary
 
 
@@ -549,8 +699,10 @@ def main(argv: Iterable[str] | None = None) -> int:
 
         records = run_sweep(args, jobs, logger)
         write_job_table(args.output_dir, records)
-        metrics, _, summary = merge_job_outputs(args.output_dir, records)
+        metrics, history, summary = merge_job_outputs(args.output_dir, records)
         write_run_config(args.output_dir, args, records)
+        leaderboard = write_sweep_report(args.output_dir, records, metrics, history, summary)
+        log_leaderboard(logger, leaderboard)
         failed = [record for record in records if int(record.get("return_code", 1)) != 0]
         logger.log(
             "sweep-complete "

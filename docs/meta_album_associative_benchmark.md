@@ -226,6 +226,13 @@ writes timestamped lifecycle/status messages to `sweep.log`; tune frequency
 with `--status-seconds`, and use `--tail-lines-on-failure` to control how much
 of a failed child log is copied into the sweep log.
 
+To summarize a completed sweep without rerunning it:
+
+```bash
+python scripts/summarize_associative_sweep.py "$OUT"
+cat "$OUT/leaderboard.csv"
+```
+
 Fast-memory models are also available here because Meta-Album reuses the same
 episodic scaffold: `hemibrain_fast_memory`, `random_sparse_fast_memory`, and
 `weight_shuffle_fast_memory`. These keep the connectome/control recurrent core
@@ -286,6 +293,8 @@ python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark
 
 - `metrics_by_seed.csv`
 - `metrics_summary.csv`
+- `leaderboard.csv`
+- `sweep_report.md`
 - `loss_history.csv`
 - `meta_album_associative_report.md`
 - `meta_album_associative_accuracy.png`
