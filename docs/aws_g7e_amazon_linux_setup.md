@@ -36,8 +36,9 @@ nvidia-smi
 ```
 
 For G7e, the EC2 driver docs list NVIDIA RTX PRO 6000 Blackwell with a minimum
-driver version of 575.0. The repo uses PyTorch CUDA 12.6 wheels; a newer driver
-is fine.
+driver version of 575.0. Use PyTorch CUDA 13.0 wheels on this instance family:
+older CUDA 12.x PyTorch wheels may report CUDA availability but fail at runtime
+because they do not include `sm_120` Blackwell kernels.
 
 ## Phase 2: Python Environment
 
@@ -67,6 +68,16 @@ It also checks:
 - CUDA runtime version visible to PyTorch
 - two visible GPUs for `g7e.12xlarge`
 - a dry-run of the multi-GPU launcher
+
+If you ever see `CUDA error: no kernel image is available for execution on the
+device`, reinstall the PyTorch CUDA 13.0 wheels:
+
+```bash
+source .venv/bin/activate
+python -m pip uninstall -y torch torchvision torchaudio
+python -m pip install torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 \
+  --index-url https://download.pytorch.org/whl/cu130
+```
 
 ## Optional: Use Local NVMe for Data and Outputs
 
