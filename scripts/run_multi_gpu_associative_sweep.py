@@ -369,9 +369,14 @@ def _read_job_csv(
         if int(record.get("return_code", 1)) != 0:
             continue
         path = Path(str(record["output_dir"])) / filename
-        if not path.exists():
+        if not path.exists() or path.stat().st_size == 0:
             continue
-        frame = pd.read_csv(path)
+        try:
+            frame = pd.read_csv(path)
+        except pd.errors.EmptyDataError:
+            continue
+        if frame.empty and not list(frame.columns):
+            continue
         frame.insert(0, "job_index", int(record["index"]))
         frame.insert(1, "benchmark", str(record["benchmark"]))
         frame.insert(2, "gpu", str(record["gpu"]))
