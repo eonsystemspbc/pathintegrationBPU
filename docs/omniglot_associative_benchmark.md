@@ -177,8 +177,9 @@ updates, or `--tail-lines-on-failure 160` to print more of a failed child log.
 
 The vanilla connectome RNN readout can fail to learn one-shot label binding.
 Use the fast-memory variants to keep the same recurrent connectome/control
-cores while adding an online associative memory updated on support and reversal
-steps:
+cores as sensory-only key encoders while adding an online associative memory
+updated on support and reversal steps. Support labels write values into memory;
+query labels are never part of the key computation.
 
 ```bash
 OUT=/mnt/fast/outputs/omniglot_5way_reversal2_fast_memory
@@ -204,6 +205,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --embedding-sparsity 0.25 \
   --fast-memory-decay 0.92 \
   --fast-memory-temperature 0.2 \
+  --fast-memory-encoder-steps 2 \
   --epochs 15 \
   --batch-size 32 \
   --train-batches 120 \

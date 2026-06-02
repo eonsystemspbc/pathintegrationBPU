@@ -217,6 +217,7 @@ class MatrixFastMemoryRNN(nn.Module):
         state_clip: float,
         memory_decay: float,
         memory_temperature: float,
+        encoder_steps: int,
         seed: int,
     ) -> None:
         super().__init__()
@@ -234,13 +235,16 @@ class MatrixFastMemoryRNN(nn.Module):
         self.state_clip = float(state_clip)
         self.memory_decay = float(memory_decay)
         self.memory_temperature = float(memory_temperature)
+        self.encoder_steps = int(encoder_steps)
+        if self.encoder_steps < 1:
+            raise ValueError("encoder_steps must be at least 1.")
 
         generator = torch.Generator(device="cpu")
         generator.manual_seed(int(seed))
-        scale_in = 1.0 / math.sqrt(max(input_dim, 1))
-        self.W_in = nn.Parameter(
-            torch.empty(self.N, input_dim, dtype=torch.float32).uniform_(
-                -scale_in, scale_in, generator=generator
+        scale_feature = 1.0 / math.sqrt(max(feature_dim, 1))
+        self.W_feature = nn.Parameter(
+            torch.empty(self.N, feature_dim, dtype=torch.float32).uniform_(
+                -scale_feature, scale_feature, generator=generator
             )
         )
         self.b_rec = nn.Parameter(torch.zeros(self.N, dtype=torch.float32))
@@ -273,23 +277,32 @@ class MatrixFastMemoryRNN(nn.Module):
         ).coalesce()
         return torch.sparse.mm(W, h.t()).t()
 
+    def encode_features(self, features: torch.Tensor) -> torch.Tensor:
+        if features.ndim != 2 or features.shape[-1] != self.feature_dim:
+            raise ValueError(
+                f"features must have shape [batch, {self.feature_dim}], got {tuple(features.shape)}"
+            )
+        h = features.new_zeros((features.shape[0], self.N))
+        drive = features @ self.W_feature.t() + self.b_rec
+        for _ in range(self.encoder_steps):
+            h = torch.relu(self._recurrent_step(h) + drive)
+            if self.state_clip > 0:
+                h = torch.clamp(h, max=self.state_clip)
+        return nn.functional.normalize(h, p=2, dim=1, eps=1e-6)
+
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
             raise ValueError(
                 f"inputs must have shape [batch, T, {self.input_dim}], got {tuple(inputs.shape)}"
             )
         batch, T, _ = inputs.shape
-        h = inputs.new_zeros((batch, self.N))
         memory = inputs.new_zeros((batch, self.N, self.output_dim))
         outputs: list[torch.Tensor] = []
         label_slice = slice(self.feature_dim, self.feature_dim + self.output_dim)
         support_col = self.feature_dim + self.output_dim
         temp = max(self.memory_temperature, 1e-6)
         for t in range(T):
-            h = torch.relu(self._recurrent_step(h) + inputs[:, t, :] @ self.W_in.t() + self.b_rec)
-            if self.state_clip > 0:
-                h = torch.clamp(h, max=self.state_clip)
-            z = nn.functional.normalize(h, p=2, dim=1, eps=1e-6)
+            z = self.encode_features(inputs[:, t, : self.feature_dim])
             logits = torch.bmm(z.unsqueeze(1), memory).squeeze(1) / temp
             outputs.append(logits)
 
@@ -848,6 +861,7 @@ def build_model(
             state_clip=args.state_clip,
             memory_decay=args.fast_memory_decay,
             memory_temperature=args.fast_memory_temperature,
+            encoder_steps=args.fast_memory_encoder_steps,
             seed=args.init_seed + seed,
         ).to(device)
         return (
@@ -1338,6 +1352,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         default=0.2,
         help="Similarity temperature for fast associative-memory logits.",
     )
+    parser.add_argument(
+        "--fast-memory-encoder-steps",
+        type=int,
+        default=2,
+        help="Recurrent sensory-encoder refinement steps for fast associative-memory models.",
+    )
     parser.add_argument("--log-every-seconds", type=float, default=30.0)
     parser.add_argument("--way", type=int, default=20)
     parser.add_argument("--shot", type=int, default=1)
@@ -1386,6 +1406,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--fast-memory-decay must be in [0, 1]")
     if args.fast_memory_temperature <= 0:
         parser.error("--fast-memory-temperature must be positive")
+    if args.fast_memory_encoder_steps < 1:
+        parser.error("--fast-memory-encoder-steps must be at least 1")
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:
