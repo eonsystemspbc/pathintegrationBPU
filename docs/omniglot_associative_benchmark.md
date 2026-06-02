@@ -131,6 +131,46 @@ connectome exactly as the top-left submatrix. Controls are generated from the
 expanded matrix, so `random_sparse` and `weight_shuffle` remain matched to the
 expanded connectome prior.
 
+## Multi-GPU Sweep
+
+Use the launcher to distribute independent model/seed jobs across GPUs:
+
+```bash
+OUT=experiments/hemibrain_cx_bpu/outputs/omniglot_20way_1shot_reversal10_expand2_sweep
+mkdir -p "$OUT"
+
+python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
+  --benchmark omniglot \
+  --output-dir "$OUT" \
+  --gpus 0 1 2 3 \
+  --models hemibrain_seeded random_sparse weight_shuffle gru nearest_support \
+  --seeds 0 1 2 \
+  -- \
+  --dataset omniglot \
+  --download \
+  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --way 20 \
+  --shot 1 \
+  --queries-per-class 1 \
+  --reversal-count 10 \
+  --expand-factor 2.0 \
+  --expand-seed 9100 \
+  --embedding random_projection \
+  --embedding-dim 128 \
+  --embedding-sparsity 0.25 \
+  --epochs 30 \
+  --batch-size 32 \
+  --train-batches 200 \
+  --val-batches 40 \
+  --test-batches 80 \
+  --patience 6 \
+  --log-every-seconds 30
+```
+
+Each child run gets its own output directory and `run.log` under `jobs/`; the
+launcher writes merged `metrics_by_seed.csv`, `loss_history.csv`,
+`metrics_summary.csv`, and `sweep_jobs.csv` at the sweep output root.
+
 ## Smoke Test
 
 Use this to verify the pipeline without downloading Omniglot:
@@ -170,6 +210,7 @@ The script writes:
 - `run_manifest.json`
 - `connectome_expansion.json` when `--expand-factor > 1` or
   `--expand-target-neurons` is used
+- `sweep_jobs.csv` in multi-GPU launcher outputs, with one row per child job
 
 Primary metrics:
 
