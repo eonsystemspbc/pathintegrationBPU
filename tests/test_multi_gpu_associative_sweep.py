@@ -175,3 +175,47 @@ def test_merge_job_outputs_writes_combined_metrics_and_summary(tmp_path: Path) -
     assert (output_dir / "metrics_by_seed.csv").exists()
     assert (output_dir / "loss_history.csv").exists()
     assert (output_dir / "metrics_summary.csv").exists()
+
+
+def test_merge_job_outputs_skips_empty_loss_history(tmp_path: Path) -> None:
+    sweep = _load_module()
+    output_dir = tmp_path / "sweep"
+    job_dir = output_dir / "jobs" / "nearest_support_seed0"
+    job_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "model": "nearest_support",
+                "seed": 0,
+                "runtime": "none",
+                "N": 0,
+                "timesteps": 8,
+                "init_nonzero_edges": 0,
+                "recurrent_params": 0,
+                "trainable_params": 0,
+                "best_val_loss": 0.2,
+                "test_loss": 0.25,
+                "test_query_accuracy": 0.9,
+            }
+        ]
+    ).to_csv(job_dir / "metrics_by_seed.csv", index=False)
+    (job_dir / "loss_history.csv").write_text("", encoding="utf-8")
+
+    records = [
+        {
+            "index": 0,
+            "benchmark": "omniglot",
+            "gpu": "0",
+            "output_dir": str(job_dir),
+            "return_code": 0,
+        }
+    ]
+
+    metrics, history, summary = sweep.merge_job_outputs(output_dir, records)
+
+    assert metrics.shape[0] == 1
+    assert history.empty
+    assert summary.loc[0, "test_query_accuracy_mean"] == 0.9
+    assert (output_dir / "metrics_by_seed.csv").exists()
+    assert not (output_dir / "loss_history.csv").exists()
+    assert (output_dir / "metrics_summary.csv").exists()
