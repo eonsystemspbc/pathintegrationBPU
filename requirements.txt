@@ -9,3 +9,5 @@ matplotlib==3.9.2
 networkx==3.3
 tqdm==4.66.5
 pytest==7.4.4
+Pillow>=10.4.0
+openml>=0.15.1

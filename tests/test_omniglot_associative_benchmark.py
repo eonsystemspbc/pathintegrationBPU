@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from scipy import sparse
+
+
+SCRIPT_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "scripts"
+    / "run_omniglot_associative_benchmark.py"
+)
+
+
+def _load_module():
+    spec = importlib.util.spec_from_file_location("omniglot_assoc", SCRIPT_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _toy_matrix(n: int = 10) -> sparse.coo_matrix:
+    rows = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 7], dtype=np.int64)
+    cols = np.array([0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 2], dtype=np.int64)
+    data = np.linspace(0.05, 0.6, rows.size, dtype=np.float32)
+    return sparse.coo_matrix((data, (rows, cols)), shape=(n, n), dtype=np.float32)
+
+
+def test_episodic_batch_encodes_support_query_and_reversal() -> None:
+    omni = _load_module()
+    train_bank, _, _ = omni.synthetic_feature_banks(
+        feature_dim=12,
+        samples_per_class=8,
+        train_classes=12,
+        val_classes=8,
+        test_classes=8,
+        seed=5,
+        class_noise_std=0.01,
+    )
+    spec = omni.EpisodeSpec(
+        way=4,
+        shot=1,
+        queries_per_class=2,
+        reversal_count=2,
+        feature_dim=train_bank.feature_dim,
+        feature_noise_std=0.0,
+    )
+    batch = omni.generate_episode_batch(train_bank, spec, batch_size=3, rng=np.random.default_rng(7))
+
+    assert batch.inputs.shape == (3, spec.timesteps, spec.input_dim)
+    assert batch.targets.shape == (3, spec.timesteps)
+    assert np.all(batch.support_mask.sum(axis=1) == spec.way * spec.shot + spec.reversal_count * spec.shot)
+    assert np.all(batch.initial_query_mask.sum(axis=1) == spec.way * spec.queries_per_class)
+    assert np.all(batch.reversal_query_mask.sum(axis=1) == spec.way * spec.queries_per_class)
+    assert np.all(batch.query_mask == batch.initial_query_mask + batch.reversal_query_mask)
+
+    label_slice = slice(spec.feature_dim, spec.feature_dim + spec.way)
+    support_rows = batch.support_mask.astype(bool)
+    query_rows = batch.query_mask.astype(bool)
+    assert np.all(batch.inputs[support_rows, label_slice].sum(axis=1) == 1.0)
+    assert np.all(batch.inputs[query_rows, label_slice].sum(axis=1) == 0.0)
+
+
+def test_nearest_support_baseline_solves_easy_synthetic_episode() -> None:
+    omni = _load_module()
+    _, _, test_bank = omni.synthetic_feature_banks(
+        feature_dim=16,
+        samples_per_class=12,
+        train_classes=10,
+        val_classes=10,
+        test_classes=10,
+        seed=9,
+        class_noise_std=0.001,
+    )
+    spec = omni.EpisodeSpec(
+        way=5,
+        shot=1,
+        queries_per_class=2,
+        reversal_count=0,
+        feature_dim=test_bank.feature_dim,
+        feature_noise_std=0.0,
+    )
+    metrics = omni.evaluate_nearest_support(
+        test_bank,
+        spec,
+        batch_size=8,
+        batches=3,
+        seed=10,
+        temperature=0.1,
+    )
+    assert metrics["query_accuracy"] > 0.95
+    assert np.isnan(metrics["reversal_query_accuracy"])
+
+
+def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path) -> None:
+    omni = _load_module()
+    matrix_path = tmp_path / "adjacency_unsigned.npz"
+    out = tmp_path / "omniglot_assoc"
+    sparse.save_npz(matrix_path, _toy_matrix().tocsr())
+
+    code = omni.main(
+        [
+            "--dataset",
+            "synthetic",
+            "--matrix",
+            str(matrix_path),
+            "--output-dir",
+            str(out),
+            "--device",
+            "cpu",
+            "--models",
+            "hemibrain_seeded",
+            "gru",
+            "nearest_support",
+            "--seeds",
+            "0",
+            "--epochs",
+            "1",
+            "--batch-size",
+            "2",
+            "--train-batches",
+            "1",
+            "--val-batches",
+            "1",
+            "--test-batches",
+            "1",
+            "--way",
+            "3",
+            "--shot",
+            "1",
+            "--queries-per-class",
+            "1",
+            "--synthetic-feature-dim",
+            "6",
+            "--synthetic-samples-per-class",
+            "6",
+            "--synthetic-train-classes",
+            "8",
+            "--synthetic-val-classes",
+            "8",
+            "--synthetic-test-classes",
+            "8",
+            "--gru-hidden",
+            "8",
+            "--log-every-seconds",
+            "0",
+        ]
+    )
+
+    assert code == 0
+    metrics = pd.read_csv(out / "metrics_by_seed.csv")
+    assert sorted(metrics["model"].tolist()) == ["gru", "hemibrain_seeded", "nearest_support"]
+    assert (out / "metrics_summary.csv").exists()
+    assert (out / "loss_history.csv").exists()
+    assert (out / "omniglot_associative_report.md").exists()
+    assert (out / "omniglot_associative_accuracy.png").exists()
+    assert (out / "run_config.json").exists()
