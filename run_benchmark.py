@@ -19,6 +19,7 @@ from src.config import (
 )
 from src.connectome import prepare_connectome
 from src.plots import write_plots
+from src.run_manifest import write_run_manifest
 from src.train import run_training
 from src.validate import run_validation
 
@@ -59,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"Downloaded {cfg.connectome} exports: "
                 f"{info['neuron_count']} neurons, {info['edge_count']} aggregated edges."
             )
+        write_run_manifest(paths, config=cfg, extra={"stage": "download"})
 
     if cfg.mode in {"prepare", "all"}:
         graph = prepare_connectome(
@@ -72,14 +74,17 @@ def main(argv: list[str] | None = None) -> int:
             f"N={graph.metadata['N']}, edges={graph.metadata['unsigned_edge_count']}, "
             f"primary={graph.metadata['primary_matrix']}, K={graph.metadata['estimated_K']}."
         )
+        write_run_manifest(paths, config=cfg, extra={"stage": "prepare"})
 
     if cfg.mode in {"train", "all"}:
         metrics = run_training(paths, cfg.train, cfg.task)
         print(f"Training complete: wrote {len(metrics)} metric rows to {paths.metrics_by_seed_csv}.")
+        write_run_manifest(paths, config=cfg, extra={"stage": "train"})
 
     if cfg.mode in {"validate", "all"}:
         run_validation(paths, cfg.task)
         write_plots(paths)
+        write_run_manifest(paths, config=cfg, extra={"stage": "validate"})
         print("Validation reports and plots are up to date.")
 
     return 0

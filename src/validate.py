@@ -20,6 +20,7 @@ from .connectome import (
     control_invariants,
     degree_preserving_shuffle_matrix,
     load_prepared_graph,
+    normalize_connections,
     random_control_matrix,
     spectral_radius,
     weight_shuffled_control_matrix,
@@ -96,7 +97,11 @@ def write_bpu_validation(paths: OutputPaths, task_spec: TaskSpec | None = None) 
     lines.append(_line(int(metadata["N"]) == unsigned.shape[0], "adjacency shape matches metadata N"))
     body_ids = [int(x) for x in metadata["body_ids"]]
     body_to_index = {body_id: idx for idx, body_id in enumerate(body_ids)}
-    connections = pd.read_csv(paths.connections_csv)
+    connections = normalize_connections(pd.read_csv(paths.connections_csv))
+    connections = connections[
+        connections["bodyId_pre"].isin(body_to_index)
+        & connections["bodyId_post"].isin(body_to_index)
+    ]
     checked = 0
     direction_ok = True
     for _, edge in connections.head(500).iterrows():

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,12 @@ import pandas as pd
 import torch
 from scipy import sparse
 from torch import nn
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.run_manifest import write_artifact_manifest  # noqa: E402
 
 
 MODEL_HEMIBRAIN = "hemibrain_seeded"
@@ -631,6 +638,11 @@ def write_outputs(
         )
     plot_metrics(output_dir, metrics, history)
     write_report(output_dir, metrics, summary, args, spec)
+    write_artifact_manifest(
+        output_dir,
+        config={"args": serializable_args(args), "episode_spec": spec.__dict__},
+        extra={"stage": "associative_learning"},
+    )
 
 
 def serializable_args(args: argparse.Namespace) -> dict:

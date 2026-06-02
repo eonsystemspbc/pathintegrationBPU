@@ -33,6 +33,7 @@ if str(ROOT) not in sys.path:
 
 import run_optic_flow_benchmark as optic  # noqa: E402
 from src.config import OutputPaths  # noqa: E402
+from src.run_manifest import write_artifact_manifest  # noqa: E402
 
 
 POSE_CANDIDATES = (
@@ -992,6 +993,11 @@ def train_benchmark(
     )
     write_plots(output_dir, metrics, history)
     write_report(output_dir, config, summary, split)
+    write_artifact_manifest(
+        output_dir,
+        config=config,
+        extra={"stage": "tartanair_optic_flow_training"},
+    )
     log_event(
         f"complete metrics={output_dir / 'tartanair_metrics_by_seed.csv'} "
         f"summary={output_dir / 'tartanair_metrics_summary.csv'}"
