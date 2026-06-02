@@ -130,6 +130,11 @@ connectome expansion via a directed signed degree-corrected SBM. The original
 connectome submatrix is restored exactly, and controls are generated after
 expansion for size-matched comparisons.
 
+On multi-GPU instances, use
+`scripts/run_multi_gpu_associative_sweep.py` to run independent model/seed jobs
+in parallel across GPUs and merge the resulting metrics. This is the preferred
+speedup path for the associative benchmarks.
+
 To test whether brain-region identity matters, use
 `scripts/run_cross_region_transfer.py`. It can train the CX substrate on the
 associative task and the mushroom-body substrate on the CX-style angular
