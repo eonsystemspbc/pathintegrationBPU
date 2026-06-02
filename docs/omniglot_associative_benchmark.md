@@ -169,9 +169,10 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
 
 Each child run gets its own output directory and `run.log` under `jobs/`; the
 launcher writes merged `metrics_by_seed.csv`, `loss_history.csv`,
-`metrics_summary.csv`, `sweep_jobs.csv`, and timestamped `sweep.log` at the
-sweep output root. Use `--status-seconds 15` for more frequent launcher status
-updates, or `--tail-lines-on-failure 160` to print more of a failed child log.
+`metrics_summary.csv`, `leaderboard.csv`, `sweep_report.md`, `sweep_jobs.csv`,
+and timestamped `sweep.log` at the sweep output root. Use `--status-seconds 15`
+for more frequent launcher status updates, or `--tail-lines-on-failure 160` to
+print more of a failed child log.
 
 ## Fast-Memory Variant
 
@@ -218,6 +219,14 @@ python scripts/run_multi_gpu_associative_sweep.py \
 The key comparison becomes `hemibrain_fast_memory` against
 `random_sparse_fast_memory` and `weight_shuffle_fast_memory`.
 
+To summarize a completed sweep without rerunning it:
+
+```bash
+python scripts/summarize_associative_sweep.py \
+  /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2
+cat /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2/leaderboard.csv
+```
+
 ## Smoke Test
 
 Use this to verify the pipeline without downloading Omniglot:
@@ -249,6 +258,8 @@ The script writes:
 
 - `metrics_by_seed.csv`
 - `metrics_summary.csv`
+- `leaderboard.csv`
+- `sweep_report.md`
 - `loss_history.csv`
 - `omniglot_associative_report.md`
 - `omniglot_associative_accuracy.png`
