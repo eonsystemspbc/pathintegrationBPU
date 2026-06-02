@@ -117,6 +117,7 @@ def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path
             "cpu",
             "--models",
             "hemibrain_seeded",
+            "hemibrain_fast_memory",
             "gru",
             "nearest_support",
             "--seeds",
@@ -156,7 +157,12 @@ def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path
 
     assert code == 0
     metrics = pd.read_csv(out / "metrics_by_seed.csv")
-    assert sorted(metrics["model"].tolist()) == ["gru", "hemibrain_seeded", "nearest_support"]
+    assert sorted(metrics["model"].tolist()) == [
+        "gru",
+        "hemibrain_fast_memory",
+        "hemibrain_seeded",
+        "nearest_support",
+    ]
     assert (out / "metrics_summary.csv").exists()
     assert (out / "loss_history.csv").exists()
     assert (out / "omniglot_associative_report.md").exists()

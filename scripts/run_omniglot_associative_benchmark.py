@@ -37,7 +37,16 @@ import run_mb_associative_learning as mb  # noqa: E402
 
 MODEL_GRU = "gru"
 MODEL_NEAREST = "nearest_support"
-MODEL_CHOICES = mb.MODEL_CHOICES + (MODEL_GRU, MODEL_NEAREST)
+MODEL_FAST_HEMIBRAIN = "hemibrain_fast_memory"
+MODEL_FAST_RANDOM = "random_sparse_fast_memory"
+MODEL_FAST_WEIGHT_SHUFFLE = "weight_shuffle_fast_memory"
+FAST_MEMORY_MODEL_TO_BASE = {
+    MODEL_FAST_HEMIBRAIN: mb.MODEL_HEMIBRAIN,
+    MODEL_FAST_RANDOM: mb.MODEL_RANDOM,
+    MODEL_FAST_WEIGHT_SHUFFLE: mb.MODEL_WEIGHT_SHUFFLE,
+}
+FAST_MEMORY_MODELS = tuple(FAST_MEMORY_MODEL_TO_BASE)
+MODEL_CHOICES = mb.MODEL_CHOICES + FAST_MEMORY_MODELS + (MODEL_GRU, MODEL_NEAREST)
 DEFAULT_MODELS = (
     mb.MODEL_HEMIBRAIN,
     mb.MODEL_RANDOM,
@@ -194,6 +203,102 @@ class MatrixEpisodicRNN(nn.Module):
             if self.state_clip > 0:
                 h = torch.clamp(h, max=self.state_clip)
             outputs.append(self.readout(h))
+        return torch.stack(outputs, dim=1)
+
+
+class MatrixFastMemoryRNN(nn.Module):
+    def __init__(
+        self,
+        recurrent: sparse.spmatrix,
+        input_dim: int,
+        output_dim: int,
+        feature_dim: int,
+        runtime: str,
+        state_clip: float,
+        memory_decay: float,
+        memory_temperature: float,
+        seed: int,
+    ) -> None:
+        super().__init__()
+        if runtime not in mb.RUNTIME_CHOICES:
+            raise ValueError(f"runtime must be one of {mb.RUNTIME_CHOICES}")
+        recurrent = recurrent.astype(np.float32).tocoo()
+        recurrent.sum_duplicates()
+        if recurrent.shape[0] != recurrent.shape[1]:
+            raise ValueError("recurrent matrix must be square.")
+        self.N = int(recurrent.shape[0])
+        self.input_dim = int(input_dim)
+        self.output_dim = int(output_dim)
+        self.feature_dim = int(feature_dim)
+        self.runtime = runtime
+        self.state_clip = float(state_clip)
+        self.memory_decay = float(memory_decay)
+        self.memory_temperature = float(memory_temperature)
+
+        generator = torch.Generator(device="cpu")
+        generator.manual_seed(int(seed))
+        scale_in = 1.0 / math.sqrt(max(input_dim, 1))
+        self.W_in = nn.Parameter(
+            torch.empty(self.N, input_dim, dtype=torch.float32).uniform_(
+                -scale_in, scale_in, generator=generator
+            )
+        )
+        self.b_rec = nn.Parameter(torch.zeros(self.N, dtype=torch.float32))
+
+        if runtime == "dense":
+            dense = recurrent.toarray().astype(np.float32)
+            self.W_rec = nn.Parameter(torch.from_numpy(dense))
+            self.register_buffer("edge_indices", torch.empty(2, 0, dtype=torch.long))
+        else:
+            indices = np.vstack([recurrent.row, recurrent.col]).astype(np.int64)
+            self.register_buffer("edge_indices", torch.from_numpy(indices))
+            self.W_rec_values = nn.Parameter(torch.from_numpy(recurrent.data.astype(np.float32)))
+
+    def recurrent_parameter_count(self) -> int:
+        if self.runtime == "dense":
+            return int(self.W_rec.numel())
+        return int(self.W_rec_values.numel())
+
+    def trainable_parameter_count(self) -> int:
+        return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
+
+    def _recurrent_step(self, h: torch.Tensor) -> torch.Tensor:
+        if self.runtime == "dense":
+            return h @ self.W_rec.t()
+        W = torch.sparse_coo_tensor(
+            self.edge_indices,
+            self.W_rec_values,
+            size=(self.N, self.N),
+            device=h.device,
+        ).coalesce()
+        return torch.sparse.mm(W, h.t()).t()
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
+            raise ValueError(
+                f"inputs must have shape [batch, T, {self.input_dim}], got {tuple(inputs.shape)}"
+            )
+        batch, T, _ = inputs.shape
+        h = inputs.new_zeros((batch, self.N))
+        memory = inputs.new_zeros((batch, self.N, self.output_dim))
+        outputs: list[torch.Tensor] = []
+        label_slice = slice(self.feature_dim, self.feature_dim + self.output_dim)
+        support_col = self.feature_dim + self.output_dim
+        temp = max(self.memory_temperature, 1e-6)
+        for t in range(T):
+            h = torch.relu(self._recurrent_step(h) + inputs[:, t, :] @ self.W_in.t() + self.b_rec)
+            if self.state_clip > 0:
+                h = torch.clamp(h, max=self.state_clip)
+            z = nn.functional.normalize(h, p=2, dim=1, eps=1e-6)
+            logits = torch.bmm(z.unsqueeze(1), memory).squeeze(1) / temp
+            outputs.append(logits)
+
+            support_gate = inputs[:, t, support_col].view(batch, 1, 1)
+            label = inputs[:, t, label_slice].view(batch, 1, self.output_dim)
+            memory = self.memory_decay * memory + support_gate * torch.bmm(
+                z.unsqueeze(2),
+                label,
+            )
         return torch.stack(outputs, dim=1)
 
 
@@ -730,6 +835,28 @@ def build_model(
             model.trainable_parameter_count(),
         )
 
+    if model_name in FAST_MEMORY_MODEL_TO_BASE:
+        base_model_name = FAST_MEMORY_MODEL_TO_BASE[model_name]
+        init_matrix = mb.matrix_for_model(base_matrix, base_model_name, seed=args.init_seed + seed)
+        runtime = mb.runtime_for_model(base_model_name, args.recurrent_runtime)
+        model = MatrixFastMemoryRNN(
+            recurrent=init_matrix,
+            input_dim=spec.input_dim,
+            output_dim=spec.way,
+            feature_dim=spec.feature_dim,
+            runtime=runtime,
+            state_clip=args.state_clip,
+            memory_decay=args.fast_memory_decay,
+            memory_temperature=args.fast_memory_temperature,
+            seed=args.init_seed + seed,
+        ).to(device)
+        return (
+            model,
+            f"{runtime}_fast_memory",
+            model.recurrent_parameter_count(),
+            model.trainable_parameter_count(),
+        )
+
     init_matrix = mb.matrix_for_model(base_matrix, model_name, seed=args.init_seed + seed)
     runtime = mb.runtime_for_model(model_name, args.recurrent_runtime)
     model = MatrixEpisodicRNN(
@@ -1199,6 +1326,18 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--patience", type=int, default=5)
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--state-clip", type=float, default=5.0)
+    parser.add_argument(
+        "--fast-memory-decay",
+        type=float,
+        default=0.92,
+        help="Per-timestep decay for fast associative-memory models.",
+    )
+    parser.add_argument(
+        "--fast-memory-temperature",
+        type=float,
+        default=0.2,
+        help="Similarity temperature for fast associative-memory logits.",
+    )
     parser.add_argument("--log-every-seconds", type=float, default=30.0)
     parser.add_argument("--way", type=int, default=20)
     parser.add_argument("--shot", type=int, default=1)
@@ -1243,6 +1382,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--embedding-sparsity must be in (0, 1]")
     if args.embedding == "random_projection" and args.embedding_dim < 1:
         parser.error("--embedding-dim must be positive for random_projection")
+    if not (0.0 <= args.fast_memory_decay <= 1.0):
+        parser.error("--fast-memory-decay must be in [0, 1]")
+    if args.fast_memory_temperature <= 0:
+        parser.error("--fast-memory-temperature must be positive")
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:
