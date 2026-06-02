@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 import shlex
 import subprocess
@@ -407,6 +408,8 @@ def _summary_from_metrics(metrics: object) -> object:
         "recurrent_params",
         "N",
         "timesteps",
+        "freeze_recurrent",
+        "recurrent_prior_l2",
     ]
     aggregations: dict[str, tuple[str, str]] = {}
     for column in mean_std_columns:
@@ -462,6 +465,58 @@ def _leaderboard_from_summary(summary: object) -> object:
     return leaderboard
 
 
+def _paired_comparisons_from_metrics(metrics: object) -> object:
+    pd = _pandas()
+    if metrics.empty or "seed" not in metrics or "model" not in metrics:
+        return pd.DataFrame()
+    metric_columns = [
+        "test_query_accuracy",
+        "test_reversal_query_accuracy",
+        "test_initial_query_accuracy",
+        "test_initial_probe_accuracy",
+        "test_reversal_probe_accuracy",
+    ]
+    metric_columns = [column for column in metric_columns if column in metrics]
+    baseline_models = [
+        "random_sparse_fast_memory",
+        "weight_shuffle_fast_memory",
+        "nearest_support",
+        "random_sparse",
+        "weight_shuffle",
+    ]
+    rows: list[dict[str, float | int | str]] = []
+    for metric in metric_columns:
+        pivot = metrics.pivot_table(index="seed", columns="model", values=metric, aggfunc="mean")
+        for model in pivot.columns:
+            for baseline in baseline_models:
+                if model == baseline or baseline not in pivot.columns:
+                    continue
+                delta = (pivot[model] - pivot[baseline]).dropna()
+                if delta.empty:
+                    continue
+                count = int(delta.shape[0])
+                mean_delta = float(delta.mean())
+                std_delta = float(delta.std(ddof=1)) if count > 1 else float("nan")
+                se_delta = std_delta / math.sqrt(count) if count > 1 else float("nan")
+                ci95 = 1.96 * se_delta if count > 1 else float("nan")
+                rows.append(
+                    {
+                        "model": str(model),
+                        "baseline_model": baseline,
+                        "metric": metric,
+                        "paired_seed_count": count,
+                        "mean_delta": mean_delta,
+                        "std_delta": std_delta,
+                        "se_delta": se_delta,
+                        "ci95_low": mean_delta - ci95 if count > 1 else float("nan"),
+                        "ci95_high": mean_delta + ci95 if count > 1 else float("nan"),
+                    }
+                )
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame(rows)
+
+
 def _format_metric(value: object) -> str:
     try:
         number = float(value)
@@ -496,6 +551,9 @@ def write_sweep_report(
     leaderboard = _leaderboard_from_summary(summary)
     if not leaderboard.empty:
         leaderboard.to_csv(output_dir / "leaderboard.csv", index=False)
+    paired = _paired_comparisons_from_metrics(metrics)
+    if not paired.empty:
+        paired.to_csv(output_dir / "paired_comparisons.csv", index=False)
     failed = [record for record in records if int(record.get("return_code", 1)) != 0]
     metric = _primary_metric(summary) if not summary.empty else None
     table_columns = [
@@ -510,6 +568,8 @@ def write_sweep_report(
         "delta_vs_nearest_support",
         "N",
         "trainable_params",
+        "freeze_recurrent",
+        "recurrent_prior_l2",
     ]
     lines = [
         "# Associative Sweep Report",
@@ -521,6 +581,21 @@ def write_sweep_report(
         "## Leaderboard",
         "",
         _markdown_table(leaderboard, table_columns),
+        "",
+        "## Paired Comparisons",
+        "",
+        _markdown_table(
+            paired.loc[paired["metric"] == "test_query_accuracy"] if not paired.empty else paired,
+            [
+                "model",
+                "baseline_model",
+                "metric",
+                "paired_seed_count",
+                "mean_delta",
+                "ci95_low",
+                "ci95_high",
+            ],
+        ),
         "",
         "## Interpretation",
         "",
@@ -574,6 +649,7 @@ def merge_job_outputs(
     history = _read_job_csv(records, "loss_history.csv")
     summary = _summary_from_metrics(metrics)
     leaderboard = _leaderboard_from_summary(summary)
+    paired = _paired_comparisons_from_metrics(metrics)
     if not metrics.empty:
         metrics.to_csv(output_dir / "metrics_by_seed.csv", index=False)
     if not history.empty:
@@ -582,6 +658,8 @@ def merge_job_outputs(
         summary.to_csv(output_dir / "metrics_summary.csv", index=False)
     if not leaderboard.empty:
         leaderboard.to_csv(output_dir / "leaderboard.csv", index=False)
+    if not paired.empty:
+        paired.to_csv(output_dir / "paired_comparisons.csv", index=False)
     return metrics, history, summary
 
 

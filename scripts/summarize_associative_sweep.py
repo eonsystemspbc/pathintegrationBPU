@@ -90,6 +90,8 @@ def write_summary(output_dir: Path, rewrite_metrics: bool) -> int:
     with pd.option_context("display.max_columns", None, "display.width", 160):
         print(leaderboard[available].to_string(index=False))
     print(f"\nwrote {output_dir / 'leaderboard.csv'}")
+    if (output_dir / "paired_comparisons.csv").exists():
+        print(f"wrote {output_dir / 'paired_comparisons.csv'}")
     print(f"wrote {output_dir / 'sweep_report.md'}")
     return 0
 

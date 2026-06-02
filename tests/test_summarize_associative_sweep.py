@@ -68,4 +68,11 @@ def test_summarizer_discovers_child_metrics_and_writes_report(tmp_path: Path) ->
     assert round(float(leaderboard.loc[0, "delta_vs_random_sparse_fast_memory"]), 6) == 0.10
     assert (output_dir / "metrics_by_seed.csv").exists()
     assert (output_dir / "metrics_summary.csv").exists()
+    paired = pd.read_csv(output_dir / "paired_comparisons.csv")
+    paired_row = paired[
+        (paired["model"] == "hemibrain_fast_memory")
+        & (paired["baseline_model"] == "random_sparse_fast_memory")
+        & (paired["metric"] == "test_query_accuracy")
+    ].iloc[0]
+    assert round(float(paired_row["mean_delta"]), 6) == 0.10
     assert (output_dir / "sweep_report.md").exists()

@@ -140,7 +140,7 @@ On multi-GPU instances, use
 in parallel across GPUs and merge the resulting metrics. This is the preferred
 speedup path for the associative benchmarks. Completed sweeps can be summarized
 with `scripts/summarize_associative_sweep.py`, which writes `leaderboard.csv`
-and `sweep_report.md`.
+along with `paired_comparisons.csv` and `sweep_report.md`.
 
 The episodic benchmark also includes fast associative-memory variants:
 `hemibrain_fast_memory`, `random_sparse_fast_memory`, and

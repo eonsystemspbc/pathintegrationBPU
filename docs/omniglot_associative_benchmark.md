@@ -219,12 +219,53 @@ python scripts/run_multi_gpu_associative_sweep.py \
 The key comparison becomes `hemibrain_fast_memory` against
 `random_sparse_fast_memory` and `weight_shuffle_fast_memory`.
 
+If the trainable fast-memory sweep does not show a hemibrain advantage, run the
+stricter recurrent-prior variant before changing tasks. This freezes recurrent
+edge weights and trains only the sensory key projection/bias, testing whether
+the connectome itself is useful rather than merely an editable sparse mask:
+
+```bash
+OUT=/mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_frozen_5seed
+mkdir -p "$OUT"
+
+python scripts/run_multi_gpu_associative_sweep.py \
+  --benchmark omniglot \
+  --output-dir "$OUT" \
+  --gpus 0 1 \
+  --status-seconds 15 \
+  --models hemibrain_fast_memory random_sparse_fast_memory weight_shuffle_fast_memory nearest_support \
+  --seeds 0 1 2 3 4 \
+  -- \
+  --dataset omniglot \
+  --download \
+  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --way 5 \
+  --shot 1 \
+  --queries-per-class 2 \
+  --reversal-count 2 \
+  --embedding random_projection \
+  --embedding-dim 128 \
+  --embedding-sparsity 0.25 \
+  --fast-memory-decay 0.92 \
+  --fast-memory-temperature 0.2 \
+  --fast-memory-encoder-steps 2 \
+  --freeze-recurrent \
+  --epochs 15 \
+  --batch-size 32 \
+  --train-batches 120 \
+  --val-batches 30 \
+  --test-batches 80 \
+  --patience 5 \
+  --log-every-seconds 30
+```
+
 To summarize a completed sweep without rerunning it:
 
 ```bash
 python scripts/summarize_associative_sweep.py \
   /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2
 cat /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2/leaderboard.csv
+cat /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2/paired_comparisons.csv
 ```
 
 ## Smoke Test
@@ -259,6 +300,7 @@ The script writes:
 - `metrics_by_seed.csv`
 - `metrics_summary.csv`
 - `leaderboard.csv`
+- `paired_comparisons.csv`
 - `sweep_report.md`
 - `loss_history.csv`
 - `omniglot_associative_report.md`

@@ -137,6 +137,43 @@ def test_fast_memory_query_key_ignores_label_channels() -> None:
     assert torch.allclose(logits[:, 1, :], changed_logits[:, 1, :], atol=1e-6)
 
 
+def test_fast_memory_can_freeze_recurrent_weights() -> None:
+    omni = _load_module()
+    feature_dim = 4
+    output_dim = 3
+    input_dim = feature_dim + output_dim + 2
+    trainable = omni.MatrixFastMemoryRNN(
+        recurrent=_toy_matrix(n=8),
+        input_dim=input_dim,
+        output_dim=output_dim,
+        feature_dim=feature_dim,
+        runtime="sparse",
+        state_clip=5.0,
+        memory_decay=0.9,
+        memory_temperature=0.5,
+        encoder_steps=1,
+        seed=11,
+        freeze_recurrent=False,
+    )
+    frozen = omni.MatrixFastMemoryRNN(
+        recurrent=_toy_matrix(n=8),
+        input_dim=input_dim,
+        output_dim=output_dim,
+        feature_dim=feature_dim,
+        runtime="sparse",
+        state_clip=5.0,
+        memory_decay=0.9,
+        memory_temperature=0.5,
+        encoder_steps=1,
+        seed=11,
+        freeze_recurrent=True,
+    )
+
+    assert trainable.W_rec_values.requires_grad
+    assert not frozen.W_rec_values.requires_grad
+    assert frozen.trainable_parameter_count() < trainable.trainable_parameter_count()
+
+
 def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path) -> None:
     omni = _load_module()
     matrix_path = tmp_path / "adjacency_unsigned.npz"
