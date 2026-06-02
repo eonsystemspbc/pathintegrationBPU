@@ -48,6 +48,7 @@ from src.connectome import (  # noqa: E402
     sign_coverage,
 )
 from src.pools import assign_pools  # noqa: E402
+from src.run_manifest import write_artifact_manifest  # noqa: E402
 
 
 MODEL_OPTIC_LOBE = "optic_lobe_seeded"
@@ -1081,6 +1082,11 @@ def train_benchmark(
     )
     write_plots(output_dir, metrics, history)
     write_report(output_dir, config, summary)
+    write_artifact_manifest(
+        output_dir,
+        config=config,
+        extra={"stage": "optic_flow_training"},
+    )
     print(
         f"complete metrics={output_dir / 'metrics_by_seed.csv'} "
         f"summary={output_dir / 'metrics_summary.csv'}",
@@ -1220,6 +1226,11 @@ def main(argv: Iterable[str] | None = None) -> int:
             max_neurons=args.max_neurons,
         )
         print(f"download-complete {info}", flush=True)
+        write_artifact_manifest(
+            args.output_dir,
+            config=vars(args),
+            extra={"stage": "optic_flow_download"},
+        )
     if args.mode in {"prepare", "all"}:
         matrix = prepare_optic_lobe_connectome(
             paths,
@@ -1229,6 +1240,11 @@ def main(argv: Iterable[str] | None = None) -> int:
         print(
             f"prepare-complete matrix={paths.adjacency_unsigned_npz} N={matrix.shape[0]} edges={matrix.nnz}",
             flush=True,
+        )
+        write_artifact_manifest(
+            args.output_dir,
+            config=vars(args),
+            extra={"stage": "optic_flow_prepare"},
         )
     if args.mode in {"train", "all"}:
         matrix = matrix_for_training(args, paths)

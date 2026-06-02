@@ -31,6 +31,20 @@ python experiments/hemibrain_cx_bpu/run_benchmark.py --device cuda --mode all
 The default `--device auto` uses CUDA when available and falls back to CPU. For
 the intended AWS run, use `--device cuda` so a missing GPU fails loudly.
 
+For patent-evidence runs, generate a selector/control/low-power command plan:
+
+```bash
+python experiments/hemibrain_cx_bpu/scripts/plan_patent_experiments.py \
+  --plan-dir experiments/hemibrain_cx_bpu/outputs/patent_evidence_plan \
+  --output-root experiments/hemibrain_cx_bpu/outputs \
+  --seeds 0 1 2 3 4 \
+  --epochs 40 \
+  --device cuda
+```
+
+See `docs/patent_evidence_workflow.md` for the selector, manifest, AWS run, and
+final evidence-report workflow.
+
 ## CLI
 
 ```bash

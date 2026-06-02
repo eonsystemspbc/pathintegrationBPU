@@ -38,6 +38,7 @@ from src.config import (  # noqa: E402
     TrainConfig,
     build_paths,
 )
+from src.run_manifest import write_artifact_manifest  # noqa: E402
 from src.train import run_training  # noqa: E402
 
 
@@ -621,6 +622,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     summary = _write_summary(args.output_dir, raw)
     _plot_cross_region(args.output_dir, raw)
     _write_report(args.output_dir, args, summary)
+    write_artifact_manifest(
+        args.output_dir,
+        config=vars(args),
+        extra={"stage": "cross_region_transfer"},
+    )
     print(
         "cross-run-complete "
         f"metrics={args.output_dir / 'cross_region_metrics_by_seed.csv'} "
