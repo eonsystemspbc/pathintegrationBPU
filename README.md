@@ -108,6 +108,28 @@ associations and probes again. This is a closer match to MB-style olfactory
 associative memory than plume tracking. See
 `docs/mb_associative_learning.md` for the AWS commands.
 
+For an established few-shot learning benchmark, use
+`scripts/run_omniglot_associative_benchmark.py`. It evaluates the
+mushroom-body substrate on Omniglot-style episodic label binding: support
+examples provide a sensory embedding plus an episode-local label channel, and
+query examples require recall from the recurrent state. The standard
+`--reversal-count 0` run matches 20-way 1-shot Omniglot-style evaluation; a
+nonzero `--reversal-count` adds within-episode relabeling as a harder
+associative-updating variant. See
+`docs/omniglot_associative_benchmark.md` for commands.
+
+For the stronger multi-domain version of that idea, use
+`scripts/run_meta_album_associative_benchmark.py`. It applies the same
+episodic label-binding/reversal scaffold to Meta-Album-style datasets, with
+dataset-level train/validation/test splits so the result is less vulnerable to
+the "Omniglot is saturated" critique. See
+`docs/meta_album_associative_benchmark.md` for commands.
+
+Both episodic few-shot runners support `--expand-factor` for BPU-style
+connectome expansion via a directed signed degree-corrected SBM. The original
+connectome submatrix is restored exactly, and controls are generated after
+expansion for size-matched comparisons.
+
 To test whether brain-region identity matters, use
 `scripts/run_cross_region_transfer.py`. It can train the CX substrate on the
 associative task and the mushroom-body substrate on the CX-style angular
