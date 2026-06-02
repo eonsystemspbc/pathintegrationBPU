@@ -99,6 +99,44 @@ def test_nearest_support_baseline_solves_easy_synthetic_episode() -> None:
     assert np.isnan(metrics["reversal_query_accuracy"])
 
 
+def test_fast_memory_query_key_ignores_label_channels() -> None:
+    import torch
+
+    omni = _load_module()
+    feature_dim = 3
+    output_dim = 2
+    input_dim = feature_dim + output_dim + 2
+    model = omni.MatrixFastMemoryRNN(
+        recurrent=_toy_matrix(n=8),
+        input_dim=input_dim,
+        output_dim=output_dim,
+        feature_dim=feature_dim,
+        runtime="dense",
+        state_clip=5.0,
+        memory_decay=1.0,
+        memory_temperature=0.5,
+        encoder_steps=2,
+        seed=11,
+    )
+    support_col = feature_dim + output_dim
+    query_col = support_col + 1
+    label_slice = slice(feature_dim, feature_dim + output_dim)
+    inputs = torch.zeros(1, 2, input_dim)
+    inputs[:, :, :feature_dim] = torch.tensor([[[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]])
+    inputs[:, 0, label_slice] = torch.tensor([[1.0, 0.0]])
+    inputs[:, 0, support_col] = 1.0
+    inputs[:, 1, query_col] = 1.0
+
+    changed_query_labels = inputs.clone()
+    changed_query_labels[:, 1, label_slice] = torch.tensor([[0.0, 1.0]])
+
+    with torch.no_grad():
+        logits = model(inputs)
+        changed_logits = model(changed_query_labels)
+
+    assert torch.allclose(logits[:, 1, :], changed_logits[:, 1, :], atol=1e-6)
+
+
 def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path) -> None:
     omni = _load_module()
     matrix_path = tmp_path / "adjacency_unsigned.npz"

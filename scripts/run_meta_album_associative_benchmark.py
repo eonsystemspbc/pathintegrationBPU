@@ -518,6 +518,24 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--patience", type=int, default=6)
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--state-clip", type=float, default=5.0)
+    parser.add_argument(
+        "--fast-memory-decay",
+        type=float,
+        default=0.92,
+        help="Per-timestep decay for fast associative-memory models.",
+    )
+    parser.add_argument(
+        "--fast-memory-temperature",
+        type=float,
+        default=0.2,
+        help="Similarity temperature for fast associative-memory logits.",
+    )
+    parser.add_argument(
+        "--fast-memory-encoder-steps",
+        type=int,
+        default=2,
+        help="Recurrent sensory-encoder refinement steps for fast associative-memory models.",
+    )
     parser.add_argument("--log-every-seconds", type=float, default=30.0)
     parser.add_argument("--way", type=int, default=10)
     parser.add_argument("--shot", type=int, default=1)
@@ -569,6 +587,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--embedding-sparsity must be in (0, 1]")
     if args.embedding == "random_projection" and args.embedding_dim < 1:
         parser.error("--embedding-dim must be positive for random_projection")
+    if not (0.0 <= args.fast_memory_decay <= 1.0):
+        parser.error("--fast-memory-decay must be in [0, 1]")
+    if args.fast_memory_temperature <= 0:
+        parser.error("--fast-memory-temperature must be positive")
+    if args.fast_memory_encoder_steps < 1:
+        parser.error("--fast-memory-encoder-steps must be at least 1")
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:

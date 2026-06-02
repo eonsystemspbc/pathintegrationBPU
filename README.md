@@ -143,7 +143,8 @@ speedup path for the associative benchmarks.
 The episodic benchmark also includes fast associative-memory variants:
 `hemibrain_fast_memory`, `random_sparse_fast_memory`, and
 `weight_shuffle_fast_memory`. These retain the same recurrent connectome/control
-cores but add an online support/reversal memory head for one-shot binding.
+cores as sensory-only key encoders, then add an online support/reversal memory
+head for one-shot binding.
 
 To test whether brain-region identity matters, use
 `scripts/run_cross_region_transfer.py`. It can train the CX substrate on the

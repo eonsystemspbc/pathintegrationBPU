@@ -229,7 +229,16 @@ of a failed child log is copied into the sweep log.
 Fast-memory models are also available here because Meta-Album reuses the same
 episodic scaffold: `hemibrain_fast_memory`, `random_sparse_fast_memory`, and
 `weight_shuffle_fast_memory`. These keep the connectome/control recurrent core
-but add an online associative memory head for support/reversal label binding.
+as a sensory-only key encoder, then add an online associative memory head for
+support/reversal label binding. Support labels write memory values; query labels
+are never part of key computation. Add these benchmark flags after `--` when
+running the fast-memory variants:
+
+```bash
+  --fast-memory-decay 0.92 \
+  --fast-memory-temperature 0.2 \
+  --fast-memory-encoder-steps 2
+```
 
 ## OpenML Prefetch
 
