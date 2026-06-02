@@ -53,12 +53,21 @@ sudo dnf install -y \
 
 if [[ "$INSTALL_DRIVER" -eq 1 ]]; then
   sudo dnf install -y nvidia-release
-  sudo dnf install -y "kernel-devel-$(uname -r)" "kernel-headers-$(uname -r)"
-  sudo dnf install -y nvidia-driver-cuda cuda-toolkit
-  sudo systemctl enable nvidia-persistenced || true
+  if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1; then
+    echo
+    echo "NVIDIA driver is already working; skipping driver reinstall."
+    nvidia-smi
+  else
+    sudo dnf install -y "kernel-devel-$(uname -r)" "kernel-headers-$(uname -r)"
+    sudo dnf install -y nvidia-driver-cuda cuda-toolkit
+    sudo systemctl enable nvidia-persistenced || true
+    echo
+    echo "NVIDIA driver/CUDA packages installed. Reboot now, then rerun this script without --install-driver:"
+    echo "  sudo reboot"
+  fi
   echo
-  echo "NVIDIA driver/CUDA packages installed. Reboot now, then rerun this script without --install-driver:"
-  echo "  sudo reboot"
+  echo "After driver verification/reboot, rerun this script without --install-driver:"
+  echo "  scripts/setup_amazon_linux_g7e.sh"
   exit 0
 fi
 
