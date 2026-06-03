@@ -197,6 +197,10 @@ This writes:
 Use the common-horizon summary for learning-speed or stability claims. Final
 test accuracy should still be read from `leaderboard.csv` and
 `paired_comparisons.csv`.
+By default, the line plot shows all available validation epochs, while the bar
+chart and CSV summaries use the shortest complete model/seed horizon for paired
+comparisons. Add `--plot-common-only` if you want the line plot truncated to the
+same paired horizon.
 
 ## Fast-Memory Variant
 
