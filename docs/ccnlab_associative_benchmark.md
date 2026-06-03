@@ -26,6 +26,14 @@ git clone https://github.com/nikhilxb/ccnlab.git /mnt/fast/ccnlab
 The runner imports CCNLab from `--ccnlab-root`; it does not vendor the CCNLab
 code into this experiment.
 
+CCNLab imports `seaborn` and `IPython` from its benchmark modules. If your
+environment was created before these dependencies were added to this
+experiment, install them once:
+
+```bash
+python -m pip install "seaborn>=0.13.2" "IPython>=8.0.0"
+```
+
 ## Smoke Test
 
 Use a small submatrix and one experiment to validate the install:

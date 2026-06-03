@@ -148,6 +148,12 @@ def import_ccnlab_modules() -> tuple[Any, Any, Any, Any, Any]:
         from ccnlab.baselines.basic import RescorlaWagner
         from ccnlab.baselines.basic import TemporalDifference
     except ModuleNotFoundError as exc:
+        missing = exc.name or "unknown"
+        if missing != "ccnlab":
+            raise ModuleNotFoundError(
+                f"Could not import CCNLab because dependency {missing!r} is missing. "
+                'Install CCNLab helper dependencies with: python -m pip install "seaborn>=0.13.2" "IPython>=8.0.0"'
+            ) from exc
         raise ModuleNotFoundError(
             "Could not import CCNLab. Clone https://github.com/nikhilxb/ccnlab "
             "and pass --ccnlab-root /path/to/ccnlab."
