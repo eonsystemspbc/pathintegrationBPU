@@ -100,7 +100,7 @@ Summarize the completed sweep:
 
 ```bash
 python scripts/summarize_associative_sweep.py "$OUT"
-cat "$OUT/paired_comparisons.csv" | grep hemibrain_seeded
+cat "$OUT/matched_topology_comparisons.csv" | grep hemibrain_seeded
 ```
 
 Primary metric: `test_ccnlab_score_mean`. Higher is better. Correlation and
@@ -146,13 +146,16 @@ Summarize topology-specific deltas by learning rule:
 
 ```bash
 python scripts/summarize_associative_sweep.py "$OUT"
-cat "$OUT/paired_comparisons.csv" | grep connectome_kalman_filter
-cat "$OUT/paired_comparisons.csv" | grep connectome_temporal_difference
-cat "$OUT/paired_comparisons.csv" | grep connectome_rescorla_wagner
+cat "$OUT/matched_topology_comparisons.csv" | grep connectome_kalman_filter
+cat "$OUT/matched_topology_comparisons.csv" | grep connectome_temporal_difference
+cat "$OUT/matched_topology_comparisons.csv" | grep connectome_rescorla_wagner
 ```
 
 For Kalman variants, `--feature-learner-dim` controls covariance size. Larger
 values give a richer graph basis but scale quadratically in runtime and memory.
+Use `matched_topology_comparisons.csv` for topology claims; the broader
+`paired_comparisons.csv` also includes reference-baseline rows across different
+learning-rule families.
 
 ## Full Registry
 

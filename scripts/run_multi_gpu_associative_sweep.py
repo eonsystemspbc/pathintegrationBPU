@@ -473,6 +473,46 @@ def _metric_delta(values: object, baseline: float, metric: str) -> object:
     return baseline - values
 
 
+MATCHED_TOPOLOGY_CONTROLS = {
+    "hemibrain_seeded": ("random_sparse", "weight_shuffle"),
+    "connectome_seeded": ("random_sparse", "weight_shuffle"),
+    "hemibrain_conv_fast_memory": (
+        "random_sparse_conv_fast_memory",
+        "weight_shuffle_conv_fast_memory",
+    ),
+    "connectome_conv_fast_memory": (
+        "random_sparse_conv_fast_memory",
+        "weight_shuffle_conv_fast_memory",
+    ),
+    "hemibrain_fast_memory": ("random_sparse_fast_memory", "weight_shuffle_fast_memory"),
+    "connectome_fast_memory": ("random_sparse_fast_memory", "weight_shuffle_fast_memory"),
+    "connectome_rescorla_wagner": (
+        "random_sparse_rescorla_wagner",
+        "weight_shuffle_rescorla_wagner",
+    ),
+    "connectome_kalman_filter": (
+        "random_sparse_kalman_filter",
+        "weight_shuffle_kalman_filter",
+    ),
+    "connectome_temporal_difference": (
+        "random_sparse_temporal_difference",
+        "weight_shuffle_temporal_difference",
+    ),
+    "optic_lobe_seeded": ("random_sparse", "weight_shuffle"),
+    "cx_bpu": ("random", "weight_shuffle"),
+}
+
+
+def _matched_controls_for_model(model: str) -> tuple[str, ...]:
+    return tuple(MATCHED_TOPOLOGY_CONTROLS.get(str(model), ()))
+
+
+def _comparison_type(model: str, baseline: str) -> str:
+    if baseline in _matched_controls_for_model(model):
+        return "matched_topology_control"
+    return "reference_baseline"
+
+
 def _leaderboard_from_summary(summary: object) -> object:
     pd = _pandas()
     if summary.empty:
@@ -557,7 +597,8 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
     for metric in metric_columns:
         pivot = metrics.pivot_table(index="seed", columns="model", values=metric, aggfunc="mean")
         for model in pivot.columns:
-            for baseline in baseline_models:
+            model_baselines = list(dict.fromkeys([*_matched_controls_for_model(str(model)), *baseline_models]))
+            for baseline in model_baselines:
                 if model == baseline or baseline not in pivot.columns:
                     continue
                 delta = _metric_delta(pivot[model], pivot[baseline], metric).dropna()
@@ -572,6 +613,7 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
                     {
                         "model": str(model),
                         "baseline_model": baseline,
+                        "comparison_type": _comparison_type(str(model), baseline),
                         "metric": metric,
                         "paired_seed_count": count,
                         "mean_delta": mean_delta,
@@ -584,6 +626,13 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
     if not rows:
         return pd.DataFrame()
     return pd.DataFrame(rows)
+
+
+def _matched_topology_comparisons(paired: object) -> object:
+    pd = _pandas()
+    if paired.empty or "comparison_type" not in paired:
+        return pd.DataFrame()
+    return paired.loc[paired["comparison_type"] == "matched_topology_control"].copy()
 
 
 def _format_metric(value: object) -> str:
@@ -623,6 +672,9 @@ def write_sweep_report(
     paired = _paired_comparisons_from_metrics(metrics)
     if not paired.empty:
         paired.to_csv(output_dir / "paired_comparisons.csv", index=False)
+        matched_paired = _matched_topology_comparisons(paired)
+        if not matched_paired.empty:
+            matched_paired.to_csv(output_dir / "matched_topology_comparisons.csv", index=False)
     failed = [record for record in records if int(record.get("return_code", 1)) != 0]
     metric = _primary_metric(summary) if not summary.empty else None
     table_columns = [
@@ -645,12 +697,6 @@ def write_sweep_report(
         "delta_vs_weight_shuffle_conv_fast_memory",
         "delta_vs_random_sparse_fast_memory",
         "delta_vs_weight_shuffle_fast_memory",
-        "delta_vs_random_sparse_rescorla_wagner",
-        "delta_vs_weight_shuffle_rescorla_wagner",
-        "delta_vs_random_sparse_kalman_filter",
-        "delta_vs_weight_shuffle_kalman_filter",
-        "delta_vs_random_sparse_temporal_difference",
-        "delta_vs_weight_shuffle_temporal_difference",
         "delta_vs_nearest_support",
         "delta_vs_random_weight_topology",
         "delta_vs_shuffled_topology",
@@ -663,7 +709,15 @@ def write_sweep_report(
         "recurrent_prior_l2",
     ]
     paired_metric = metric.removesuffix("_mean") if metric is not None else ""
-    paired_table = paired.loc[paired["metric"] == paired_metric] if not paired.empty else paired
+    paired_table = paired
+    if not paired.empty:
+        paired_table = paired_table.loc[paired_table["metric"] == paired_metric]
+        if "comparison_type" in paired_table:
+            matched = paired_table.loc[
+                paired_table["comparison_type"] == "matched_topology_control"
+            ]
+            if not matched.empty:
+                paired_table = matched
     lines = [
         "# Associative Sweep Report",
         "",
@@ -682,6 +736,7 @@ def write_sweep_report(
             [
                 "model",
                 "baseline_model",
+                "comparison_type",
                 "metric",
                 "paired_seed_count",
                 "mean_delta",
@@ -721,10 +776,14 @@ def log_leaderboard(logger: SweepLogger, leaderboard: object, topn: int = 8) -> 
         return
     metric = _primary_metric(leaderboard)
     for _, row in leaderboard.head(topn).iterrows():
-        parts = [f"rank={int(row['rank'])}", f"model={row['model']}"]
+        model_name = str(row["model"])
+        parts = [f"rank={int(row['rank'])}", f"model={model_name}"]
         if metric is not None and metric in row:
             parts.append(f"{metric}={_format_metric(row[metric])}")
-        for column in (
+        matched_delta_columns = [
+            f"delta_vs_{baseline}" for baseline in _matched_controls_for_model(model_name)
+        ]
+        reference_delta_columns = (
             "delta_vs_random_sparse",
             "delta_vs_weight_shuffle",
             "delta_vs_random_sparse_conv_fast_memory",
@@ -738,7 +797,8 @@ def log_leaderboard(logger: SweepLogger, leaderboard: object, topn: int = 8) -> 
             "delta_vs_random_sparse_temporal_difference",
             "delta_vs_weight_shuffle_temporal_difference",
             "delta_vs_nearest_support",
-        ):
+        )
+        for column in dict.fromkeys([*matched_delta_columns, *reference_delta_columns]):
             if column in row:
                 parts.append(f"{column}={_format_metric(row[column])}")
         logger.log("leaderboard " + " ".join(parts))
@@ -753,6 +813,7 @@ def merge_job_outputs(
     summary = _summary_from_metrics(metrics)
     leaderboard = _leaderboard_from_summary(summary)
     paired = _paired_comparisons_from_metrics(metrics)
+    matched_paired = _matched_topology_comparisons(paired)
     if not metrics.empty:
         metrics.to_csv(output_dir / "metrics_by_seed.csv", index=False)
     if not history.empty:
@@ -763,6 +824,8 @@ def merge_job_outputs(
         leaderboard.to_csv(output_dir / "leaderboard.csv", index=False)
     if not paired.empty:
         paired.to_csv(output_dir / "paired_comparisons.csv", index=False)
+    if not matched_paired.empty:
+        matched_paired.to_csv(output_dir / "matched_topology_comparisons.csv", index=False)
     return metrics, history, summary
 
 

@@ -276,3 +276,82 @@ def test_rmse_leaderboard_sorts_lower_and_positive_delta_is_better(tmp_path: Pat
         & (paired["metric"] == "test_overall_rmse")
     ].iloc[0]
     assert round(float(paired_row["mean_delta"]), 6) == 0.15
+
+
+def test_matched_topology_comparisons_are_same_architecture_only(tmp_path: Path) -> None:
+    sweep = _load_module()
+    output_dir = tmp_path / "ccnlab_sweep"
+    models = [
+        "connectome_kalman_filter",
+        "random_sparse_kalman_filter",
+        "weight_shuffle_kalman_filter",
+        "random_sparse_rescorla_wagner",
+    ]
+    records = []
+    values = {
+        "connectome_kalman_filter": [0.70, 0.72],
+        "random_sparse_kalman_filter": [0.68, 0.69],
+        "weight_shuffle_kalman_filter": [0.66, 0.67],
+        "random_sparse_rescorla_wagner": [0.75, 0.76],
+    }
+    index = 0
+    for model in models:
+        for seed, value in enumerate(values[model]):
+            job_dir = output_dir / "jobs" / f"{model}_seed{seed}"
+            job_dir.mkdir(parents=True)
+            pd.DataFrame(
+                [
+                    {
+                        "model": model,
+                        "seed": seed,
+                        "N": 10 if "kalman" in model else 0,
+                        "feature_dim": 8 if "kalman" in model else 2,
+                        "trainable_params": 72,
+                        "test_ccnlab_score": value,
+                    }
+                ]
+            ).to_csv(job_dir / "metrics_by_seed.csv", index=False)
+            records.append(
+                {
+                    "index": index,
+                    "benchmark": "ccnlab",
+                    "gpu": "0",
+                    "output_dir": str(job_dir),
+                    "return_code": 0,
+                }
+            )
+            index += 1
+
+    sweep.merge_job_outputs(output_dir, records)
+    sweep.write_sweep_report(
+        output_dir,
+        records,
+        pd.read_csv(output_dir / "metrics_by_seed.csv"),
+        pd.DataFrame(),
+        pd.read_csv(output_dir / "metrics_summary.csv"),
+    )
+
+    paired = pd.read_csv(output_dir / "paired_comparisons.csv")
+    matched = pd.read_csv(output_dir / "matched_topology_comparisons.csv")
+
+    kalman_paired = paired[
+        (paired["model"] == "connectome_kalman_filter")
+        & (paired["metric"] == "test_ccnlab_score")
+    ]
+    assert set(kalman_paired["baseline_model"]) >= {
+        "random_sparse_kalman_filter",
+        "weight_shuffle_kalman_filter",
+        "random_sparse_rescorla_wagner",
+    }
+    kalman_matched = matched[
+        (matched["model"] == "connectome_kalman_filter")
+        & (matched["metric"] == "test_ccnlab_score")
+    ]
+    assert set(kalman_matched["baseline_model"]) == {
+        "random_sparse_kalman_filter",
+        "weight_shuffle_kalman_filter",
+    }
+    assert set(kalman_matched["comparison_type"]) == {"matched_topology_control"}
+    assert (output_dir / "sweep_report.md").read_text(encoding="utf-8").count(
+        "random_sparse_rescorla_wagner"
+    ) == 1
