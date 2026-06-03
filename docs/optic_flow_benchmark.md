@@ -243,3 +243,45 @@ git push origin main
 
 This intentionally avoids adding the downloaded FlyWire cache. Add adjacency
 artifacts only if you want the prepared optic-lobe graph versioned too.
+
+## Multi-GPU Strict-Prior Sweep
+
+After the optic-lobe adjacency has been prepared, use the multi-GPU launcher to
+run model/seed jobs in parallel. The strict-prior version freezes recurrent
+edge values and trains only input/readout parameters, which tests whether the
+optic-lobe recurrent graph itself is useful rather than merely an editable
+sparse mask.
+
+```bash
+cd ~/pathintegrationBPU
+git pull
+source .venv/bin/activate
+
+MATRIX=outputs/flywire_optic_lobe_flow_medium_3seed/adjacency_unsigned.npz
+OUT=/mnt/fast/outputs/flywire_optic_lobe_flow_medium_frozen_5seed
+mkdir -p "$OUT"
+
+python scripts/run_multi_gpu_associative_sweep.py \
+  --benchmark optic_flow \
+  --output-dir "$OUT" \
+  --gpus 0 1 \
+  --status-seconds 15 \
+  --models optic_lobe_seeded random_weight_topology shuffled_topology random_sparse \
+  --seeds 0 1 2 3 4 \
+  -- \
+  --mode train \
+  --matrix "$MATRIX" \
+  --difficulty medium \
+  --freeze-recurrent \
+  --epochs 30 \
+  --patience 8 \
+  --batch-size 64 \
+  --log-every-seconds 30
+
+python scripts/summarize_associative_sweep.py "$OUT"
+cat "$OUT/leaderboard.csv"
+cat "$OUT/paired_comparisons.csv"
+```
+
+For optic-flow sweeps, positive `delta_vs_*` and positive paired
+`mean_delta` values mean the model has lower RMSE than the baseline.

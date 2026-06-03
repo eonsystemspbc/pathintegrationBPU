@@ -107,6 +107,30 @@ def test_sparse_optic_flow_rnn_is_trainable_and_vector_valued() -> None:
     assert model.W_rec_values.grad is not None
 
 
+def test_sparse_optic_flow_rnn_can_freeze_recurrent_weights() -> None:
+    optic = _load_module()
+    trainable = optic.SparseOpticFlowRNN(
+        recurrent=_toy_matrix(),
+        input_dim=7,
+        output_dim=3,
+        state_clip=3.0,
+        seed=2,
+        freeze_recurrent=False,
+    )
+    frozen = optic.SparseOpticFlowRNN(
+        recurrent=_toy_matrix(),
+        input_dim=7,
+        output_dim=3,
+        state_clip=3.0,
+        seed=2,
+        freeze_recurrent=True,
+    )
+
+    assert trainable.W_rec_values.requires_grad
+    assert not frozen.W_rec_values.requires_grad
+    assert frozen.trainable_parameter_count() < trainable.trainable_parameter_count()
+
+
 def test_prepare_optic_lobe_connectome_writes_expected_artifacts(tmp_path: Path) -> None:
     optic = _load_module()
     paths = optic.OutputPaths(tmp_path, tmp_path)

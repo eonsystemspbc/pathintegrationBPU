@@ -148,6 +148,8 @@ class TrainSpec:
     lr: float
     grad_clip: float
     state_clip: float
+    freeze_recurrent: bool
+    recurrent_prior_l2: float
     device: str
     log_every_seconds: float
 
@@ -355,6 +357,7 @@ class SparseOpticFlowRNN(nn.Module):
         output_dim: int,
         state_clip: float,
         seed: int,
+        freeze_recurrent: bool = False,
     ) -> None:
         super().__init__()
         recurrent = recurrent.astype(np.float32).tocoo()
@@ -380,13 +383,20 @@ class SparseOpticFlowRNN(nn.Module):
         nn.init.zeros_(self.readout.bias)
         indices = np.vstack([recurrent.row, recurrent.col]).astype(np.int64)
         self.register_buffer("edge_indices", torch.from_numpy(indices))
-        self.W_rec_values = nn.Parameter(torch.from_numpy(recurrent.data.astype(np.float32)))
+        values = recurrent.data.astype(np.float32)
+        self.W_rec_values = nn.Parameter(torch.from_numpy(values))
+        self.register_buffer("W_rec_initial_values", torch.from_numpy(values.copy()))
+        if freeze_recurrent:
+            self.W_rec_values.requires_grad_(False)
 
     def recurrent_parameter_count(self) -> int:
         return int(self.W_rec_values.numel())
 
     def trainable_parameter_count(self) -> int:
         return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
+
+    def recurrent_prior_loss(self) -> torch.Tensor:
+        return nn.functional.mse_loss(self.W_rec_values, self.W_rec_initial_values)
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
@@ -794,6 +804,7 @@ def train_one_model(
         output_dim=spec.output_dim,
         state_clip=train_spec.state_clip,
         seed=seed + 1_000,
+        freeze_recurrent=train_spec.freeze_recurrent,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=train_spec.lr)
     rng = np.random.default_rng(seed + 12345)
@@ -810,6 +821,7 @@ def train_one_model(
     for epoch in range(1, train_spec.epochs + 1):
         model.train()
         losses: list[float] = []
+        prior_losses: list[float] = []
         start = time.monotonic()
         last_log = start
         data_gen_seconds = 0.0
@@ -828,19 +840,25 @@ def train_one_model(
             step_start = time.monotonic()
             optimizer.zero_grad(set_to_none=True)
             pred = model(x)
-            loss = torch.mean((pred - y) ** 2)
+            task_loss = torch.mean((pred - y) ** 2)
+            prior_loss = task_loss.new_tensor(0.0)
+            if train_spec.recurrent_prior_l2 > 0:
+                prior_loss = model.recurrent_prior_loss()
+            loss = task_loss + train_spec.recurrent_prior_l2 * prior_loss
             loss.backward()
             if train_spec.grad_clip > 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), train_spec.grad_clip)
             optimizer.step()
             train_step_seconds += time.monotonic() - step_start
-            losses.append(float(loss.detach().cpu()))
+            losses.append(float(task_loss.detach().cpu()))
+            prior_losses.append(float(prior_loss.detach().cpu()))
             now = time.monotonic()
             if now - last_log >= train_spec.log_every_seconds:
                 print(
                     "progress "
                     f"model={model_name} seed={seed} epoch={epoch}/{train_spec.epochs} "
                     f"batch={batch_idx}/{train_spec.train_batches} batch_loss={losses[-1]:.6g} "
+                    f"prior_loss={prior_losses[-1]:.6g} "
                     f"running_train_loss={np.mean(losses):.6g} "
                     f"data_gen_elapsed={_format_seconds(data_gen_seconds)} "
                     f"train_step_elapsed={_format_seconds(train_step_seconds)} "
@@ -860,6 +878,7 @@ def train_one_model(
             log_every_seconds=train_spec.log_every_seconds,
         )
         train_loss = float(np.mean(losses))
+        train_prior_loss = float(np.mean(prior_losses)) if prior_losses else 0.0
         if val["loss"] < best_val:
             best_val = float(val["loss"])
             best_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
@@ -877,6 +896,7 @@ def train_one_model(
             "val_translation_rmse": float(val["translation_rmse"]),
             "val_yaw_r2": float(val["yaw_r2"]),
             "best_val_loss": float(best_val),
+            "recurrent_prior_loss": train_prior_loss,
             "patience_wait": int(wait),
             "train_data_gen_seconds": float(data_gen_seconds),
             "train_step_seconds": float(train_step_seconds),
@@ -886,6 +906,7 @@ def train_one_model(
             "loss "
             f"model={model_name} seed={seed} epoch={epoch}/{train_spec.epochs} "
             f"train_loss={train_loss:.6g} val_loss={val['loss']:.6g} "
+            f"prior_loss={train_prior_loss:.6g} "
             f"val_yaw_rmse={val['yaw_rmse']:.6g} val_translation_rmse={val['translation_rmse']:.6g} "
             f"data_gen_elapsed={_format_seconds(data_gen_seconds)} "
             f"train_step_elapsed={_format_seconds(train_step_seconds)} "
@@ -914,6 +935,8 @@ def train_one_model(
         "init_nonzero_edges": int(recurrent.nnz),
         "recurrent_params": int(model.recurrent_parameter_count()),
         "trainable_params": int(model.trainable_parameter_count()),
+        "freeze_recurrent": int(bool(train_spec.freeze_recurrent)),
+        "recurrent_prior_l2": float(train_spec.recurrent_prior_l2),
         "best_val_loss": float(best_val),
         "test_loss": float(test["loss"]),
         "test_overall_rmse": float(test["overall_rmse"]),
@@ -948,6 +971,8 @@ def summarize_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
             trainable_params=("trainable_params", "first"),
             recurrent_params=("recurrent_params", "first"),
             N=("N", "first"),
+            freeze_recurrent=("freeze_recurrent", "first"),
+            recurrent_prior_l2=("recurrent_prior_l2", "first"),
         )
         .sort_values("test_overall_rmse_mean")
     )
@@ -1008,7 +1033,10 @@ def write_report(output_dir: Path, config: dict[str, object], summary: pd.DataFr
         "- `shuffled_topology`: same neuron and edge count, randomized support, same weight multiset.",
         "- `random_sparse`: same neuron and edge count, randomized support, Gaussian random weights.",
         "",
-        "All recurrent edge slots, input weights, recurrent biases, and readout weights are trainable.",
+        (
+            "Recurrent edge slots are trainable unless `freeze_recurrent` is true; "
+            "`recurrent_prior_l2` penalizes drift from the initialized connectome/control weights."
+        ),
         "",
         "## Summary",
         "",
@@ -1142,6 +1170,17 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--grad-clip", type=float, default=1.0)
     parser.add_argument("--state-clip", type=float, default=5.0)
+    parser.add_argument(
+        "--freeze-recurrent",
+        action="store_true",
+        help="Freeze recurrent connectome/control weights and train only input/readout parameters.",
+    )
+    parser.add_argument(
+        "--recurrent-prior-l2",
+        type=float,
+        default=0.0,
+        help="L2 penalty weight that keeps trainable recurrent weights near their initialization.",
+    )
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--log-every-seconds", type=float, default=30.0)
     args = parser.parse_args(argv)
@@ -1162,6 +1201,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("batch counts must be positive")
     if args.max_neurons < 0:
         parser.error("--max-neurons must be non-negative")
+    if args.recurrent_prior_l2 < 0:
+        parser.error("--recurrent-prior-l2 must be nonnegative")
     return args
 
 
@@ -1198,6 +1239,8 @@ def train_spec_from_args(args: argparse.Namespace) -> TrainSpec:
         lr=args.lr,
         grad_clip=args.grad_clip,
         state_clip=args.state_clip,
+        freeze_recurrent=bool(args.freeze_recurrent),
+        recurrent_prior_l2=float(args.recurrent_prior_l2),
         device=args.device,
         log_every_seconds=args.log_every_seconds,
     )
