@@ -55,6 +55,15 @@ import matplotlib.pyplot as plt  # noqa: E402
 MODEL_RESCORLA_WAGNER = "rescorla_wagner"
 MODEL_KALMAN_FILTER = "kalman_filter"
 MODEL_TEMPORAL_DIFFERENCE = "temporal_difference"
+MODEL_CONNECTOME_RW = "connectome_rescorla_wagner"
+MODEL_RANDOM_RW = "random_sparse_rescorla_wagner"
+MODEL_WEIGHT_RW = "weight_shuffle_rescorla_wagner"
+MODEL_CONNECTOME_KALMAN = "connectome_kalman_filter"
+MODEL_RANDOM_KALMAN = "random_sparse_kalman_filter"
+MODEL_WEIGHT_KALMAN = "weight_shuffle_kalman_filter"
+MODEL_CONNECTOME_TD = "connectome_temporal_difference"
+MODEL_RANDOM_TD = "random_sparse_temporal_difference"
+MODEL_WEIGHT_TD = "weight_shuffle_temporal_difference"
 MODEL_CONNECTOME_ALIAS = "connectome_seeded"
 MODEL_HEMIBRAIN_CONV_ALIAS = "hemibrain_conv_fast_memory"
 MODEL_RANDOM_CONV_ALIAS = "random_sparse_conv_fast_memory"
@@ -75,7 +84,19 @@ BASELINE_MODELS = (
     MODEL_KALMAN_FILTER,
     MODEL_TEMPORAL_DIFFERENCE,
 )
-MODEL_CHOICES = CONNECTOME_MODELS + BASELINE_MODELS
+GRAPH_FEATURE_MODEL_SPECS = {
+    MODEL_CONNECTOME_RW: (MODEL_HEMIBRAIN, MODEL_RESCORLA_WAGNER),
+    MODEL_RANDOM_RW: (MODEL_RANDOM, MODEL_RESCORLA_WAGNER),
+    MODEL_WEIGHT_RW: (MODEL_WEIGHT_SHUFFLE, MODEL_RESCORLA_WAGNER),
+    MODEL_CONNECTOME_KALMAN: (MODEL_HEMIBRAIN, MODEL_KALMAN_FILTER),
+    MODEL_RANDOM_KALMAN: (MODEL_RANDOM, MODEL_KALMAN_FILTER),
+    MODEL_WEIGHT_KALMAN: (MODEL_WEIGHT_SHUFFLE, MODEL_KALMAN_FILTER),
+    MODEL_CONNECTOME_TD: (MODEL_HEMIBRAIN, MODEL_TEMPORAL_DIFFERENCE),
+    MODEL_RANDOM_TD: (MODEL_RANDOM, MODEL_TEMPORAL_DIFFERENCE),
+    MODEL_WEIGHT_TD: (MODEL_WEIGHT_SHUFFLE, MODEL_TEMPORAL_DIFFERENCE),
+}
+GRAPH_FEATURE_MODELS = tuple(GRAPH_FEATURE_MODEL_SPECS)
+MODEL_CHOICES = CONNECTOME_MODELS + GRAPH_FEATURE_MODELS + BASELINE_MODELS
 DEFAULT_MODELS = (
     MODEL_HEMIBRAIN,
     MODEL_RANDOM,
@@ -320,6 +341,101 @@ class ConnectomeRPEConditioningModel:
         return response
 
 
+class FeatureRescorlaWagner:
+    """CCNLab Rescorla-Wagner update over a graph feature basis."""
+
+    def __init__(self, encoder: ConnectomeCueEncoder, alpha: float) -> None:
+        self.encoder = encoder
+        self.alpha = float(alpha)
+        self.reset()
+
+    def reset(self) -> None:
+        self.w = np.zeros(self.encoder.encoded_dim, dtype=np.float64)
+
+    def act(self, cs: list[float], ctx: list[float], us: float, t: int) -> float:
+        x = self.encoder.encode(cs, ctx, t).astype(np.float64, copy=False)
+        value = float(self.w.dot(x))
+        rpe = float(us) - float(self.w.dot(x))
+        self.w = self.w + self.alpha * rpe * x
+        return value
+
+
+class FeatureKalmanFilter:
+    """CCNLab Kalman-filter update over a graph feature basis."""
+
+    def __init__(
+        self,
+        encoder: ConnectomeCueEncoder,
+        tau2: float,
+        sigma_r2: float,
+        sigma_w2: float,
+    ) -> None:
+        self.encoder = encoder
+        self.D = int(encoder.encoded_dim)
+        self.tau2 = float(tau2)
+        self.sigma_r2 = float(sigma_r2)
+        self.sigma_w2 = float(sigma_w2)
+        self.Q = self.tau2 * np.identity(self.D, dtype=np.float64)
+        self.reset()
+
+    def reset(self) -> None:
+        self.w = np.zeros(self.D, dtype=np.float64)
+        self.S = self.sigma_w2 * np.identity(self.D, dtype=np.float64)
+
+    def act(self, cs: list[float], ctx: list[float], us: float, t: int) -> float:
+        x = self.encoder.encode(cs, ctx, t).astype(np.float64, copy=False)
+        value = float(self.w.dot(x))
+        rpe = float(us) - float(self.w.dot(x))
+        S = self.S + self.Q
+        residual_covariance = float(x.dot(S).dot(x) + self.sigma_r2)
+        k = S.dot(x) / residual_covariance
+        self.w = self.w + k * rpe
+        self.S = S - float(k.dot(x)) * S
+        return value
+
+
+class FeatureTemporalDifference:
+    """CCNLab temporal-difference update over graph features."""
+
+    def __init__(
+        self,
+        encoder: ConnectomeCueEncoder,
+        num_timesteps: int,
+        alpha: float,
+        gamma: float,
+    ) -> None:
+        self.encoder = encoder
+        self.D = int(encoder.encoded_dim)
+        self.T = int(num_timesteps)
+        self.alpha = float(alpha)
+        self.gamma = float(gamma)
+        self.reset()
+
+    def reset(self) -> None:
+        self.w = np.zeros(self.D * self.T, dtype=np.float64)
+        self.last_x = np.zeros(self.D * self.T, dtype=np.float64)
+        self.last_r = 0.0
+
+    def act(self, cs: list[float], ctx: list[float], us: float, t: int) -> float:
+        if int(t) == 0:
+            self.last_x = np.zeros(self.D * self.T, dtype=np.float64)
+        x = np.zeros(self.D * self.T, dtype=np.float64)
+        timestep = min(max(int(t), 0), self.T - 1)
+        feature = self.encoder.encode(cs, ctx, timestep).astype(np.float64, copy=False)
+        x[timestep * self.D : (timestep + 1) * self.D] = feature
+        value = float(self.w.dot(x))
+        self._update(x=x, reward=float(us))
+        if timestep + 1 == self.T:
+            self._update(x=np.zeros(self.D * self.T, dtype=np.float64), reward=0.0)
+        return value
+
+    def _update(self, x: np.ndarray, reward: float) -> None:
+        last_rpe = self.last_r + self.gamma * self.w.dot(x) - self.w.dot(self.last_x)
+        self.w = self.w + self.alpha * last_rpe * self.last_x
+        self.last_x = x
+        self.last_r = reward
+
+
 def connectome_metadata(
     model_name: str,
     encoder: ConnectomeCueEncoder,
@@ -334,6 +450,36 @@ def connectome_metadata(
         init_nonzero_edges=int(recurrent.nnz),
         recurrent_params=int(recurrent.nnz),
         trainable_params=int(encoder.encoded_dim + 1),
+    )
+
+
+def graph_feature_metadata(
+    model_name: str,
+    learner_name: str,
+    encoder: ConnectomeCueEncoder,
+    recurrent: sparse.spmatrix,
+    max_timesteps: int,
+) -> ModelMetadata:
+    if learner_name == MODEL_TEMPORAL_DIFFERENCE:
+        trainable_params = encoder.encoded_dim * int(max_timesteps)
+        encoded_dim = trainable_params
+    elif learner_name == MODEL_KALMAN_FILTER:
+        trainable_params = encoder.encoded_dim + encoder.encoded_dim * encoder.encoded_dim
+        encoded_dim = encoder.encoded_dim
+    elif learner_name == MODEL_RESCORLA_WAGNER:
+        trainable_params = encoder.encoded_dim
+        encoded_dim = encoder.encoded_dim
+    else:
+        raise ValueError(f"unknown feature learner: {learner_name}")
+    return ModelMetadata(
+        runtime=f"graph_feature_{learner_name}",
+        N=encoder.N,
+        input_dim=encoder.input_dim,
+        feature_dim=encoder.feature_dim,
+        encoded_dim=int(encoded_dim),
+        init_nonzero_edges=int(recurrent.nnz),
+        recurrent_params=int(recurrent.nnz),
+        trainable_params=int(trainable_params),
     )
 
 
@@ -415,6 +561,71 @@ def make_connectome_factory(
     return factory, metadata
 
 
+def make_graph_feature_factory(
+    model_name: str,
+    exp: Any,
+    base_matrix: sparse.coo_matrix,
+    seed: int,
+    args: argparse.Namespace,
+) -> tuple[Callable[[str, int], Any], ModelMetadata]:
+    topology_model, learner_name = GRAPH_FEATURE_MODEL_SPECS[model_name]
+    recurrent = matrix_for_model(base_matrix, topology_model, seed=args.init_seed + seed)
+    cue_dim = len(exp.cs_space) + len(exp.ctx_space)
+    feature_dim = int(args.feature_learner_dim or args.feature_dim)
+    max_timesteps = max(
+        len(trial) for group in exp.stimuli.values() for trial in group
+    )
+    encoder = ConnectomeCueEncoder(
+        recurrent=recurrent,
+        cue_dim=cue_dim,
+        time_basis_dim=args.feature_time_basis_dim,
+        feature_dim=feature_dim,
+        encoder_steps=args.encoder_steps,
+        recurrent_gain=args.recurrent_gain,
+        input_scale=args.input_scale,
+        hidden_scale=args.hidden_scale,
+        raw_input_scale=args.raw_input_scale,
+        state_clip=args.state_clip,
+        seed=args.init_seed + seed,
+    )
+    metadata = graph_feature_metadata(
+        model_name=model_name,
+        learner_name=learner_name,
+        encoder=encoder,
+        recurrent=recurrent,
+        max_timesteps=max_timesteps,
+    )
+
+    if learner_name == MODEL_RESCORLA_WAGNER:
+
+        def factory(group_name: str, subject: int) -> FeatureRescorlaWagner:
+            return FeatureRescorlaWagner(encoder=encoder, alpha=args.rw_alpha)
+
+    elif learner_name == MODEL_KALMAN_FILTER:
+
+        def factory(group_name: str, subject: int) -> FeatureKalmanFilter:
+            return FeatureKalmanFilter(
+                encoder=encoder,
+                tau2=args.kalman_tau2,
+                sigma_r2=args.kalman_sigma_r2,
+                sigma_w2=args.kalman_sigma_w2,
+            )
+
+    elif learner_name == MODEL_TEMPORAL_DIFFERENCE:
+
+        def factory(group_name: str, subject: int) -> FeatureTemporalDifference:
+            return FeatureTemporalDifference(
+                encoder=encoder,
+                num_timesteps=max_timesteps,
+                alpha=args.td_alpha,
+                gamma=args.td_gamma,
+            )
+
+    else:
+        raise ValueError(f"unknown feature learner: {learner_name}")
+    return factory, metadata
+
+
 def make_baseline_factory(
     model_name: str,
     exp: Any,
@@ -476,6 +687,10 @@ def make_model_factory(
         if base_matrix is None:
             raise ValueError(f"{model_name} requires --matrix")
         return make_connectome_factory(model_name, exp, base_matrix, seed, args)
+    if model_name in GRAPH_FEATURE_MODEL_SPECS:
+        if base_matrix is None:
+            raise ValueError(f"{model_name} requires --matrix")
+        return make_graph_feature_factory(model_name, exp, base_matrix, seed, args)
     return make_baseline_factory(
         model_name,
         exp,
@@ -774,6 +989,7 @@ def write_report(
         f"Subjects per experiment group: `{args.subjects}`",
         f"Experiments: `{', '.join(args.experiments)}`",
         f"Feature neurons: `{args.feature_dim}`",
+        f"Feature-learner neurons: `{args.feature_learner_dim or args.feature_dim}`",
         f"Encoder graph steps: `{args.encoder_steps}`",
         "",
         "## Leaderboard",
@@ -857,6 +1073,25 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         help="Use the leading N-neuron submatrix for smoke tests. 0 keeps the full matrix.",
     )
     parser.add_argument("--feature-dim", type=int, default=512)
+    parser.add_argument(
+        "--feature-learner-dim",
+        type=int,
+        default=128,
+        help=(
+            "Graph feature count for connectome/random/weight-shuffle RW, Kalman, "
+            "and TD variants. Use 0 to reuse --feature-dim."
+        ),
+    )
+    parser.add_argument(
+        "--feature-time-basis-dim",
+        type=int,
+        default=0,
+        help=(
+            "Optional time basis appended before graph encoding for feature-learner "
+            "variants. TD already adds complete-serial-compound time blocks, so 0 "
+            "is the default."
+        ),
+    )
     parser.add_argument("--time-basis-dim", type=int, default=8)
     parser.add_argument("--encoder-steps", type=int, default=2)
     parser.add_argument("--recurrent-gain", type=float, default=0.7)
@@ -886,6 +1121,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--max-neurons must be nonnegative")
     if args.feature_dim < 1:
         parser.error("--feature-dim must be positive")
+    if args.feature_learner_dim < 0:
+        parser.error("--feature-learner-dim must be nonnegative")
+    if args.feature_time_basis_dim < 0:
+        parser.error("--feature-time-basis-dim must be nonnegative")
     if args.time_basis_dim < 0:
         parser.error("--time-basis-dim must be nonnegative")
     if args.encoder_steps < 0:
@@ -906,7 +1145,10 @@ def main(argv: Iterable[str] | None = None) -> int:
     classical, evaluation, RescorlaWagner, KalmanFilter, TemporalDifference = (
         import_ccnlab_modules()
     )
-    needs_matrix = any(model in CONNECTOME_MODEL_ALIASES for model in args.models)
+    needs_matrix = any(
+        model in CONNECTOME_MODEL_ALIASES or model in GRAPH_FEATURE_MODEL_SPECS
+        for model in args.models
+    )
     base_matrix = load_base_matrix(args.matrix, args.max_neurons) if needs_matrix else None
     print(
         "run-start "
@@ -919,6 +1161,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         print(
             "matrix-ready "
             f"N={base_matrix.shape[0]} edges={base_matrix.nnz} feature_dim={args.feature_dim} "
+            f"feature_learner_dim={args.feature_learner_dim or args.feature_dim} "
             f"encoder_steps={args.encoder_steps}",
             flush=True,
         )
