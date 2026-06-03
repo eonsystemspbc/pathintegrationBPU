@@ -321,7 +321,7 @@ def _class_level_split(
 
 
 def _projection_for(args: argparse.Namespace, pixel_dim: int) -> np.ndarray | None:
-    if args.embedding == "raw":
+    if args.embedding in {"raw", "raw_pixels"}:
         return None
     rng = np.random.default_rng(args.data_seed)
     return rng.normal(
@@ -558,6 +558,11 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--embedding-sparsity", type=float, default=0.25)
     parser.add_argument("--image-size", type=int, default=64)
     parser.add_argument("--gru-hidden", type=int, default=256)
+    parser.add_argument("--protonet-hidden-dim", type=int, default=256)
+    parser.add_argument("--protonet-embedding-dim", type=int, default=128)
+    parser.add_argument("--protonet-channels", type=int, default=64)
+    parser.add_argument("--protonet-temperature", type=float, default=0.2)
+    parser.add_argument("--protonet-memory-decay", type=float, default=0.92)
     parser.add_argument("--nearest-temperature", type=float, default=0.1)
     parser.add_argument("--synthetic-feature-dim", type=int, default=64)
     parser.add_argument("--synthetic-samples-per-class", type=int, default=20)
@@ -606,6 +611,16 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--fast-memory-encoder-steps must be at least 1")
     if args.recurrent_prior_l2 < 0:
         parser.error("--recurrent-prior-l2 must be nonnegative")
+    if args.protonet_hidden_dim < 1:
+        parser.error("--protonet-hidden-dim must be positive")
+    if args.protonet_embedding_dim < 1:
+        parser.error("--protonet-embedding-dim must be positive")
+    if args.protonet_channels < 1:
+        parser.error("--protonet-channels must be positive")
+    if args.protonet_temperature <= 0:
+        parser.error("--protonet-temperature must be positive")
+    if not (0.0 <= args.protonet_memory_decay <= 1.0):
+        parser.error("--protonet-memory-decay must be in [0, 1]")
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:

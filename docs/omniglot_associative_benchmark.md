@@ -219,6 +219,59 @@ python scripts/run_multi_gpu_associative_sweep.py \
 The key comparison becomes `hemibrain_fast_memory` against
 `random_sparse_fast_memory` and `weight_shuffle_fast_memory`.
 
+## Accuracy-Ceiling ProtoNet Run
+
+If accuracy is stuck near chance-to-50%, first remove the weak random-projection
+front-end. `conv_protonet` trains a Conv4 metric encoder directly on Omniglot
+pixels, while `mlp_protonet` checks whether a lightweight learned metric over
+the same raw pixels is enough. These are not connectome-prior claims by
+themselves; they are the baseline/ceiling needed to know whether the associative
+episode scaffold can support higher accuracy.
+
+```bash
+OUT=/mnt/fast/outputs/omniglot_5way_reversal5_rawpixels_protonet_5seed
+mkdir -p "$OUT"
+
+python scripts/run_multi_gpu_associative_sweep.py \
+  --benchmark omniglot \
+  --output-dir "$OUT" \
+  --gpus 0 1 \
+  --status-seconds 15 \
+  --models conv_protonet mlp_protonet hemibrain_fast_memory random_sparse_fast_memory weight_shuffle_fast_memory nearest_support \
+  --seeds 0 1 2 3 4 \
+  -- \
+  --dataset omniglot \
+  --download \
+  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --way 5 \
+  --shot 1 \
+  --queries-per-class 4 \
+  --reversal-count 5 \
+  --embedding raw_pixels \
+  --embedding-sparsity 1.0 \
+  --image-size 28 \
+  --protonet-embedding-dim 64 \
+  --protonet-channels 64 \
+  --protonet-temperature 0.2 \
+  --protonet-memory-decay 0.92 \
+  --fast-memory-decay 0.92 \
+  --fast-memory-temperature 0.2 \
+  --fast-memory-encoder-steps 2 \
+  --recurrent-prior-l2 1e-3 \
+  --epochs 25 \
+  --batch-size 32 \
+  --train-batches 240 \
+  --val-batches 60 \
+  --test-batches 160 \
+  --patience 7 \
+  --log-every-seconds 30
+```
+
+For a literature-facing Omniglot number, rerun the same command with
+`--reversal-count 0`, `--way 20`, and enough seeds. The reversal task is useful
+for testing online relabeling, but it is not the canonical Omniglot SOTA
+setting.
+
 If the trainable fast-memory sweep does not show a hemibrain advantage, run the
 stricter recurrent-prior variant before changing tasks. This freezes recurrent
 edge weights and trains only the sensory key projection/bias, testing whether

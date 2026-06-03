@@ -37,6 +37,8 @@ import run_mb_associative_learning as mb  # noqa: E402
 
 MODEL_GRU = "gru"
 MODEL_NEAREST = "nearest_support"
+MODEL_MLP_PROTONET = "mlp_protonet"
+MODEL_CONV_PROTONET = "conv_protonet"
 MODEL_FAST_HEMIBRAIN = "hemibrain_fast_memory"
 MODEL_FAST_RANDOM = "random_sparse_fast_memory"
 MODEL_FAST_WEIGHT_SHUFFLE = "weight_shuffle_fast_memory"
@@ -46,7 +48,8 @@ FAST_MEMORY_MODEL_TO_BASE = {
     MODEL_FAST_WEIGHT_SHUFFLE: mb.MODEL_WEIGHT_SHUFFLE,
 }
 FAST_MEMORY_MODELS = tuple(FAST_MEMORY_MODEL_TO_BASE)
-MODEL_CHOICES = mb.MODEL_CHOICES + FAST_MEMORY_MODELS + (MODEL_GRU, MODEL_NEAREST)
+PROTONET_MODELS = (MODEL_MLP_PROTONET, MODEL_CONV_PROTONET)
+MODEL_CHOICES = mb.MODEL_CHOICES + FAST_MEMORY_MODELS + PROTONET_MODELS + (MODEL_GRU, MODEL_NEAREST)
 DEFAULT_MODELS = (
     mb.MODEL_HEMIBRAIN,
     mb.MODEL_RANDOM,
@@ -55,7 +58,7 @@ DEFAULT_MODELS = (
     MODEL_NEAREST,
 )
 DATASET_CHOICES = ("omniglot", "synthetic")
-EMBEDDING_CHOICES = ("random_projection", "raw")
+EMBEDDING_CHOICES = ("random_projection", "raw", "raw_pixels")
 
 
 @dataclass(frozen=True)
@@ -364,6 +367,130 @@ class GRUEpisodicClassifier(nn.Module):
         return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
 
 
+class OnlineProtoNetClassifier(nn.Module):
+    def __init__(
+        self,
+        feature_dim: int,
+        output_dim: int,
+        embedding_dim: int,
+        temperature: float,
+        memory_decay: float,
+    ) -> None:
+        super().__init__()
+        self.feature_dim = int(feature_dim)
+        self.output_dim = int(output_dim)
+        self.embedding_dim = int(embedding_dim)
+        self.temperature = float(temperature)
+        self.memory_decay = float(memory_decay)
+
+    def encode_features(self, features: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
+
+    def recurrent_parameter_count(self) -> int:
+        return 0
+
+    def trainable_parameter_count(self) -> int:
+        return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        expected_dim = self.feature_dim + self.output_dim + 2
+        if inputs.ndim != 3 or inputs.shape[-1] != expected_dim:
+            raise ValueError(
+                f"inputs must have shape [batch, T, {expected_dim}], got {tuple(inputs.shape)}"
+            )
+        batch, T, _ = inputs.shape
+        memory_sum = inputs.new_zeros((batch, self.output_dim, self.embedding_dim))
+        memory_count = inputs.new_zeros((batch, self.output_dim, 1))
+        outputs: list[torch.Tensor] = []
+        label_slice = slice(self.feature_dim, self.feature_dim + self.output_dim)
+        support_col = self.feature_dim + self.output_dim
+        temp = max(self.temperature, 1e-6)
+        for t in range(T):
+            z = self.encode_features(inputs[:, t, : self.feature_dim])
+            z = nn.functional.normalize(z, p=2, dim=1, eps=1e-6)
+            prototypes = memory_sum / memory_count.clamp_min(1e-6)
+            prototypes = nn.functional.normalize(prototypes, p=2, dim=2, eps=1e-6)
+            logits = torch.bmm(prototypes, z.unsqueeze(2)).squeeze(2) / temp
+            outputs.append(logits)
+
+            support_gate = inputs[:, t, support_col].view(batch, 1, 1)
+            label = inputs[:, t, label_slice].view(batch, self.output_dim, 1)
+            update = label * z.view(batch, 1, self.embedding_dim)
+            memory_sum = self.memory_decay * memory_sum + support_gate * update
+            memory_count = self.memory_decay * memory_count + support_gate * label
+        return torch.stack(outputs, dim=1)
+
+
+class MLPProtoNetClassifier(OnlineProtoNetClassifier):
+    def __init__(
+        self,
+        feature_dim: int,
+        output_dim: int,
+        hidden_dim: int,
+        embedding_dim: int,
+        temperature: float,
+        memory_decay: float,
+        seed: int,
+    ) -> None:
+        torch.manual_seed(seed)
+        super().__init__(feature_dim, output_dim, embedding_dim, temperature, memory_decay)
+        self.encoder = nn.Sequential(
+            nn.Linear(self.feature_dim, int(hidden_dim)),
+            nn.ReLU(),
+            nn.LayerNorm(int(hidden_dim)),
+            nn.Linear(int(hidden_dim), self.embedding_dim),
+        )
+
+    def encode_features(self, features: torch.Tensor) -> torch.Tensor:
+        return self.encoder(features)
+
+
+class ConvProtoNetClassifier(OnlineProtoNetClassifier):
+    def __init__(
+        self,
+        feature_dim: int,
+        output_dim: int,
+        image_size: int,
+        channels: int,
+        embedding_dim: int,
+        temperature: float,
+        memory_decay: float,
+        seed: int,
+    ) -> None:
+        if feature_dim != image_size * image_size:
+            raise ValueError(
+                "conv_protonet requires raw square image features. Use "
+                "--embedding raw_pixels --embedding-sparsity 1.0 and matching --image-size."
+            )
+        torch.manual_seed(seed)
+        super().__init__(feature_dim, output_dim, embedding_dim, temperature, memory_decay)
+        self.image_size = int(image_size)
+        self.channels = int(channels)
+        blocks: list[nn.Module] = []
+        in_channels = 1
+        spatial = self.image_size
+        for _ in range(4):
+            blocks.extend(
+                [
+                    nn.Conv2d(in_channels, self.channels, kernel_size=3, padding=1),
+                    nn.BatchNorm2d(self.channels),
+                    nn.ReLU(),
+                    nn.MaxPool2d(2),
+                ]
+            )
+            in_channels = self.channels
+            spatial //= 2
+        if spatial < 1:
+            raise ValueError("--image-size is too small for conv_protonet.")
+        self.encoder = nn.Sequential(*blocks)
+        self.project = nn.Linear(self.channels * spatial * spatial, self.embedding_dim)
+
+    def encode_features(self, features: torch.Tensor) -> torch.Tensor:
+        image = features.view(features.shape[0], 1, self.image_size, self.image_size)
+        hidden = self.encoder(image).flatten(1)
+        return self.project(hidden)
+
+
 def _format_seconds(seconds: float) -> str:
     seconds = int(max(0.0, seconds))
     if seconds < 60:
@@ -455,6 +582,9 @@ def _embed_class_arrays(
 ) -> tuple[np.ndarray, ...]:
     embedded: list[np.ndarray] = []
     for samples in classes:
+        if embedding == "raw_pixels":
+            embedded.append(samples.astype(np.float32))
+            continue
         if embedding == "raw":
             features = samples.astype(np.float32)
         elif embedding == "random_projection":
@@ -519,7 +649,7 @@ def load_omniglot_feature_banks(args: argparse.Namespace) -> tuple[FeatureBank, 
             1.0 / math.sqrt(max(args.embedding_dim, 1)),
             size=(pixel_dim, args.embedding_dim),
         ).astype(np.float32)
-    elif args.embedding_dim > 0 and args.embedding != "raw":
+    elif args.embedding_dim > 0 and args.embedding not in {"raw", "raw_pixels"}:
         raise ValueError("--embedding-dim is only used by random_projection.")
 
     return (
@@ -876,6 +1006,46 @@ def build_model(
             model.trainable_parameter_count(),
         )
 
+    if model_name == MODEL_MLP_PROTONET:
+        model = MLPProtoNetClassifier(
+            feature_dim=spec.feature_dim,
+            output_dim=spec.way,
+            hidden_dim=args.protonet_hidden_dim,
+            embedding_dim=args.protonet_embedding_dim,
+            temperature=args.protonet_temperature,
+            memory_decay=args.protonet_memory_decay,
+            seed=args.init_seed + seed,
+        ).to(device)
+        return (
+            model,
+            "metric_protonet_mlp",
+            model.recurrent_parameter_count(),
+            model.trainable_parameter_count(),
+        )
+
+    if model_name == MODEL_CONV_PROTONET:
+        if args.embedding != "raw_pixels":
+            raise ValueError(
+                "conv_protonet requires --embedding raw_pixels so the Conv4 encoder "
+                "sees actual Omniglot image intensities."
+            )
+        model = ConvProtoNetClassifier(
+            feature_dim=spec.feature_dim,
+            output_dim=spec.way,
+            image_size=args.image_size,
+            channels=args.protonet_channels,
+            embedding_dim=args.protonet_embedding_dim,
+            temperature=args.protonet_temperature,
+            memory_decay=args.protonet_memory_decay,
+            seed=args.init_seed + seed,
+        ).to(device)
+        return (
+            model,
+            "metric_protonet_conv4",
+            model.recurrent_parameter_count(),
+            model.trainable_parameter_count(),
+        )
+
     if model_name in FAST_MEMORY_MODEL_TO_BASE:
         base_model_name = FAST_MEMORY_MODEL_TO_BASE[model_name]
         init_matrix = mb.matrix_for_model(base_matrix, base_model_name, seed=args.init_seed + seed)
@@ -1092,7 +1262,9 @@ def train_one_model(
         "seed": seed,
         "runtime": runtime,
         "N": int(getattr(model, "N", getattr(model, "hidden_size", 0))),
-        "init_nonzero_edges": int(base_matrix.nnz if model_name != MODEL_GRU else 0),
+        "init_nonzero_edges": int(
+            base_matrix.nnz if model_name in mb.MODEL_CHOICES + FAST_MEMORY_MODELS else 0
+        ),
         "recurrent_params": recurrent_params,
         "trainable_params": trainable_params,
         "timesteps": spec.timesteps,
@@ -1443,6 +1615,11 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--val-class-fraction", type=float, default=0.15)
     parser.add_argument("--max-classes", type=int, default=0)
     parser.add_argument("--gru-hidden", type=int, default=256)
+    parser.add_argument("--protonet-hidden-dim", type=int, default=256)
+    parser.add_argument("--protonet-embedding-dim", type=int, default=128)
+    parser.add_argument("--protonet-channels", type=int, default=64)
+    parser.add_argument("--protonet-temperature", type=float, default=0.2)
+    parser.add_argument("--protonet-memory-decay", type=float, default=0.92)
     parser.add_argument("--nearest-temperature", type=float, default=0.1)
     parser.add_argument("--synthetic-feature-dim", type=int, default=64)
     parser.add_argument("--synthetic-samples-per-class", type=int, default=20)
@@ -1477,6 +1654,18 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--fast-memory-encoder-steps must be at least 1")
     if args.recurrent_prior_l2 < 0:
         parser.error("--recurrent-prior-l2 must be nonnegative")
+    if args.protonet_hidden_dim < 1:
+        parser.error("--protonet-hidden-dim must be positive")
+    if args.protonet_embedding_dim < 1:
+        parser.error("--protonet-embedding-dim must be positive")
+    if args.protonet_channels < 1:
+        parser.error("--protonet-channels must be positive")
+    if args.protonet_temperature <= 0:
+        parser.error("--protonet-temperature must be positive")
+    if not (0.0 <= args.protonet_memory_decay <= 1.0):
+        parser.error("--protonet-memory-decay must be in [0, 1]")
+    if MODEL_CONV_PROTONET in args.models and args.embedding != "raw_pixels":
+        parser.error("conv_protonet requires --embedding raw_pixels")
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:

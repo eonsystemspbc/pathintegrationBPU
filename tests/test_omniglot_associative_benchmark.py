@@ -174,6 +174,32 @@ def test_fast_memory_can_freeze_recurrent_weights() -> None:
     assert frozen.trainable_parameter_count() < trainable.trainable_parameter_count()
 
 
+def test_conv_protonet_forward_uses_raw_pixel_features() -> None:
+    import torch
+
+    omni = _load_module()
+    image_size = 16
+    way = 3
+    model = omni.ConvProtoNetClassifier(
+        feature_dim=image_size * image_size,
+        output_dim=way,
+        image_size=image_size,
+        channels=4,
+        embedding_dim=8,
+        temperature=0.5,
+        memory_decay=0.9,
+        seed=13,
+    )
+    inputs = torch.zeros(2, 4, image_size * image_size + way + 2)
+    inputs[:, :, : image_size * image_size] = torch.rand(2, 4, image_size * image_size)
+    inputs[:, 0, image_size * image_size] = 1.0
+    inputs[:, 0, image_size * image_size + way] = 1.0
+
+    logits = model(inputs)
+
+    assert logits.shape == (2, 4, way)
+
+
 def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path) -> None:
     omni = _load_module()
     matrix_path = tmp_path / "adjacency_unsigned.npz"
@@ -193,6 +219,7 @@ def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path
             "--models",
             "hemibrain_seeded",
             "hemibrain_fast_memory",
+            "mlp_protonet",
             "gru",
             "nearest_support",
             "--seeds",
@@ -236,6 +263,7 @@ def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path
         "gru",
         "hemibrain_fast_memory",
         "hemibrain_seeded",
+        "mlp_protonet",
         "nearest_support",
     ]
     assert (out / "metrics_summary.csv").exists()
