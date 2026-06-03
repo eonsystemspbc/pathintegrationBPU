@@ -200,6 +200,39 @@ def test_conv_protonet_forward_uses_raw_pixel_features() -> None:
     assert logits.shape == (2, 4, way)
 
 
+def test_conv_fast_memory_forward_routes_raw_pixels_through_connectome() -> None:
+    import torch
+
+    omni = _load_module()
+    image_size = 16
+    raw_feature_dim = image_size * image_size
+    way = 3
+    model = omni.ConvMatrixFastMemoryRNN(
+        recurrent=_toy_matrix(n=10),
+        input_dim=raw_feature_dim + way + 2,
+        output_dim=way,
+        raw_feature_dim=raw_feature_dim,
+        image_size=image_size,
+        conv_channels=4,
+        conv_embedding_dim=8,
+        runtime="dense",
+        state_clip=5.0,
+        memory_decay=0.9,
+        memory_temperature=0.5,
+        encoder_steps=1,
+        seed=17,
+    )
+    inputs = torch.zeros(2, 4, raw_feature_dim + way + 2)
+    inputs[:, :, :raw_feature_dim] = torch.rand(2, 4, raw_feature_dim)
+    inputs[:, 0, raw_feature_dim] = 1.0
+    inputs[:, 0, raw_feature_dim + way] = 1.0
+
+    logits = model(inputs)
+
+    assert logits.shape == (2, 4, way)
+    assert model.recurrent_parameter_count() == 100
+
+
 def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path) -> None:
     omni = _load_module()
     matrix_path = tmp_path / "adjacency_unsigned.npz"

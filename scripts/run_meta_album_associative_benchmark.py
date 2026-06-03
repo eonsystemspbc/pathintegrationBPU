@@ -563,6 +563,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--protonet-channels", type=int, default=64)
     parser.add_argument("--protonet-temperature", type=float, default=0.2)
     parser.add_argument("--protonet-memory-decay", type=float, default=0.92)
+    parser.add_argument("--conv-fast-memory-channels", type=int, default=64)
+    parser.add_argument("--conv-fast-memory-embedding-dim", type=int, default=64)
     parser.add_argument("--nearest-temperature", type=float, default=0.1)
     parser.add_argument("--synthetic-feature-dim", type=int, default=64)
     parser.add_argument("--synthetic-samples-per-class", type=int, default=20)
@@ -621,6 +623,16 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--protonet-temperature must be positive")
     if not (0.0 <= args.protonet_memory_decay <= 1.0):
         parser.error("--protonet-memory-decay must be in [0, 1]")
+    if args.conv_fast_memory_channels < 1:
+        parser.error("--conv-fast-memory-channels must be positive")
+    if args.conv_fast_memory_embedding_dim < 1:
+        parser.error("--conv-fast-memory-embedding-dim must be positive")
+    raw_pixel_models = set(episodic.PROTONET_MODELS + episodic.CONV_FAST_MEMORY_MODELS)
+    raw_pixel_models.discard(episodic.MODEL_MLP_PROTONET)
+    if any(model in raw_pixel_models for model in args.models) and args.embedding != "raw_pixels":
+        parser.error(
+            "conv_protonet and conv fast-memory models require --embedding raw_pixels"
+        )
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:
