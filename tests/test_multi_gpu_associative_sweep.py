@@ -284,6 +284,7 @@ def test_matched_topology_comparisons_are_same_architecture_only(tmp_path: Path)
     models = [
         "connectome_kalman_filter",
         "random_sparse_kalman_filter",
+        "degree_preserving_kalman_filter",
         "weight_shuffle_kalman_filter",
         "random_sparse_rescorla_wagner",
     ]
@@ -291,6 +292,7 @@ def test_matched_topology_comparisons_are_same_architecture_only(tmp_path: Path)
     values = {
         "connectome_kalman_filter": [0.70, 0.72],
         "random_sparse_kalman_filter": [0.68, 0.69],
+        "degree_preserving_kalman_filter": [0.67, 0.68],
         "weight_shuffle_kalman_filter": [0.66, 0.67],
         "random_sparse_rescorla_wagner": [0.75, 0.76],
     }
@@ -340,6 +342,7 @@ def test_matched_topology_comparisons_are_same_architecture_only(tmp_path: Path)
     ]
     assert set(kalman_paired["baseline_model"]) >= {
         "random_sparse_kalman_filter",
+        "degree_preserving_kalman_filter",
         "weight_shuffle_kalman_filter",
         "random_sparse_rescorla_wagner",
     }
@@ -349,6 +352,7 @@ def test_matched_topology_comparisons_are_same_architecture_only(tmp_path: Path)
     ]
     assert set(kalman_matched["baseline_model"]) == {
         "random_sparse_kalman_filter",
+        "degree_preserving_kalman_filter",
         "weight_shuffle_kalman_filter",
     }
     assert set(kalman_matched["comparison_type"]) == {"matched_topology_control"}

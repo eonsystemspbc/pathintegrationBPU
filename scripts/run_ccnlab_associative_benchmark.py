@@ -37,6 +37,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from run_mb_associative_learning import (  # noqa: E402
+    MODEL_DEGREE_PRESERVING,
     MODEL_HEMIBRAIN,
     MODEL_RANDOM,
     MODEL_WEIGHT_SHUFFLE,
@@ -57,12 +58,15 @@ MODEL_KALMAN_FILTER = "kalman_filter"
 MODEL_TEMPORAL_DIFFERENCE = "temporal_difference"
 MODEL_CONNECTOME_RW = "connectome_rescorla_wagner"
 MODEL_RANDOM_RW = "random_sparse_rescorla_wagner"
+MODEL_DEGREE_RW = "degree_preserving_rescorla_wagner"
 MODEL_WEIGHT_RW = "weight_shuffle_rescorla_wagner"
 MODEL_CONNECTOME_KALMAN = "connectome_kalman_filter"
 MODEL_RANDOM_KALMAN = "random_sparse_kalman_filter"
+MODEL_DEGREE_KALMAN = "degree_preserving_kalman_filter"
 MODEL_WEIGHT_KALMAN = "weight_shuffle_kalman_filter"
 MODEL_CONNECTOME_TD = "connectome_temporal_difference"
 MODEL_RANDOM_TD = "random_sparse_temporal_difference"
+MODEL_DEGREE_TD = "degree_preserving_temporal_difference"
 MODEL_WEIGHT_TD = "weight_shuffle_temporal_difference"
 MODEL_CONNECTOME_ALIAS = "connectome_seeded"
 MODEL_HEMIBRAIN_CONV_ALIAS = "hemibrain_conv_fast_memory"
@@ -75,6 +79,7 @@ CONNECTOME_MODEL_ALIASES = {
     MODEL_HEMIBRAIN_CONV_ALIAS: MODEL_HEMIBRAIN,
     MODEL_RANDOM: MODEL_RANDOM,
     MODEL_RANDOM_CONV_ALIAS: MODEL_RANDOM,
+    MODEL_DEGREE_PRESERVING: MODEL_DEGREE_PRESERVING,
     MODEL_WEIGHT_SHUFFLE: MODEL_WEIGHT_SHUFFLE,
     MODEL_WEIGHT_CONV_ALIAS: MODEL_WEIGHT_SHUFFLE,
 }
@@ -87,12 +92,15 @@ BASELINE_MODELS = (
 GRAPH_FEATURE_MODEL_SPECS = {
     MODEL_CONNECTOME_RW: (MODEL_HEMIBRAIN, MODEL_RESCORLA_WAGNER),
     MODEL_RANDOM_RW: (MODEL_RANDOM, MODEL_RESCORLA_WAGNER),
+    MODEL_DEGREE_RW: (MODEL_DEGREE_PRESERVING, MODEL_RESCORLA_WAGNER),
     MODEL_WEIGHT_RW: (MODEL_WEIGHT_SHUFFLE, MODEL_RESCORLA_WAGNER),
     MODEL_CONNECTOME_KALMAN: (MODEL_HEMIBRAIN, MODEL_KALMAN_FILTER),
     MODEL_RANDOM_KALMAN: (MODEL_RANDOM, MODEL_KALMAN_FILTER),
+    MODEL_DEGREE_KALMAN: (MODEL_DEGREE_PRESERVING, MODEL_KALMAN_FILTER),
     MODEL_WEIGHT_KALMAN: (MODEL_WEIGHT_SHUFFLE, MODEL_KALMAN_FILTER),
     MODEL_CONNECTOME_TD: (MODEL_HEMIBRAIN, MODEL_TEMPORAL_DIFFERENCE),
     MODEL_RANDOM_TD: (MODEL_RANDOM, MODEL_TEMPORAL_DIFFERENCE),
+    MODEL_DEGREE_TD: (MODEL_DEGREE_PRESERVING, MODEL_TEMPORAL_DIFFERENCE),
     MODEL_WEIGHT_TD: (MODEL_WEIGHT_SHUFFLE, MODEL_TEMPORAL_DIFFERENCE),
 }
 GRAPH_FEATURE_MODELS = tuple(GRAPH_FEATURE_MODEL_SPECS)
@@ -884,7 +892,7 @@ def write_outputs(
                 "task_rationale": (
                     "CCNLab evaluates classical-conditioning models on empirical "
                     "phenomena. Connectome/control models use the same matrix "
-                    "topology controls as the mushroom-body associative benchmarks, "
+                    "topology-control family as the mushroom-body associative benchmarks, "
                     "but with an online cue-value prediction-error architecture."
                 ),
             },
@@ -984,7 +992,7 @@ def write_report(
         "",
         "Task: simulate CCNLab classical-conditioning experiments and score model outputs against empirical summaries using CCNLab's evaluation metrics.",
         "",
-        "Connectome models use a fixed graph-diffusion cue/context/time encoder and an online reward-prediction-error readout. The random-sparse and weight-shuffle controls reuse the same topology-control semantics as the existing mushroom-body associative benchmarks.",
+        "Connectome models use a fixed graph-diffusion cue/context/time encoder and an online reward-prediction-error readout. The random-sparse, degree-preserving, and weight-shuffle controls reuse the same topology-control semantics as the existing mushroom-body associative benchmarks.",
         "",
         f"Subjects per experiment group: `{args.subjects}`",
         f"Experiments: `{', '.join(args.experiments)}`",
@@ -1013,7 +1021,7 @@ def write_report(
         "",
         _markdown_table(per_exp, list(per_exp.columns) if not per_exp.empty else []),
         "",
-        "Interpretation note: CCNLab is a behavioral-fit benchmark, not an image-recognition benchmark. A useful connectome signal is the seeded model beating both same-family random-sparse and weight-shuffled controls across seeds and across multiple conditioning phenomena.",
+        "Interpretation note: CCNLab is a behavioral-fit benchmark, not an image-recognition benchmark. A useful connectome signal is the seeded model beating same-family random-sparse, degree-preserving, and weight-shuffled controls across seeds and across multiple conditioning phenomena.",
         "",
         "## Per-Seed Metrics",
         "",
@@ -1078,8 +1086,9 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         type=int,
         default=128,
         help=(
-            "Graph feature count for connectome/random/weight-shuffle RW, Kalman, "
-            "and TD variants. Use 0 to reuse --feature-dim."
+            "Graph feature count for connectome/random/degree-preserving/"
+            "weight-shuffle RW, Kalman, and TD variants. Use 0 to reuse "
+            "--feature-dim."
         ),
     )
     parser.add_argument(

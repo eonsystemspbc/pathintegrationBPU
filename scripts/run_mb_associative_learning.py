@@ -32,11 +32,13 @@ MODEL_HEMIBRAIN = "hemibrain_seeded"
 MODEL_HEMIBRAIN_DENSE = "hemibrain_dense"
 MODEL_RANDOM = "random_sparse"
 MODEL_RANDOM_DENSE = "random_dense"
+MODEL_DEGREE_PRESERVING = "degree_preserving_random"
 MODEL_WEIGHT_SHUFFLE = "weight_shuffle"
 MODEL_CHOICES = (
     MODEL_HEMIBRAIN,
     MODEL_HEMIBRAIN_DENSE,
     MODEL_RANDOM,
+    MODEL_DEGREE_PRESERVING,
     MODEL_WEIGHT_SHUFFLE,
     MODEL_RANDOM_DENSE,
 )
@@ -373,6 +375,8 @@ def matrix_for_model(base: sparse.coo_matrix, model_name: str, seed: int) -> spa
         shuffled = base.copy().astype(np.float32).tocoo()
         shuffled.data = rng.permutation(shuffled.data).astype(np.float32)
         return shuffled
+    if model_name == MODEL_DEGREE_PRESERVING:
+        return degree_preserving_random_like(base, seed)
     if model_name in {MODEL_RANDOM, MODEL_RANDOM_DENSE}:
         return random_sparse_like(base, seed)
     raise ValueError(f"unknown model name: {model_name}")
@@ -413,6 +417,85 @@ def random_sparse_like(base: sparse.coo_matrix, seed: int) -> sparse.coo_matrix:
     matrix.sum_duplicates()
     if matrix.nnz != base.nnz:
         raise AssertionError("random support generation produced duplicate edges.")
+    return matrix
+
+
+def degree_preserving_random_like(
+    base: sparse.coo_matrix, seed: int, swaps_per_edge: float = 2.0
+) -> sparse.coo_matrix:
+    """Random sparse null with the same in/out degree sequence and weights."""
+    base = base.astype(np.float32).tocoo()
+    base.sum_duplicates()
+    rng = np.random.default_rng(seed)
+    N = int(base.shape[0])
+    rows = base.row.astype(np.int64, copy=True)
+    cols = base.col.astype(np.int64, copy=True)
+    keys = rows * N + cols
+    support = {int(key) for key in keys}
+    if len(support) != base.nnz:
+        raise ValueError("base matrix contains duplicate support after coalescing.")
+
+    edge_count = int(base.nnz)
+    if edge_count < 2:
+        return base.copy().astype(np.float32).tocoo()
+
+    target_swaps = max(1, int(round(edge_count * float(swaps_per_edge))))
+    max_attempts = max(target_swaps * 20, 100)
+    swaps = 0
+    attempts = 0
+    while swaps < target_swaps and attempts < max_attempts:
+        attempts += 1
+        i = int(rng.integers(0, edge_count))
+        j = int(rng.integers(0, edge_count - 1))
+        if j >= i:
+            j += 1
+
+        a = int(rows[i])
+        b = int(cols[i])
+        c = int(rows[j])
+        d = int(cols[j])
+        if b == d:
+            continue
+
+        if int(a == b) + int(c == d) != int(a == d) + int(c == b):
+            continue
+
+        old_i = int(keys[i])
+        old_j = int(keys[j])
+        new_i = a * N + d
+        new_j = c * N + b
+        if new_i == new_j or (new_i == old_i and new_j == old_j):
+            continue
+        if (new_i != old_j and new_i in support) or (
+            new_j != old_i and new_j in support
+        ):
+            continue
+
+        support.remove(old_i)
+        support.remove(old_j)
+        support.add(int(new_i))
+        support.add(int(new_j))
+        cols[i] = d
+        cols[j] = b
+        keys[i] = new_i
+        keys[j] = new_j
+        swaps += 1
+
+    data = rng.permutation(base.data).astype(np.float32)
+    matrix = sparse.coo_matrix((data, (rows, cols)), shape=base.shape, dtype=np.float32)
+    matrix.sum_duplicates()
+    if matrix.nnz != base.nnz:
+        raise AssertionError("degree-preserving support generation produced duplicate edges.")
+    if not np.array_equal(
+        np.bincount(matrix.row, minlength=N),
+        np.bincount(base.row, minlength=N),
+    ):
+        raise AssertionError("degree-preserving support changed out-degree sequence.")
+    if not np.array_equal(
+        np.bincount(matrix.col, minlength=N),
+        np.bincount(base.col, minlength=N),
+    ):
+        raise AssertionError("degree-preserving support changed in-degree sequence.")
     return matrix
 
 
