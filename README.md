@@ -152,7 +152,10 @@ On multi-GPU instances, use
 in parallel across GPUs and merge the resulting metrics. This is the preferred
 speedup path for the associative and optic-flow benchmarks. Completed sweeps
 can be summarized with `scripts/summarize_associative_sweep.py`, which writes
-`leaderboard.csv` along with `paired_comparisons.csv` and `sweep_report.md`.
+`leaderboard.csv` along with `paired_comparisons.csv`,
+`matched_topology_comparisons.csv`, and `sweep_report.md`. Use the matched
+topology table for connectome claims because it restricts comparisons to
+same-architecture random-sparse and weight-shuffled controls.
 
 The episodic benchmark also includes fast associative-memory variants:
 `hemibrain_fast_memory`, `random_sparse_fast_memory`, and

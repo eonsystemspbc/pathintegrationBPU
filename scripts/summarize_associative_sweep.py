@@ -96,12 +96,6 @@ def write_summary(output_dir: Path, rewrite_metrics: bool) -> int:
         "delta_vs_shuffled_topology",
         "delta_vs_random_sparse",
         "delta_vs_weight_shuffle",
-        "delta_vs_random_sparse_rescorla_wagner",
-        "delta_vs_weight_shuffle_rescorla_wagner",
-        "delta_vs_random_sparse_kalman_filter",
-        "delta_vs_weight_shuffle_kalman_filter",
-        "delta_vs_random_sparse_temporal_difference",
-        "delta_vs_weight_shuffle_temporal_difference",
         "N",
         "feature_dim",
         "trainable_params",
@@ -112,6 +106,8 @@ def write_summary(output_dir: Path, rewrite_metrics: bool) -> int:
     print(f"\nwrote {output_dir / 'leaderboard.csv'}")
     if (output_dir / "paired_comparisons.csv").exists():
         print(f"wrote {output_dir / 'paired_comparisons.csv'}")
+    if (output_dir / "matched_topology_comparisons.csv").exists():
+        print(f"wrote {output_dir / 'matched_topology_comparisons.csv'}")
     print(f"wrote {output_dir / 'sweep_report.md'}")
     return 0
 
