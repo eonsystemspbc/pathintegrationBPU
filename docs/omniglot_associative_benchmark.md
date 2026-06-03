@@ -174,6 +174,30 @@ and timestamped `sweep.log` at the sweep output root. Use `--status-seconds 15`
 for more frequent launcher status updates, or `--tail-lines-on-failure 160` to
 print more of a failed child log.
 
+## Learning-Curve Figure
+
+After a sweep completes, plot the shared-horizon validation learning curve and
+write paired seed-level learning summaries:
+
+```bash
+OUT=/mnt/fast/outputs/omniglot_5way_reversal5_flywire_mb_conv_connectome_5seed
+
+python scripts/plot_omniglot_learning_curve.py "$OUT" \
+  --label "hemibrain_conv_fast_memory=FlyWire MB seeded" \
+  --title "FlyWire MB Conv Fast Memory on Omniglot Reversal"
+```
+
+This writes:
+
+- `omniglot_learning_curve.png`
+- `learning_curve_summary.csv`
+- `learning_curve_by_seed.csv`
+- `learning_curve_paired_comparisons.csv`
+
+Use the common-horizon summary for learning-speed or stability claims. Final
+test accuracy should still be read from `leaderboard.csv` and
+`paired_comparisons.csv`.
+
 ## Fast-Memory Variant
 
 The vanilla connectome RNN readout can fail to learn one-shot label binding.

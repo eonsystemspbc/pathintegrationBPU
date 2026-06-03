@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 
 
 BENCHMARK_SCRIPTS = {
+    "ccnlab": ROOT / "scripts" / "run_ccnlab_associative_benchmark.py",
     "meta_album": ROOT / "scripts" / "run_meta_album_associative_benchmark.py",
     "omniglot": ROOT / "scripts" / "run_omniglot_associative_benchmark.py",
     "optic_flow": ROOT / "scripts" / "run_optic_flow_benchmark.py",
@@ -394,6 +395,10 @@ def _summary_from_metrics(metrics: object) -> object:
     if metrics.empty:
         return pd.DataFrame()
     mean_std_columns = [
+        "test_ccnlab_score",
+        "test_ccnlab_correlation",
+        "test_ccnlab_ratio",
+        "test_ccnlab_finite_score_count",
         "best_val_loss",
         "test_loss",
         "test_query_accuracy",
@@ -416,6 +421,11 @@ def _summary_from_metrics(metrics: object) -> object:
         "trainable_params",
         "recurrent_params",
         "N",
+        "input_dim",
+        "feature_dim",
+        "encoded_dim",
+        "subjects",
+        "test_ccnlab_experiment_count",
         "timesteps",
         "freeze_recurrent",
         "recurrent_prior_l2",
@@ -433,6 +443,7 @@ def _summary_from_metrics(metrics: object) -> object:
 
 def _primary_metric(summary: object) -> str | None:
     preferred = [
+        "test_ccnlab_score_mean",
         "test_query_accuracy_mean",
         "test_overall_rmse_mean",
         "test_reversal_query_accuracy_mean",
@@ -505,6 +516,9 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
     if metrics.empty or "seed" not in metrics or "model" not in metrics:
         return pd.DataFrame()
     metric_columns = [
+        "test_ccnlab_score",
+        "test_ccnlab_correlation",
+        "test_ccnlab_ratio",
         "test_query_accuracy",
         "test_reversal_query_accuracy",
         "test_initial_query_accuracy",
@@ -602,6 +616,10 @@ def write_sweep_report(
     table_columns = [
         "rank",
         "model",
+        "test_ccnlab_score_mean",
+        "test_ccnlab_score_std",
+        "test_ccnlab_correlation_mean",
+        "test_ccnlab_ratio_mean",
         "test_query_accuracy_mean",
         "test_query_accuracy_std",
         "test_overall_rmse_mean",
@@ -619,7 +637,9 @@ def write_sweep_report(
         "delta_vs_random_weight_topology",
         "delta_vs_shuffled_topology",
         "delta_vs_random_sparse",
+        "delta_vs_weight_shuffle",
         "N",
+        "feature_dim",
         "trainable_params",
         "freeze_recurrent",
         "recurrent_prior_l2",
@@ -655,11 +675,10 @@ def write_sweep_report(
         "## Interpretation",
         "",
         (
-            "A useful connectome signal is `hemibrain_fast_memory` or "
-            "`hemibrain_conv_fast_memory` beating both same-family random and "
-            "weight-shuffled controls across several seeds. A nearest-support or "
-            "ProtoNet win means the current metric baseline is still stronger than "
-            "the trained recurrent key encoder on this task."
+            "A useful connectome signal is the seeded connectome model beating "
+            "both same-family random-sparse and weight-shuffled controls across "
+            "several seeds. Benchmark-specific non-connectomic baselines should "
+            "be treated as task-fit references rather than topology controls."
         ),
         "",
     ]
@@ -688,6 +707,8 @@ def log_leaderboard(logger: SweepLogger, leaderboard: object, topn: int = 8) -> 
         if metric is not None and metric in row:
             parts.append(f"{metric}={_format_metric(row[metric])}")
         for column in (
+            "delta_vs_random_sparse",
+            "delta_vs_weight_shuffle",
             "delta_vs_random_sparse_conv_fast_memory",
             "delta_vs_weight_shuffle_conv_fast_memory",
             "delta_vs_random_sparse_fast_memory",
