@@ -135,8 +135,12 @@ For a behavioral associative-learning benchmark, use
 connectome-seeded/random-sparse/weight-shuffle topology family on CCNLab
 classical-conditioning experiments using a task-native online
 reward-prediction-error readout. CCNLab's Rescorla-Wagner, Kalman-filter, and
-temporal-difference baselines can be included in the same run. See
-`docs/ccnlab_associative_benchmark.md` for setup and AWS commands.
+temporal-difference baselines can be included in the same run. The runner also
+supports architecture-matched graph-feature variants such as
+`connectome_kalman_filter`, `random_sparse_kalman_filter`, and
+`weight_shuffle_kalman_filter`, which keep the CCNLab learning rule fixed while
+changing only the feature topology. See `docs/ccnlab_associative_benchmark.md`
+for setup and AWS commands.
 
 Both episodic few-shot runners support `--expand-factor` for BPU-style
 connectome expansion via a directed signed degree-corrected SBM. The original

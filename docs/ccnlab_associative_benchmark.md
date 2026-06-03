@@ -8,6 +8,11 @@ controls on CCNLab classical conditioning tasks:
 - `weight_shuffle`: same support with shuffled weights.
 - `rescorla_wagner`, `kalman_filter`, `temporal_difference`: CCNLab's
   task-native reference models.
+- `connectome_rescorla_wagner`, `connectome_kalman_filter`, and
+  `connectome_temporal_difference`: the same CCNLab learning rules as the
+  task-native references, but run over connectome graph-diffusion features.
+  Use the matched `random_sparse_*` and `weight_shuffle_*` variants as topology
+  controls.
 
 The connectome architecture is task-specific rather than image-specific. It
 uses a fixed graph-diffusion encoder for cue, context, and within-trial time,
@@ -101,6 +106,53 @@ cat "$OUT/paired_comparisons.csv" | grep hemibrain_seeded
 Primary metric: `test_ccnlab_score_mean`. Higher is better. Correlation and
 ratio-of-ratios experiments are averaged only after excluding non-finite scores;
 the finite count is recorded in `test_ccnlab_finite_score_count`.
+
+## Architecture-Matched Feature Sweep
+
+Use this when you want the connectome inside the same learning-rule families as
+the top CCNLab performers. The raw baselines use cue/context features directly;
+the graph-feature variants use the same RW, Kalman, or TD update rule over
+connectome/random/weight-shuffled graph-diffusion features.
+
+```bash
+cd /home/ubuntu/pathintegrationBPU
+source .venv/bin/activate
+
+OUT=/mnt/fast/outputs/ccnlab_classical_flywire_mb_feature_learners_5seed
+mkdir -p "$OUT"
+
+python scripts/run_multi_gpu_associative_sweep.py \
+  --benchmark ccnlab \
+  --output-dir "$OUT" \
+  --gpus 0 1 \
+  --status-seconds 15 \
+  --models \
+    kalman_filter connectome_kalman_filter random_sparse_kalman_filter weight_shuffle_kalman_filter \
+    temporal_difference connectome_temporal_difference random_sparse_temporal_difference weight_shuffle_temporal_difference \
+    rescorla_wagner connectome_rescorla_wagner random_sparse_rescorla_wagner weight_shuffle_rescorla_wagner \
+  --seeds 0 1 2 3 4 \
+  -- \
+  --ccnlab-root /mnt/fast/ccnlab \
+  --matrix outputs/flywire_mushroom_body/adjacency_unsigned.npz \
+  --subjects 20 \
+  --experiments Acquisition_ContinuousVsPartial Extinction_ContinuousVsPartial Generalization_NovelVsInhibitor Generalization_AddVsRemove Competition_OvershadowingAndForwardBlocking Recovery_Overshadowing HigherOrder_SensoryPreconditioning \
+  --feature-learner-dim 128 \
+  --encoder-steps 2 \
+  --recurrent-gain 0.7 \
+  --state-clip 5.0
+```
+
+Summarize topology-specific deltas by learning rule:
+
+```bash
+python scripts/summarize_associative_sweep.py "$OUT"
+cat "$OUT/paired_comparisons.csv" | grep connectome_kalman_filter
+cat "$OUT/paired_comparisons.csv" | grep connectome_temporal_difference
+cat "$OUT/paired_comparisons.csv" | grep connectome_rescorla_wagner
+```
+
+For Kalman variants, `--feature-learner-dim` controls covariance size. Larger
+values give a richer graph basis but scale quadratically in runtime and memory.
 
 ## Full Registry
 
