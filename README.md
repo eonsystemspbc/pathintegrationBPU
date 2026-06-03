@@ -149,6 +149,9 @@ cores as sensory-only key encoders, then add an online support/reversal memory
 head for one-shot binding.
 For an accuracy ceiling and a stronger Omniglot baseline, the runner also
 supports `mlp_protonet`, `conv_protonet`, and `--embedding raw_pixels`.
+The Conv4 front-end can also be combined with the connectome fast-memory key
+encoder through `hemibrain_conv_fast_memory`,
+`random_sparse_conv_fast_memory`, and `weight_shuffle_conv_fast_memory`.
 
 To test whether brain-region identity matters, use
 `scripts/run_cross_region_transfer.py`. It can train the CX substrate on the

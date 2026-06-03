@@ -481,6 +481,8 @@ def _leaderboard_from_summary(summary: object) -> object:
     if metric is not None:
         for baseline in (
             "nearest_support",
+            "random_sparse_conv_fast_memory",
+            "weight_shuffle_conv_fast_memory",
             "random_sparse_fast_memory",
             "weight_shuffle_fast_memory",
             "random_sparse",
@@ -515,6 +517,8 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
     ]
     metric_columns = [column for column in metric_columns if column in metrics]
     baseline_models = [
+        "random_sparse_conv_fast_memory",
+        "weight_shuffle_conv_fast_memory",
         "random_sparse_fast_memory",
         "weight_shuffle_fast_memory",
         "nearest_support",
@@ -607,6 +611,8 @@ def write_sweep_report(
         "test_yaw_r2_mean",
         "test_initial_query_accuracy_mean",
         "test_reversal_query_accuracy_mean",
+        "delta_vs_random_sparse_conv_fast_memory",
+        "delta_vs_weight_shuffle_conv_fast_memory",
         "delta_vs_random_sparse_fast_memory",
         "delta_vs_weight_shuffle_fast_memory",
         "delta_vs_nearest_support",
@@ -649,10 +655,11 @@ def write_sweep_report(
         "## Interpretation",
         "",
         (
-            "A useful connectome signal is `hemibrain_fast_memory` beating both "
-            "size-matched random controls across several seeds. A nearest-support "
-            "win means the current image embedding/metric baseline is still stronger "
-            "than the trained recurrent key encoder on this task."
+            "A useful connectome signal is `hemibrain_fast_memory` or "
+            "`hemibrain_conv_fast_memory` beating both same-family random and "
+            "weight-shuffled controls across several seeds. A nearest-support or "
+            "ProtoNet win means the current metric baseline is still stronger than "
+            "the trained recurrent key encoder on this task."
         ),
         "",
     ]
@@ -681,6 +688,8 @@ def log_leaderboard(logger: SweepLogger, leaderboard: object, topn: int = 8) -> 
         if metric is not None and metric in row:
             parts.append(f"{metric}={_format_metric(row[metric])}")
         for column in (
+            "delta_vs_random_sparse_conv_fast_memory",
+            "delta_vs_weight_shuffle_conv_fast_memory",
             "delta_vs_random_sparse_fast_memory",
             "delta_vs_weight_shuffle_fast_memory",
             "delta_vs_nearest_support",

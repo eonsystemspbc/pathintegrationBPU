@@ -83,6 +83,8 @@ def write_summary(output_dir: Path, rewrite_metrics: bool) -> int:
         "test_translation_rmse_mean",
         "test_initial_query_accuracy_mean",
         "test_reversal_query_accuracy_mean",
+        "delta_vs_random_sparse_conv_fast_memory",
+        "delta_vs_weight_shuffle_conv_fast_memory",
         "delta_vs_random_sparse_fast_memory",
         "delta_vs_weight_shuffle_fast_memory",
         "delta_vs_nearest_support",

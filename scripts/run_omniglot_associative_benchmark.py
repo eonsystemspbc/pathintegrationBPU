@@ -42,14 +42,29 @@ MODEL_CONV_PROTONET = "conv_protonet"
 MODEL_FAST_HEMIBRAIN = "hemibrain_fast_memory"
 MODEL_FAST_RANDOM = "random_sparse_fast_memory"
 MODEL_FAST_WEIGHT_SHUFFLE = "weight_shuffle_fast_memory"
+MODEL_CONV_FAST_HEMIBRAIN = "hemibrain_conv_fast_memory"
+MODEL_CONV_FAST_RANDOM = "random_sparse_conv_fast_memory"
+MODEL_CONV_FAST_WEIGHT_SHUFFLE = "weight_shuffle_conv_fast_memory"
 FAST_MEMORY_MODEL_TO_BASE = {
     MODEL_FAST_HEMIBRAIN: mb.MODEL_HEMIBRAIN,
     MODEL_FAST_RANDOM: mb.MODEL_RANDOM,
     MODEL_FAST_WEIGHT_SHUFFLE: mb.MODEL_WEIGHT_SHUFFLE,
 }
+CONV_FAST_MEMORY_MODEL_TO_BASE = {
+    MODEL_CONV_FAST_HEMIBRAIN: mb.MODEL_HEMIBRAIN,
+    MODEL_CONV_FAST_RANDOM: mb.MODEL_RANDOM,
+    MODEL_CONV_FAST_WEIGHT_SHUFFLE: mb.MODEL_WEIGHT_SHUFFLE,
+}
 FAST_MEMORY_MODELS = tuple(FAST_MEMORY_MODEL_TO_BASE)
+CONV_FAST_MEMORY_MODELS = tuple(CONV_FAST_MEMORY_MODEL_TO_BASE)
 PROTONET_MODELS = (MODEL_MLP_PROTONET, MODEL_CONV_PROTONET)
-MODEL_CHOICES = mb.MODEL_CHOICES + FAST_MEMORY_MODELS + PROTONET_MODELS + (MODEL_GRU, MODEL_NEAREST)
+MODEL_CHOICES = (
+    mb.MODEL_CHOICES
+    + FAST_MEMORY_MODELS
+    + CONV_FAST_MEMORY_MODELS
+    + PROTONET_MODELS
+    + (MODEL_GRU, MODEL_NEAREST)
+)
 DEFAULT_MODELS = (
     mb.MODEL_HEMIBRAIN,
     mb.MODEL_RANDOM,
@@ -367,6 +382,42 @@ class GRUEpisodicClassifier(nn.Module):
         return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
 
 
+class Conv4FeatureEncoder(nn.Module):
+    def __init__(self, image_size: int, channels: int, embedding_dim: int) -> None:
+        super().__init__()
+        self.image_size = int(image_size)
+        self.channels = int(channels)
+        self.embedding_dim = int(embedding_dim)
+        blocks: list[nn.Module] = []
+        in_channels = 1
+        spatial = self.image_size
+        for _ in range(4):
+            blocks.extend(
+                [
+                    nn.Conv2d(in_channels, self.channels, kernel_size=3, padding=1),
+                    nn.BatchNorm2d(self.channels),
+                    nn.ReLU(),
+                    nn.MaxPool2d(2),
+                ]
+            )
+            in_channels = self.channels
+            spatial //= 2
+        if spatial < 1:
+            raise ValueError("--image-size is too small for a Conv4 encoder.")
+        self.encoder = nn.Sequential(*blocks)
+        self.project = nn.Linear(self.channels * spatial * spatial, self.embedding_dim)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        expected_dim = self.image_size * self.image_size
+        if features.ndim != 2 or features.shape[-1] != expected_dim:
+            raise ValueError(
+                f"features must have shape [batch, {expected_dim}], got {tuple(features.shape)}"
+            )
+        image = features.view(features.shape[0], 1, self.image_size, self.image_size)
+        hidden = self.encoder(image).flatten(1)
+        return self.project(hidden)
+
+
 class OnlineProtoNetClassifier(nn.Module):
     def __init__(
         self,
@@ -464,31 +515,100 @@ class ConvProtoNetClassifier(OnlineProtoNetClassifier):
             )
         torch.manual_seed(seed)
         super().__init__(feature_dim, output_dim, embedding_dim, temperature, memory_decay)
-        self.image_size = int(image_size)
-        self.channels = int(channels)
-        blocks: list[nn.Module] = []
-        in_channels = 1
-        spatial = self.image_size
-        for _ in range(4):
-            blocks.extend(
-                [
-                    nn.Conv2d(in_channels, self.channels, kernel_size=3, padding=1),
-                    nn.BatchNorm2d(self.channels),
-                    nn.ReLU(),
-                    nn.MaxPool2d(2),
-                ]
-            )
-            in_channels = self.channels
-            spatial //= 2
-        if spatial < 1:
-            raise ValueError("--image-size is too small for conv_protonet.")
-        self.encoder = nn.Sequential(*blocks)
-        self.project = nn.Linear(self.channels * spatial * spatial, self.embedding_dim)
+        self.encoder = Conv4FeatureEncoder(
+            image_size=image_size,
+            channels=channels,
+            embedding_dim=self.embedding_dim,
+        )
 
     def encode_features(self, features: torch.Tensor) -> torch.Tensor:
-        image = features.view(features.shape[0], 1, self.image_size, self.image_size)
-        hidden = self.encoder(image).flatten(1)
-        return self.project(hidden)
+        return self.encoder(features)
+
+
+class ConvMatrixFastMemoryRNN(nn.Module):
+    def __init__(
+        self,
+        recurrent: sparse.spmatrix,
+        input_dim: int,
+        output_dim: int,
+        raw_feature_dim: int,
+        image_size: int,
+        conv_channels: int,
+        conv_embedding_dim: int,
+        runtime: str,
+        state_clip: float,
+        memory_decay: float,
+        memory_temperature: float,
+        encoder_steps: int,
+        seed: int,
+        freeze_recurrent: bool = False,
+    ) -> None:
+        super().__init__()
+        if raw_feature_dim != image_size * image_size:
+            raise ValueError(
+                "conv fast-memory models require raw square image features. Use "
+                "--embedding raw_pixels --embedding-sparsity 1.0 and matching --image-size."
+            )
+        torch.manual_seed(seed)
+        self.input_dim = int(input_dim)
+        self.output_dim = int(output_dim)
+        self.raw_feature_dim = int(raw_feature_dim)
+        self.visual_encoder = Conv4FeatureEncoder(
+            image_size=image_size,
+            channels=conv_channels,
+            embedding_dim=conv_embedding_dim,
+        )
+        self.core = MatrixFastMemoryRNN(
+            recurrent=recurrent,
+            input_dim=int(conv_embedding_dim) + self.output_dim + 2,
+            output_dim=self.output_dim,
+            feature_dim=int(conv_embedding_dim),
+            runtime=runtime,
+            state_clip=state_clip,
+            memory_decay=memory_decay,
+            memory_temperature=memory_temperature,
+            encoder_steps=encoder_steps,
+            seed=seed + 1,
+            freeze_recurrent=freeze_recurrent,
+        )
+
+    @property
+    def N(self) -> int:
+        return self.core.N
+
+    def recurrent_parameter_count(self) -> int:
+        return self.core.recurrent_parameter_count()
+
+    def trainable_parameter_count(self) -> int:
+        return int(sum(param.numel() for param in self.parameters() if param.requires_grad))
+
+    def recurrent_prior_loss(self) -> torch.Tensor:
+        return self.core.recurrent_prior_loss()
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
+            raise ValueError(
+                f"inputs must have shape [batch, T, {self.input_dim}], got {tuple(inputs.shape)}"
+            )
+        batch, T, _ = inputs.shape
+        memory = inputs.new_zeros((batch, self.N, self.output_dim))
+        outputs: list[torch.Tensor] = []
+        label_slice = slice(self.raw_feature_dim, self.raw_feature_dim + self.output_dim)
+        support_col = self.raw_feature_dim + self.output_dim
+        temp = max(self.core.memory_temperature, 1e-6)
+        for t in range(T):
+            visual = self.visual_encoder(inputs[:, t, : self.raw_feature_dim])
+            z = self.core.encode_features(visual)
+            logits = torch.bmm(z.unsqueeze(1), memory).squeeze(1) / temp
+            outputs.append(logits)
+
+            support_gate = inputs[:, t, support_col].view(batch, 1, 1)
+            label = inputs[:, t, label_slice].view(batch, 1, self.output_dim)
+            memory = self.core.memory_decay * memory + support_gate * torch.bmm(
+                z.unsqueeze(2),
+                label,
+            )
+        return torch.stack(outputs, dim=1)
 
 
 def _format_seconds(seconds: float) -> str:
@@ -1046,6 +1166,43 @@ def build_model(
             model.trainable_parameter_count(),
         )
 
+    if model_name in CONV_FAST_MEMORY_MODEL_TO_BASE:
+        if args.embedding != "raw_pixels":
+            raise ValueError(
+                "conv fast-memory models require --embedding raw_pixels so the Conv4 "
+                "front-end receives actual Omniglot image intensities."
+            )
+        base_model_name = CONV_FAST_MEMORY_MODEL_TO_BASE[model_name]
+        init_matrix = mb.matrix_for_model(base_matrix, base_model_name, seed=args.init_seed + seed)
+        runtime = mb.runtime_for_model(base_model_name, args.recurrent_runtime)
+        model = ConvMatrixFastMemoryRNN(
+            recurrent=init_matrix,
+            input_dim=spec.input_dim,
+            output_dim=spec.way,
+            raw_feature_dim=spec.feature_dim,
+            image_size=args.image_size,
+            conv_channels=args.conv_fast_memory_channels,
+            conv_embedding_dim=args.conv_fast_memory_embedding_dim,
+            runtime=runtime,
+            state_clip=args.state_clip,
+            memory_decay=args.fast_memory_decay,
+            memory_temperature=args.fast_memory_temperature,
+            encoder_steps=args.fast_memory_encoder_steps,
+            seed=args.init_seed + seed,
+            freeze_recurrent=args.freeze_recurrent,
+        ).to(device)
+        runtime_label = f"{runtime}_conv_fast_memory"
+        if args.freeze_recurrent:
+            runtime_label += "_frozen"
+        elif args.recurrent_prior_l2 > 0:
+            runtime_label += "_prior_l2"
+        return (
+            model,
+            runtime_label,
+            model.recurrent_parameter_count(),
+            model.trainable_parameter_count(),
+        )
+
     if model_name in FAST_MEMORY_MODEL_TO_BASE:
         base_model_name = FAST_MEMORY_MODEL_TO_BASE[model_name]
         init_matrix = mb.matrix_for_model(base_matrix, base_model_name, seed=args.init_seed + seed)
@@ -1263,7 +1420,9 @@ def train_one_model(
         "runtime": runtime,
         "N": int(getattr(model, "N", getattr(model, "hidden_size", 0))),
         "init_nonzero_edges": int(
-            base_matrix.nnz if model_name in mb.MODEL_CHOICES + FAST_MEMORY_MODELS else 0
+            base_matrix.nnz
+            if model_name in mb.MODEL_CHOICES + FAST_MEMORY_MODELS + CONV_FAST_MEMORY_MODELS
+            else 0
         ),
         "recurrent_params": recurrent_params,
         "trainable_params": trainable_params,
@@ -1620,6 +1779,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--protonet-channels", type=int, default=64)
     parser.add_argument("--protonet-temperature", type=float, default=0.2)
     parser.add_argument("--protonet-memory-decay", type=float, default=0.92)
+    parser.add_argument("--conv-fast-memory-channels", type=int, default=64)
+    parser.add_argument("--conv-fast-memory-embedding-dim", type=int, default=64)
     parser.add_argument("--nearest-temperature", type=float, default=0.1)
     parser.add_argument("--synthetic-feature-dim", type=int, default=64)
     parser.add_argument("--synthetic-samples-per-class", type=int, default=20)
@@ -1664,8 +1825,16 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--protonet-temperature must be positive")
     if not (0.0 <= args.protonet_memory_decay <= 1.0):
         parser.error("--protonet-memory-decay must be in [0, 1]")
-    if MODEL_CONV_PROTONET in args.models and args.embedding != "raw_pixels":
-        parser.error("conv_protonet requires --embedding raw_pixels")
+    if args.conv_fast_memory_channels < 1:
+        parser.error("--conv-fast-memory-channels must be positive")
+    if args.conv_fast_memory_embedding_dim < 1:
+        parser.error("--conv-fast-memory-embedding-dim must be positive")
+    raw_pixel_models = set(PROTONET_MODELS + CONV_FAST_MEMORY_MODELS)
+    raw_pixel_models.discard(MODEL_MLP_PROTONET)
+    if any(model in raw_pixel_models for model in args.models) and args.embedding != "raw_pixels":
+        parser.error(
+            "conv_protonet and conv fast-memory models require --embedding raw_pixels"
+        )
     if args.dataset == "synthetic":
         for name in ("synthetic_train_classes", "synthetic_val_classes", "synthetic_test_classes"):
             if getattr(args, name) < args.way:
