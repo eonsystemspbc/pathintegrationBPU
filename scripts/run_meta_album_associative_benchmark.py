@@ -565,6 +565,21 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--protonet-memory-decay", type=float, default=0.92)
     parser.add_argument("--conv-fast-memory-channels", type=int, default=64)
     parser.add_argument("--conv-fast-memory-embedding-dim", type=int, default=64)
+    parser.add_argument(
+        "--conv-fast-memory-protonet-residual-weight",
+        type=float,
+        default=1.0,
+        help=(
+            "Weight for the direct Conv4 ProtoNet residual branch in conv fast-memory "
+            "models. Set to 0.0 for the older pure connectome-key ablation."
+        ),
+    )
+    parser.add_argument(
+        "--conv-fast-memory-connectome-logit-weight",
+        type=float,
+        default=1.0,
+        help="Weight for the recurrent connectome/control key branch in conv fast-memory models.",
+    )
     parser.add_argument("--nearest-temperature", type=float, default=0.1)
     parser.add_argument("--synthetic-feature-dim", type=int, default=64)
     parser.add_argument("--synthetic-samples-per-class", type=int, default=20)
@@ -627,6 +642,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--conv-fast-memory-channels must be positive")
     if args.conv_fast_memory_embedding_dim < 1:
         parser.error("--conv-fast-memory-embedding-dim must be positive")
+    if args.conv_fast_memory_protonet_residual_weight < 0:
+        parser.error("--conv-fast-memory-protonet-residual-weight must be nonnegative")
+    if args.conv_fast_memory_connectome_logit_weight < 0:
+        parser.error("--conv-fast-memory-connectome-logit-weight must be nonnegative")
     raw_pixel_models = set(episodic.PROTONET_MODELS + episodic.CONV_FAST_MEMORY_MODELS)
     raw_pixel_models.discard(episodic.MODEL_MLP_PROTONET)
     if any(model in raw_pixel_models for model in args.models) and args.embedding != "raw_pixels":

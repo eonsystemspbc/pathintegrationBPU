@@ -336,27 +336,60 @@ class MatrixFastMemoryRNN(nn.Module):
                 h = torch.clamp(h, max=self.state_clip)
         return nn.functional.normalize(h, p=2, dim=1, eps=1e-6)
 
+    def empty_memory(self, batch: int, reference: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        memory_sum = reference.new_zeros((batch, self.N, self.output_dim))
+        memory_count = reference.new_zeros((batch, 1, self.output_dim))
+        return memory_sum, memory_count
+
+    def memory_logits(
+        self,
+        z: torch.Tensor,
+        memory_sum: torch.Tensor,
+        memory_count: torch.Tensor,
+    ) -> torch.Tensor:
+        prototypes = memory_sum / memory_count.clamp_min(1e-6)
+        prototypes = nn.functional.normalize(prototypes, p=2, dim=1, eps=1e-6)
+        temp = max(self.memory_temperature, 1e-6)
+        return torch.bmm(z.unsqueeze(1), prototypes).squeeze(1) / temp
+
+    def update_memory(
+        self,
+        memory_sum: torch.Tensor,
+        memory_count: torch.Tensor,
+        z: torch.Tensor,
+        label: torch.Tensor,
+        support_gate: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        memory_sum = self.memory_decay * memory_sum + support_gate * torch.bmm(
+            z.unsqueeze(2),
+            label,
+        )
+        memory_count = self.memory_decay * memory_count + support_gate * label
+        return memory_sum, memory_count
+
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
             raise ValueError(
                 f"inputs must have shape [batch, T, {self.input_dim}], got {tuple(inputs.shape)}"
             )
         batch, T, _ = inputs.shape
-        memory = inputs.new_zeros((batch, self.N, self.output_dim))
+        memory_sum, memory_count = self.empty_memory(batch, inputs)
         outputs: list[torch.Tensor] = []
         label_slice = slice(self.feature_dim, self.feature_dim + self.output_dim)
         support_col = self.feature_dim + self.output_dim
-        temp = max(self.memory_temperature, 1e-6)
         for t in range(T):
             z = self.encode_features(inputs[:, t, : self.feature_dim])
-            logits = torch.bmm(z.unsqueeze(1), memory).squeeze(1) / temp
+            logits = self.memory_logits(z, memory_sum, memory_count)
             outputs.append(logits)
 
             support_gate = inputs[:, t, support_col].view(batch, 1, 1)
             label = inputs[:, t, label_slice].view(batch, 1, self.output_dim)
-            memory = self.memory_decay * memory + support_gate * torch.bmm(
-                z.unsqueeze(2),
+            memory_sum, memory_count = self.update_memory(
+                memory_sum,
+                memory_count,
+                z,
                 label,
+                support_gate,
             )
         return torch.stack(outputs, dim=1)
 
@@ -542,6 +575,10 @@ class ConvMatrixFastMemoryRNN(nn.Module):
         encoder_steps: int,
         seed: int,
         freeze_recurrent: bool = False,
+        protonet_residual_weight: float = 1.0,
+        protonet_temperature: float = 0.2,
+        protonet_memory_decay: float = 0.92,
+        connectome_logit_weight: float = 1.0,
     ) -> None:
         super().__init__()
         if raw_feature_dim != image_size * image_size:
@@ -553,11 +590,16 @@ class ConvMatrixFastMemoryRNN(nn.Module):
         self.input_dim = int(input_dim)
         self.output_dim = int(output_dim)
         self.raw_feature_dim = int(raw_feature_dim)
+        self.protonet_residual_weight = float(protonet_residual_weight)
+        self.protonet_temperature = float(protonet_temperature)
+        self.protonet_memory_decay = float(protonet_memory_decay)
+        self.connectome_logit_weight = float(connectome_logit_weight)
         self.visual_encoder = Conv4FeatureEncoder(
             image_size=image_size,
             channels=conv_channels,
             embedding_dim=conv_embedding_dim,
         )
+        self.core_feature_norm = nn.LayerNorm(int(conv_embedding_dim))
         self.core = MatrixFastMemoryRNN(
             recurrent=recurrent,
             input_dim=int(conv_embedding_dim) + self.output_dim + 2,
@@ -585,29 +627,90 @@ class ConvMatrixFastMemoryRNN(nn.Module):
     def recurrent_prior_loss(self) -> torch.Tensor:
         return self.core.recurrent_prior_loss()
 
+    def visual_residual_logits(
+        self,
+        visual: torch.Tensor,
+        memory_sum: torch.Tensor,
+        memory_count: torch.Tensor,
+    ) -> torch.Tensor:
+        visual_key = nn.functional.normalize(visual, p=2, dim=1, eps=1e-6)
+        prototypes = memory_sum / memory_count.clamp_min(1e-6)
+        prototypes = nn.functional.normalize(prototypes, p=2, dim=2, eps=1e-6)
+        temp = max(self.protonet_temperature, 1e-6)
+        return torch.bmm(prototypes, visual_key.unsqueeze(2)).squeeze(2) / temp
+
+    def update_visual_residual_memory(
+        self,
+        memory_sum: torch.Tensor,
+        memory_count: torch.Tensor,
+        visual: torch.Tensor,
+        label: torch.Tensor,
+        support_gate: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        visual_key = nn.functional.normalize(visual, p=2, dim=1, eps=1e-6)
+        update = label * visual_key.view(visual.shape[0], 1, visual.shape[1])
+        memory_sum = self.protonet_memory_decay * memory_sum + support_gate * update
+        memory_count = self.protonet_memory_decay * memory_count + support_gate * label
+        return memory_sum, memory_count
+
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
             raise ValueError(
                 f"inputs must have shape [batch, T, {self.input_dim}], got {tuple(inputs.shape)}"
             )
         batch, T, _ = inputs.shape
-        memory = inputs.new_zeros((batch, self.N, self.output_dim))
+        memory_sum, memory_count = self.core.empty_memory(batch, inputs)
+        residual_memory_sum = inputs.new_zeros(
+            (batch, self.output_dim, self.core.feature_dim)
+        )
+        residual_memory_count = inputs.new_zeros((batch, self.output_dim, 1))
         outputs: list[torch.Tensor] = []
         label_slice = slice(self.raw_feature_dim, self.raw_feature_dim + self.output_dim)
         support_col = self.raw_feature_dim + self.output_dim
-        temp = max(self.core.memory_temperature, 1e-6)
         for t in range(T):
             visual = self.visual_encoder(inputs[:, t, : self.raw_feature_dim])
-            z = self.core.encode_features(visual)
-            logits = torch.bmm(z.unsqueeze(1), memory).squeeze(1) / temp
+            z = self.core.encode_features(self.core_feature_norm(visual))
+            logits = self.connectome_logit_weight * self.core.memory_logits(
+                z,
+                memory_sum,
+                memory_count,
+            )
+            if self.protonet_residual_weight:
+                logits = logits + self.protonet_residual_weight * self.visual_residual_logits(
+                    visual,
+                    residual_memory_sum,
+                    residual_memory_count,
+                )
             outputs.append(logits)
 
             support_gate = inputs[:, t, support_col].view(batch, 1, 1)
-            label = inputs[:, t, label_slice].view(batch, 1, self.output_dim)
-            memory = self.core.memory_decay * memory + support_gate * torch.bmm(
-                z.unsqueeze(2),
-                label,
+            label_for_connectome = inputs[:, t, label_slice].view(
+                batch,
+                1,
+                self.output_dim,
             )
+            memory_sum, memory_count = self.core.update_memory(
+                memory_sum,
+                memory_count,
+                z,
+                label_for_connectome,
+                support_gate,
+            )
+            if self.protonet_residual_weight:
+                label_for_residual = inputs[:, t, label_slice].view(
+                    batch,
+                    self.output_dim,
+                    1,
+                )
+                residual_memory_sum, residual_memory_count = (
+                    self.update_visual_residual_memory(
+                        residual_memory_sum,
+                        residual_memory_count,
+                        visual,
+                        label_for_residual,
+                        support_gate,
+                    )
+                )
         return torch.stack(outputs, dim=1)
 
 
@@ -1188,10 +1291,16 @@ def build_model(
             memory_decay=args.fast_memory_decay,
             memory_temperature=args.fast_memory_temperature,
             encoder_steps=args.fast_memory_encoder_steps,
+            protonet_residual_weight=args.conv_fast_memory_protonet_residual_weight,
+            protonet_temperature=args.protonet_temperature,
+            protonet_memory_decay=args.protonet_memory_decay,
+            connectome_logit_weight=args.conv_fast_memory_connectome_logit_weight,
             seed=args.init_seed + seed,
             freeze_recurrent=args.freeze_recurrent,
         ).to(device)
         runtime_label = f"{runtime}_conv_fast_memory"
+        if args.conv_fast_memory_protonet_residual_weight > 0:
+            runtime_label += "_proto_residual"
         if args.freeze_recurrent:
             runtime_label += "_frozen"
         elif args.recurrent_prior_l2 > 0:
@@ -1781,6 +1890,21 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--protonet-memory-decay", type=float, default=0.92)
     parser.add_argument("--conv-fast-memory-channels", type=int, default=64)
     parser.add_argument("--conv-fast-memory-embedding-dim", type=int, default=64)
+    parser.add_argument(
+        "--conv-fast-memory-protonet-residual-weight",
+        type=float,
+        default=1.0,
+        help=(
+            "Weight for the direct Conv4 ProtoNet residual branch in conv fast-memory "
+            "models. Set to 0.0 for the older pure connectome-key ablation."
+        ),
+    )
+    parser.add_argument(
+        "--conv-fast-memory-connectome-logit-weight",
+        type=float,
+        default=1.0,
+        help="Weight for the recurrent connectome/control key branch in conv fast-memory models.",
+    )
     parser.add_argument("--nearest-temperature", type=float, default=0.1)
     parser.add_argument("--synthetic-feature-dim", type=int, default=64)
     parser.add_argument("--synthetic-samples-per-class", type=int, default=20)
@@ -1829,6 +1953,10 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         parser.error("--conv-fast-memory-channels must be positive")
     if args.conv_fast_memory_embedding_dim < 1:
         parser.error("--conv-fast-memory-embedding-dim must be positive")
+    if args.conv_fast_memory_protonet_residual_weight < 0:
+        parser.error("--conv-fast-memory-protonet-residual-weight must be nonnegative")
+    if args.conv_fast_memory_connectome_logit_weight < 0:
+        parser.error("--conv-fast-memory-connectome-logit-weight must be nonnegative")
     raw_pixel_models = set(PROTONET_MODELS + CONV_FAST_MEMORY_MODELS)
     raw_pixel_models.discard(MODEL_MLP_PROTONET)
     if any(model in raw_pixel_models for model in args.models) and args.embedding != "raw_pixels":

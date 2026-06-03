@@ -151,7 +151,10 @@ For an accuracy ceiling and a stronger Omniglot baseline, the runner also
 supports `mlp_protonet`, `conv_protonet`, and `--embedding raw_pixels`.
 The Conv4 front-end can also be combined with the connectome fast-memory key
 encoder through `hemibrain_conv_fast_memory`,
-`random_sparse_conv_fast_memory`, and `weight_shuffle_conv_fast_memory`.
+`random_sparse_conv_fast_memory`, and `weight_shuffle_conv_fast_memory`. These
+conv hybrids include an explicit ProtoNet-style visual residual path by default;
+set `--conv-fast-memory-protonet-residual-weight 0.0` to recover the stricter
+pure recurrent-key ablation.
 
 To test whether brain-region identity matters, use
 `scripts/run_cross_region_transfer.py`. It can train the CX substrate on the
