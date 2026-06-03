@@ -23,6 +23,7 @@ if str(ROOT) not in sys.path:
 BENCHMARK_SCRIPTS = {
     "meta_album": ROOT / "scripts" / "run_meta_album_associative_benchmark.py",
     "omniglot": ROOT / "scripts" / "run_omniglot_associative_benchmark.py",
+    "optic_flow": ROOT / "scripts" / "run_optic_flow_benchmark.py",
 }
 
 
@@ -400,6 +401,14 @@ def _summary_from_metrics(metrics: object) -> object:
         "test_reversal_query_accuracy",
         "test_initial_probe_accuracy",
         "test_reversal_probe_accuracy",
+        "test_overall_rmse",
+        "test_yaw_rmse",
+        "test_forward_rmse",
+        "test_lateral_rmse",
+        "test_translation_rmse",
+        "test_yaw_r2",
+        "test_forward_r2",
+        "test_lateral_r2",
     ]
     first_columns = [
         "runtime",
@@ -425,6 +434,7 @@ def _summary_from_metrics(metrics: object) -> object:
 def _primary_metric(summary: object) -> str | None:
     preferred = [
         "test_query_accuracy_mean",
+        "test_overall_rmse_mean",
         "test_reversal_query_accuracy_mean",
         "test_initial_query_accuracy_mean",
         "test_initial_probe_accuracy_mean",
@@ -439,6 +449,19 @@ def _primary_metric(summary: object) -> str | None:
     return None
 
 
+def _higher_is_better(metric: str | None) -> bool:
+    if metric is None:
+        return True
+    lower_is_better_tokens = ("loss", "rmse", "mae", "error")
+    return not any(token in metric for token in lower_is_better_tokens)
+
+
+def _metric_delta(values: object, baseline: float, metric: str) -> object:
+    if _higher_is_better(metric):
+        return values - baseline
+    return baseline - values
+
+
 def _leaderboard_from_summary(summary: object) -> object:
     pd = _pandas()
     if summary.empty:
@@ -446,7 +469,11 @@ def _leaderboard_from_summary(summary: object) -> object:
     leaderboard = summary.copy()
     metric = _primary_metric(leaderboard)
     if metric is not None:
-        leaderboard = leaderboard.sort_values(metric, ascending=False, na_position="last")
+        leaderboard = leaderboard.sort_values(
+            metric,
+            ascending=not _higher_is_better(metric),
+            na_position="last",
+        )
     else:
         leaderboard = leaderboard.sort_values("model")
     leaderboard = leaderboard.reset_index(drop=True)
@@ -458,10 +485,16 @@ def _leaderboard_from_summary(summary: object) -> object:
             "weight_shuffle_fast_memory",
             "random_sparse",
             "weight_shuffle",
+            "random_weight_topology",
+            "shuffled_topology",
         ):
             matches = leaderboard.loc[leaderboard["model"] == baseline, metric]
             if not matches.empty:
-                leaderboard[f"delta_vs_{baseline}"] = leaderboard[metric] - float(matches.iloc[0])
+                leaderboard[f"delta_vs_{baseline}"] = _metric_delta(
+                    leaderboard[metric],
+                    float(matches.iloc[0]),
+                    metric,
+                )
     return leaderboard
 
 
@@ -475,6 +508,10 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
         "test_initial_query_accuracy",
         "test_initial_probe_accuracy",
         "test_reversal_probe_accuracy",
+        "test_overall_rmse",
+        "test_yaw_rmse",
+        "test_translation_rmse",
+        "test_loss",
     ]
     metric_columns = [column for column in metric_columns if column in metrics]
     baseline_models = [
@@ -483,6 +520,8 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
         "nearest_support",
         "random_sparse",
         "weight_shuffle",
+        "random_weight_topology",
+        "shuffled_topology",
     ]
     rows: list[dict[str, float | int | str]] = []
     for metric in metric_columns:
@@ -491,7 +530,7 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
             for baseline in baseline_models:
                 if model == baseline or baseline not in pivot.columns:
                     continue
-                delta = (pivot[model] - pivot[baseline]).dropna()
+                delta = _metric_delta(pivot[model], pivot[baseline], metric).dropna()
                 if delta.empty:
                     continue
                 count = int(delta.shape[0])
@@ -561,16 +600,26 @@ def write_sweep_report(
         "model",
         "test_query_accuracy_mean",
         "test_query_accuracy_std",
+        "test_overall_rmse_mean",
+        "test_overall_rmse_std",
+        "test_yaw_rmse_mean",
+        "test_translation_rmse_mean",
+        "test_yaw_r2_mean",
         "test_initial_query_accuracy_mean",
         "test_reversal_query_accuracy_mean",
         "delta_vs_random_sparse_fast_memory",
         "delta_vs_weight_shuffle_fast_memory",
         "delta_vs_nearest_support",
+        "delta_vs_random_weight_topology",
+        "delta_vs_shuffled_topology",
+        "delta_vs_random_sparse",
         "N",
         "trainable_params",
         "freeze_recurrent",
         "recurrent_prior_l2",
     ]
+    paired_metric = metric.removesuffix("_mean") if metric is not None else ""
+    paired_table = paired.loc[paired["metric"] == paired_metric] if not paired.empty else paired
     lines = [
         "# Associative Sweep Report",
         "",
@@ -585,7 +634,7 @@ def write_sweep_report(
         "## Paired Comparisons",
         "",
         _markdown_table(
-            paired.loc[paired["metric"] == "test_query_accuracy"] if not paired.empty else paired,
+            paired_table,
             [
                 "model",
                 "baseline_model",
@@ -691,7 +740,7 @@ def write_run_config(
 def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Launch independent associative benchmark model/seed jobs across multiple GPUs "
+            "Launch independent benchmark model/seed jobs across multiple GPUs "
             "and merge their metrics."
         )
     )

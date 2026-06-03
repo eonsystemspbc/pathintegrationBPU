@@ -138,9 +138,9 @@ expansion for size-matched comparisons.
 On multi-GPU instances, use
 `scripts/run_multi_gpu_associative_sweep.py` to run independent model/seed jobs
 in parallel across GPUs and merge the resulting metrics. This is the preferred
-speedup path for the associative benchmarks. Completed sweeps can be summarized
-with `scripts/summarize_associative_sweep.py`, which writes `leaderboard.csv`
-along with `paired_comparisons.csv` and `sweep_report.md`.
+speedup path for the associative and optic-flow benchmarks. Completed sweeps
+can be summarized with `scripts/summarize_associative_sweep.py`, which writes
+`leaderboard.csv` along with `paired_comparisons.csv` and `sweep_report.md`.
 
 The episodic benchmark also includes fast associative-memory variants:
 `hemibrain_fast_memory`, `random_sparse_fast_memory`, and

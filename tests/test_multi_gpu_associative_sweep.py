@@ -223,3 +223,55 @@ def test_merge_job_outputs_skips_empty_loss_history(tmp_path: Path) -> None:
     assert not (output_dir / "loss_history.csv").exists()
     assert (output_dir / "metrics_summary.csv").exists()
     assert (output_dir / "leaderboard.csv").exists()
+
+
+def test_rmse_leaderboard_sorts_lower_and_positive_delta_is_better(tmp_path: Path) -> None:
+    sweep = _load_module()
+    output_dir = tmp_path / "optic_sweep"
+    seeded = output_dir / "jobs" / "optic_lobe_seeded_seed0"
+    random = output_dir / "jobs" / "random_sparse_seed0"
+    seeded.mkdir(parents=True)
+    random.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "model": "optic_lobe_seeded",
+                "seed": 0,
+                "N": 10,
+                "trainable_params": 40,
+                "test_overall_rmse": 0.30,
+                "test_yaw_rmse": 0.20,
+                "test_translation_rmse": 0.35,
+            }
+        ]
+    ).to_csv(seeded / "metrics_by_seed.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "model": "random_sparse",
+                "seed": 0,
+                "N": 10,
+                "trainable_params": 40,
+                "test_overall_rmse": 0.45,
+                "test_yaw_rmse": 0.30,
+                "test_translation_rmse": 0.50,
+            }
+        ]
+    ).to_csv(random / "metrics_by_seed.csv", index=False)
+    records = [
+        {"index": 0, "benchmark": "optic_flow", "gpu": "0", "output_dir": str(seeded), "return_code": 0},
+        {"index": 1, "benchmark": "optic_flow", "gpu": "1", "output_dir": str(random), "return_code": 0},
+    ]
+
+    sweep.merge_job_outputs(output_dir, records)
+
+    leaderboard = pd.read_csv(output_dir / "leaderboard.csv")
+    paired = pd.read_csv(output_dir / "paired_comparisons.csv")
+    assert leaderboard.loc[0, "model"] == "optic_lobe_seeded"
+    assert round(float(leaderboard.loc[0, "delta_vs_random_sparse"]), 6) == 0.15
+    paired_row = paired[
+        (paired["model"] == "optic_lobe_seeded")
+        & (paired["baseline_model"] == "random_sparse")
+        & (paired["metric"] == "test_overall_rmse")
+    ].iloc[0]
+    assert round(float(paired_row["mean_delta"]), 6) == 0.15
