@@ -147,6 +147,8 @@ The episodic benchmark also includes fast associative-memory variants:
 `weight_shuffle_fast_memory`. These retain the same recurrent connectome/control
 cores as sensory-only key encoders, then add an online support/reversal memory
 head for one-shot binding.
+For an accuracy ceiling and a stronger Omniglot baseline, the runner also
+supports `mlp_protonet`, `conv_protonet`, and `--embedding raw_pixels`.
 
 To test whether brain-region identity matters, use
 `scripts/run_cross_region_transfer.py`. It can train the CX substrate on the
