@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 
 SCRIPT_PATH = (
@@ -171,13 +172,13 @@ def test_merge_job_outputs_writes_combined_metrics_and_summary(tmp_path: Path) -
 
     assert metrics.shape[0] == 2
     assert history.shape[0] == 2
-    assert summary.loc[0, "test_query_accuracy_mean"] == 0.85
+    assert summary.loc[0, "test_query_accuracy_mean"] == pytest.approx(0.85)
     assert (output_dir / "metrics_by_seed.csv").exists()
     assert (output_dir / "loss_history.csv").exists()
     assert (output_dir / "metrics_summary.csv").exists()
     leaderboard = pd.read_csv(output_dir / "leaderboard.csv")
     assert leaderboard.loc[0, "rank"] == 1
-    assert leaderboard.loc[0, "test_query_accuracy_mean"] == 0.85
+    assert leaderboard.loc[0, "test_query_accuracy_mean"] == pytest.approx(0.85)
 
 
 def test_merge_job_outputs_skips_empty_loss_history(tmp_path: Path) -> None:

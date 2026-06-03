@@ -30,6 +30,10 @@ def _toy_matrix(n: int = 10) -> sparse.coo_matrix:
     rows = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 7], dtype=np.int64)
     cols = np.array([0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 2], dtype=np.int64)
     data = np.linspace(0.05, 0.6, rows.size, dtype=np.float32)
+    keep = (rows < n) & (cols < n)
+    rows = rows[keep]
+    cols = cols[keep]
+    data = data[keep]
     return sparse.coo_matrix((data, (rows, cols)), shape=(n, n), dtype=np.float32)
 
 
@@ -137,6 +141,52 @@ def test_fast_memory_query_key_ignores_label_channels() -> None:
     assert torch.allclose(logits[:, 1, :], changed_logits[:, 1, :], atol=1e-6)
 
 
+def test_fast_memory_prototypes_are_count_normalized() -> None:
+    import torch
+
+    omni = _load_module()
+    feature_dim = 3
+    output_dim = 2
+    input_dim = feature_dim + output_dim + 2
+    model = omni.MatrixFastMemoryRNN(
+        recurrent=_toy_matrix(n=8),
+        input_dim=input_dim,
+        output_dim=output_dim,
+        feature_dim=feature_dim,
+        runtime="dense",
+        state_clip=5.0,
+        memory_decay=1.0,
+        memory_temperature=0.5,
+        encoder_steps=2,
+        seed=11,
+    )
+    support_col = feature_dim + output_dim
+    query_col = support_col + 1
+    label_slice = slice(feature_dim, feature_dim + output_dim)
+
+    one_support = torch.zeros(1, 2, input_dim)
+    one_support[:, :, :feature_dim] = torch.tensor([[[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]])
+    one_support[:, 0, label_slice] = torch.tensor([[1.0, 0.0]])
+    one_support[:, 0, support_col] = 1.0
+    one_support[:, 1, query_col] = 1.0
+
+    two_supports = torch.zeros(1, 3, input_dim)
+    two_supports[:, :, :feature_dim] = torch.tensor(
+        [[[1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0, 0.0]]]
+    )
+    two_supports[:, 0, label_slice] = torch.tensor([[1.0, 0.0]])
+    two_supports[:, 1, label_slice] = torch.tensor([[1.0, 0.0]])
+    two_supports[:, 0, support_col] = 1.0
+    two_supports[:, 1, support_col] = 1.0
+    two_supports[:, 2, query_col] = 1.0
+
+    with torch.no_grad():
+        one_logits = model(one_support)[:, 1, :]
+        two_logits = model(two_supports)[:, 2, :]
+
+    assert torch.allclose(one_logits, two_logits, atol=1e-6)
+
+
 def test_fast_memory_can_freeze_recurrent_weights() -> None:
     omni = _load_module()
     feature_dim = 4
@@ -231,6 +281,66 @@ def test_conv_fast_memory_forward_routes_raw_pixels_through_connectome() -> None
 
     assert logits.shape == (2, 4, way)
     assert model.recurrent_parameter_count() == 100
+
+
+def test_conv_fast_memory_residual_matches_conv_protonet_when_core_disabled() -> None:
+    import torch
+
+    omni = _load_module()
+    image_size = 16
+    raw_feature_dim = image_size * image_size
+    way = 3
+    seed = 23
+    protonet = omni.ConvProtoNetClassifier(
+        feature_dim=raw_feature_dim,
+        output_dim=way,
+        image_size=image_size,
+        channels=4,
+        embedding_dim=8,
+        temperature=0.5,
+        memory_decay=0.9,
+        seed=seed,
+    )
+    hybrid = omni.ConvMatrixFastMemoryRNN(
+        recurrent=_toy_matrix(n=10),
+        input_dim=raw_feature_dim + way + 2,
+        output_dim=way,
+        raw_feature_dim=raw_feature_dim,
+        image_size=image_size,
+        conv_channels=4,
+        conv_embedding_dim=8,
+        runtime="dense",
+        state_clip=5.0,
+        memory_decay=0.9,
+        memory_temperature=0.5,
+        encoder_steps=1,
+        seed=seed,
+        protonet_residual_weight=1.0,
+        protonet_temperature=0.5,
+        protonet_memory_decay=0.9,
+        connectome_logit_weight=0.0,
+    )
+    protonet.eval()
+    hybrid.eval()
+    generator = torch.Generator().manual_seed(123)
+    inputs = torch.zeros(2, 4, raw_feature_dim + way + 2)
+    inputs[:, :, :raw_feature_dim] = torch.rand(
+        2,
+        4,
+        raw_feature_dim,
+        generator=generator,
+    )
+    inputs[:, 0, raw_feature_dim] = 1.0
+    inputs[:, 0, raw_feature_dim + way] = 1.0
+    inputs[:, 1, raw_feature_dim + 1] = 1.0
+    inputs[:, 1, raw_feature_dim + way] = 1.0
+    inputs[:, 2:, raw_feature_dim + way + 1] = 1.0
+
+    with torch.no_grad():
+        protonet_logits = protonet(inputs)
+        hybrid_logits = hybrid(inputs)
+
+    assert torch.allclose(protonet_logits, hybrid_logits, atol=1e-6)
 
 
 def test_omniglot_associative_smoke_run_writes_metrics_and_report(tmp_path: Path) -> None:

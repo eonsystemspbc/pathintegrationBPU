@@ -275,10 +275,13 @@ setting.
 ## Conv-Connectome Hybrid
 
 The strongest connectome-facing version uses the Conv4 visual front-end as a
-shared image encoder, then routes that compact visual embedding through the
-mushroom-body connectome/control recurrent core before the online fast-memory
-write/read. This asks whether biological topology improves the episodic key
-representation after giving every model a competent Omniglot visual front-end.
+shared image encoder. The conv fast-memory models now keep two explicit logit
+paths: a ProtoNet-style visual residual branch and a mushroom-body
+connectome/control recurrent key branch. The residual branch removes the
+visual-metric bottleneck that kept every recurrent-key model well below
+`conv_protonet`, while the same-family hemibrain/random/weight-shuffle
+comparison still asks whether biological topology adds value on top of that
+strong visual scaffold.
 
 ```bash
 OUT=/mnt/fast/outputs/omniglot_5way_reversal5_conv_connectome_5seed
@@ -308,6 +311,8 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --protonet-memory-decay 0.92 \
   --conv-fast-memory-embedding-dim 64 \
   --conv-fast-memory-channels 64 \
+  --conv-fast-memory-protonet-residual-weight 1.0 \
+  --conv-fast-memory-connectome-logit-weight 1.0 \
   --fast-memory-decay 0.92 \
   --fast-memory-temperature 0.2 \
   --fast-memory-encoder-steps 2 \
@@ -324,7 +329,9 @@ python scripts/run_multi_gpu_associative_sweep.py \
 The primary positive signal is `hemibrain_conv_fast_memory` beating both
 `random_sparse_conv_fast_memory` and `weight_shuffle_conv_fast_memory` on paired
 accuracy across seeds. `conv_protonet` remains the non-connectomic ceiling for
-the same raw-pixel episode scaffold.
+the same raw-pixel episode scaffold. To rerun the stricter pure recurrent-key
+ablation from before the residual branch, set
+`--conv-fast-memory-protonet-residual-weight 0.0`.
 
 If the trainable fast-memory sweep does not show a hemibrain advantage, run the
 stricter recurrent-prior variant before changing tasks. This freezes recurrent
