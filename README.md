@@ -130,6 +130,14 @@ dataset-level train/validation/test splits so the result is less vulnerable to
 the "Omniglot is saturated" critique. See
 `docs/meta_album_associative_benchmark.md` for commands.
 
+For a behavioral associative-learning benchmark, use
+`scripts/run_ccnlab_associative_benchmark.py`. It runs the same
+connectome-seeded/random-sparse/weight-shuffle topology family on CCNLab
+classical-conditioning experiments using a task-native online
+reward-prediction-error readout. CCNLab's Rescorla-Wagner, Kalman-filter, and
+temporal-difference baselines can be included in the same run. See
+`docs/ccnlab_associative_benchmark.md` for setup and AWS commands.
+
 Both episodic few-shot runners support `--expand-factor` for BPU-style
 connectome expansion via a directed signed degree-corrected SBM. The original
 connectome submatrix is restored exactly, and controls are generated after

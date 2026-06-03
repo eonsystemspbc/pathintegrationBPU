@@ -77,6 +77,10 @@ def write_summary(output_dir: Path, rewrite_metrics: bool) -> int:
     columns = [
         "rank",
         "model",
+        "test_ccnlab_score_mean",
+        "test_ccnlab_score_std",
+        "test_ccnlab_correlation_mean",
+        "test_ccnlab_ratio_mean",
         "test_query_accuracy_mean",
         "test_overall_rmse_mean",
         "test_yaw_rmse_mean",
@@ -91,7 +95,9 @@ def write_summary(output_dir: Path, rewrite_metrics: bool) -> int:
         "delta_vs_random_weight_topology",
         "delta_vs_shuffled_topology",
         "delta_vs_random_sparse",
+        "delta_vs_weight_shuffle",
         "N",
+        "feature_dim",
         "trainable_params",
     ]
     available = [column for column in columns if column in leaderboard]
