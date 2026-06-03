@@ -80,6 +80,31 @@ def test_random_sparse_control_preserves_connectome_control_invariants() -> None
     )
 
 
+def test_degree_preserving_random_control_preserves_sparse_degree_invariants() -> None:
+    mb = _load_module()
+    base = _toy_matrix()
+    degree_matrix = mb.degree_preserving_random_like(base, seed=12)
+    assert degree_matrix.shape == base.shape
+    assert degree_matrix.nnz == base.nnz
+    assert int(np.sum(degree_matrix.row == degree_matrix.col)) == int(
+        np.sum(base.row == base.col)
+    )
+    np.testing.assert_array_equal(
+        np.bincount(degree_matrix.row, minlength=base.shape[0]),
+        np.bincount(base.row, minlength=base.shape[0]),
+    )
+    np.testing.assert_array_equal(
+        np.bincount(degree_matrix.col, minlength=base.shape[0]),
+        np.bincount(base.col, minlength=base.shape[0]),
+    )
+    np.testing.assert_allclose(
+        np.sort(degree_matrix.data),
+        np.sort(base.data),
+        rtol=0,
+        atol=1e-7,
+    )
+
+
 def test_random_dense_control_uses_random_init_with_dense_trainability() -> None:
     mb = _load_module()
     base = _toy_matrix()

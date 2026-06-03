@@ -132,15 +132,15 @@ the "Omniglot is saturated" critique. See
 
 For a behavioral associative-learning benchmark, use
 `scripts/run_ccnlab_associative_benchmark.py`. It runs the same
-connectome-seeded/random-sparse/weight-shuffle topology family on CCNLab
-classical-conditioning experiments using a task-native online
+connectome-seeded/random-sparse/degree-preserving/weight-shuffle topology
+family on CCNLab classical-conditioning experiments using a task-native online
 reward-prediction-error readout. CCNLab's Rescorla-Wagner, Kalman-filter, and
 temporal-difference baselines can be included in the same run. The runner also
 supports architecture-matched graph-feature variants such as
-`connectome_kalman_filter`, `random_sparse_kalman_filter`, and
-`weight_shuffle_kalman_filter`, which keep the CCNLab learning rule fixed while
-changing only the feature topology. See `docs/ccnlab_associative_benchmark.md`
-for setup and AWS commands.
+`connectome_kalman_filter`, `random_sparse_kalman_filter`,
+`degree_preserving_kalman_filter`, and `weight_shuffle_kalman_filter`, which
+keep the CCNLab learning rule fixed while changing only the feature topology.
+See `docs/ccnlab_associative_benchmark.md` for setup and AWS commands.
 
 Both episodic few-shot runners support `--expand-factor` for BPU-style
 connectome expansion via a directed signed degree-corrected SBM. The original
@@ -155,7 +155,7 @@ can be summarized with `scripts/summarize_associative_sweep.py`, which writes
 `leaderboard.csv` along with `paired_comparisons.csv`,
 `matched_topology_comparisons.csv`, and `sweep_report.md`. Use the matched
 topology table for connectome claims because it restricts comparisons to
-same-architecture random-sparse and weight-shuffled controls.
+same-architecture random-sparse, degree-preserving, and weight-shuffled controls.
 
 The episodic benchmark also includes fast associative-memory variants:
 `hemibrain_fast_memory`, `random_sparse_fast_memory`, and

@@ -474,8 +474,8 @@ def _metric_delta(values: object, baseline: float, metric: str) -> object:
 
 
 MATCHED_TOPOLOGY_CONTROLS = {
-    "hemibrain_seeded": ("random_sparse", "weight_shuffle"),
-    "connectome_seeded": ("random_sparse", "weight_shuffle"),
+    "hemibrain_seeded": ("random_sparse", "degree_preserving_random", "weight_shuffle"),
+    "connectome_seeded": ("random_sparse", "degree_preserving_random", "weight_shuffle"),
     "hemibrain_conv_fast_memory": (
         "random_sparse_conv_fast_memory",
         "weight_shuffle_conv_fast_memory",
@@ -488,14 +488,17 @@ MATCHED_TOPOLOGY_CONTROLS = {
     "connectome_fast_memory": ("random_sparse_fast_memory", "weight_shuffle_fast_memory"),
     "connectome_rescorla_wagner": (
         "random_sparse_rescorla_wagner",
+        "degree_preserving_rescorla_wagner",
         "weight_shuffle_rescorla_wagner",
     ),
     "connectome_kalman_filter": (
         "random_sparse_kalman_filter",
+        "degree_preserving_kalman_filter",
         "weight_shuffle_kalman_filter",
     ),
     "connectome_temporal_difference": (
         "random_sparse_temporal_difference",
+        "degree_preserving_temporal_difference",
         "weight_shuffle_temporal_difference",
     ),
     "optic_lobe_seeded": ("random_sparse", "weight_shuffle"),
@@ -537,12 +540,16 @@ def _leaderboard_from_summary(summary: object) -> object:
             "random_sparse_fast_memory",
             "weight_shuffle_fast_memory",
             "random_sparse_rescorla_wagner",
+            "degree_preserving_rescorla_wagner",
             "weight_shuffle_rescorla_wagner",
             "random_sparse_kalman_filter",
+            "degree_preserving_kalman_filter",
             "weight_shuffle_kalman_filter",
             "random_sparse_temporal_difference",
+            "degree_preserving_temporal_difference",
             "weight_shuffle_temporal_difference",
             "random_sparse",
+            "degree_preserving_random",
             "weight_shuffle",
             "random_weight_topology",
             "shuffled_topology",
@@ -582,13 +589,17 @@ def _paired_comparisons_from_metrics(metrics: object) -> object:
         "random_sparse_fast_memory",
         "weight_shuffle_fast_memory",
         "random_sparse_rescorla_wagner",
+        "degree_preserving_rescorla_wagner",
         "weight_shuffle_rescorla_wagner",
         "random_sparse_kalman_filter",
+        "degree_preserving_kalman_filter",
         "weight_shuffle_kalman_filter",
         "random_sparse_temporal_difference",
+        "degree_preserving_temporal_difference",
         "weight_shuffle_temporal_difference",
         "nearest_support",
         "random_sparse",
+        "degree_preserving_random",
         "weight_shuffle",
         "random_weight_topology",
         "shuffled_topology",
@@ -698,6 +709,10 @@ def write_sweep_report(
         "delta_vs_random_sparse_fast_memory",
         "delta_vs_weight_shuffle_fast_memory",
         "delta_vs_nearest_support",
+        "delta_vs_degree_preserving_random",
+        "delta_vs_degree_preserving_rescorla_wagner",
+        "delta_vs_degree_preserving_kalman_filter",
+        "delta_vs_degree_preserving_temporal_difference",
         "delta_vs_random_weight_topology",
         "delta_vs_shuffled_topology",
         "delta_vs_random_sparse",
@@ -749,9 +764,10 @@ def write_sweep_report(
         "",
         (
             "A useful connectome signal is the seeded connectome model beating "
-            "both same-family random-sparse and weight-shuffled controls across "
-            "several seeds. Benchmark-specific non-connectomic baselines should "
-            "be treated as task-fit references rather than topology controls."
+            "same-family random-sparse, degree-preserving, and weight-shuffled "
+            "controls across several seeds. Benchmark-specific non-connectomic "
+            "baselines should be treated as task-fit references rather than "
+            "topology controls."
         ),
         "",
     ]
@@ -791,10 +807,13 @@ def log_leaderboard(logger: SweepLogger, leaderboard: object, topn: int = 8) -> 
             "delta_vs_random_sparse_fast_memory",
             "delta_vs_weight_shuffle_fast_memory",
             "delta_vs_random_sparse_rescorla_wagner",
+            "delta_vs_degree_preserving_rescorla_wagner",
             "delta_vs_weight_shuffle_rescorla_wagner",
             "delta_vs_random_sparse_kalman_filter",
+            "delta_vs_degree_preserving_kalman_filter",
             "delta_vs_weight_shuffle_kalman_filter",
             "delta_vs_random_sparse_temporal_difference",
+            "delta_vs_degree_preserving_temporal_difference",
             "delta_vs_weight_shuffle_temporal_difference",
             "delta_vs_nearest_support",
         )

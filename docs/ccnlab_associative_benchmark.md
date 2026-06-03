@@ -5,14 +5,16 @@ controls on CCNLab classical conditioning tasks:
 
 - `hemibrain_seeded` or `connectome_seeded`: the provided matrix topology.
 - `random_sparse`: same edge count and weight distribution on random support.
+- `degree_preserving_random`: same edge count, weight distribution, and
+  in/out-degree sequence on randomized support.
 - `weight_shuffle`: same support with shuffled weights.
 - `rescorla_wagner`, `kalman_filter`, `temporal_difference`: CCNLab's
   task-native reference models.
 - `connectome_rescorla_wagner`, `connectome_kalman_filter`, and
   `connectome_temporal_difference`: the same CCNLab learning rules as the
   task-native references, but run over connectome graph-diffusion features.
-  Use the matched `random_sparse_*` and `weight_shuffle_*` variants as topology
-  controls.
+  Use the matched `random_sparse_*`, `degree_preserving_*`, and
+  `weight_shuffle_*` variants as topology controls.
 
 The connectome architecture is task-specific rather than image-specific. It
 uses a fixed graph-diffusion encoder for cue, context, and within-trial time,
@@ -54,7 +56,7 @@ python scripts/run_ccnlab_associative_benchmark.py \
   --ccnlab-root /mnt/fast/ccnlab \
   --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
-  --models hemibrain_seeded random_sparse weight_shuffle rescorla_wagner \
+  --models hemibrain_seeded random_sparse degree_preserving_random weight_shuffle rescorla_wagner \
   --seeds 0 \
   --subjects 2 \
   --experiments Acquisition_ContinuousVsPartial \
@@ -80,7 +82,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --output-dir "$OUT" \
   --gpus 0 1 \
   --status-seconds 15 \
-  --models hemibrain_seeded random_sparse weight_shuffle rescorla_wagner kalman_filter temporal_difference \
+  --models hemibrain_seeded random_sparse degree_preserving_random weight_shuffle rescorla_wagner kalman_filter temporal_difference \
   --seeds 0 1 2 3 4 \
   -- \
   --ccnlab-root /mnt/fast/ccnlab \
@@ -112,7 +114,7 @@ the finite count is recorded in `test_ccnlab_finite_score_count`.
 Use this when you want the connectome inside the same learning-rule families as
 the top CCNLab performers. The raw baselines use cue/context features directly;
 the graph-feature variants use the same RW, Kalman, or TD update rule over
-connectome/random/weight-shuffled graph-diffusion features.
+connectome/random/degree-preserving/weight-shuffled graph-diffusion features.
 
 ```bash
 cd /home/ubuntu/pathintegrationBPU
@@ -127,9 +129,9 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --gpus 0 1 \
   --status-seconds 15 \
   --models \
-    kalman_filter connectome_kalman_filter random_sparse_kalman_filter weight_shuffle_kalman_filter \
-    temporal_difference connectome_temporal_difference random_sparse_temporal_difference weight_shuffle_temporal_difference \
-    rescorla_wagner connectome_rescorla_wagner random_sparse_rescorla_wagner weight_shuffle_rescorla_wagner \
+    kalman_filter connectome_kalman_filter random_sparse_kalman_filter degree_preserving_kalman_filter weight_shuffle_kalman_filter \
+    temporal_difference connectome_temporal_difference random_sparse_temporal_difference degree_preserving_temporal_difference weight_shuffle_temporal_difference \
+    rescorla_wagner connectome_rescorla_wagner random_sparse_rescorla_wagner degree_preserving_rescorla_wagner weight_shuffle_rescorla_wagner \
   --seeds 0 1 2 3 4 \
   -- \
   --ccnlab-root /mnt/fast/ccnlab \
@@ -166,8 +168,8 @@ For a broader behavioral-fit check, replace the experiment list with:
 ```
 
 The full registry is larger and includes experiments with different empirical
-summary shapes. Keep the same seeded/random/weight-shuffle controls and inspect
-`experiment_scores.csv` before interpreting the mean score.
+summary shapes. Keep the same seeded/random/degree-preserving/weight-shuffle
+controls and inspect `experiment_scores.csv` before interpreting the mean score.
 
 ## FlyWire MB Matrix
 
@@ -176,7 +178,7 @@ the FlyWire prepared matrix:
 
 ```bash
 --matrix outputs/flywire_mushroom_body/adjacency_unsigned.npz \
---models connectome_seeded random_sparse weight_shuffle rescorla_wagner kalman_filter temporal_difference
+--models connectome_seeded random_sparse degree_preserving_random weight_shuffle rescorla_wagner kalman_filter temporal_difference
 ```
 
 Use `connectome_seeded` in paper-facing tables when the matrix is not
