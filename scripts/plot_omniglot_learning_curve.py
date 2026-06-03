@@ -112,6 +112,15 @@ def per_seed_learning_summary(
     rows: list[dict[str, float | int | str]] = []
     for (model, seed), group in by_epoch.groupby(["model", "seed"]):
         group = group.sort_values("epoch")
+        expected_epochs = set(range(1, common_epochs + 1))
+        observed_epochs = set(int(epoch) for epoch in group["epoch"])
+        missing_epochs = sorted(expected_epochs.difference(observed_epochs))
+        if missing_epochs:
+            raise ValueError(
+                f"{model}/seed{seed} is missing epochs {missing_epochs} inside "
+                f"the requested common horizon 1..{common_epochs}. Use a shorter "
+                "--common-epochs value for paired seed-level summaries."
+            )
         epochs = group["epoch"].to_numpy(dtype=float)
         values = group[metric].to_numpy(dtype=float)
         row: dict[str, float | int | str] = {
@@ -215,9 +224,10 @@ def plot_learning_curve(
     labels: dict[str, str],
     title: str,
     test_accuracy: pd.DataFrame,
+    plot_common_only: bool,
 ) -> None:
-    common = history[history["epoch"] <= common_epochs].copy()
-    by_epoch = common.groupby(["model", "epoch"], as_index=False).agg(
+    plot_history = history[history["epoch"] <= common_epochs].copy() if plot_common_only else history
+    by_epoch = plot_history.groupby(["model", "epoch"], as_index=False).agg(
         mean=(metric, "mean"),
         std=(metric, "std"),
         n=("seed", "nunique"),
@@ -248,10 +258,23 @@ def plot_learning_curve(
     ax_curve.set_title("Validation Learning Curve", fontsize=12)
     ax_curve.set_xlabel("Epoch")
     ax_curve.set_ylabel("Validation query accuracy (%)")
-    ax_curve.set_xlim(1, common_epochs)
+    plot_max_epoch = int(by_epoch["epoch"].max())
+    ax_curve.set_xlim(1, plot_max_epoch)
     ymin = max(0.0, float(by_epoch["mean"].min()) * 100.0 - 0.6)
     ymax = min(100.0, float(by_epoch["mean"].max()) * 100.0 + 0.5)
     ax_curve.set_ylim(ymin, ymax)
+    if not plot_common_only and common_epochs < plot_max_epoch:
+        ax_curve.axvline(common_epochs, color="#222222", linestyle=":", linewidth=1.2, alpha=0.75)
+        ax_curve.text(
+            common_epochs + 0.1,
+            ymin + 0.08 * (ymax - ymin),
+            f"paired horizon: {common_epochs}",
+            rotation=90,
+            va="bottom",
+            ha="left",
+            fontsize=7,
+            color="#222222",
+        )
     ax_curve.grid(True, alpha=0.25)
     ax_curve.legend(frameon=False, fontsize=8, loc="best")
 
@@ -260,7 +283,7 @@ def plot_learning_curve(
     means = bar_frame["common_mean"].to_numpy(dtype=float) * 100.0
     colors = [COLORS.get(model, "#666666") for model in bar_frame["model"]]
     ax_bar.bar(x, means, color=colors, width=0.72)
-    ax_bar.set_title(f"Mean Over {common_epochs} Epochs", fontsize=12)
+    ax_bar.set_title(f"Paired Mean Over {common_epochs} Epochs", fontsize=12)
     ax_bar.set_ylabel("Validation accuracy (%)")
     ax_bar.set_xticks(x)
     ax_bar.set_xticklabels(
@@ -310,7 +333,12 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         "--common-epochs",
         type=int,
         default=None,
-        help="Restrict the comparison to this many shared epochs. Defaults to the shortest model/seed run.",
+        help="Use this many complete epochs for paired seed-level summaries. Defaults to the shortest model/seed run.",
+    )
+    parser.add_argument(
+        "--plot-common-only",
+        action="store_true",
+        help="Also truncate the line plot to the paired common horizon. By default the line plot shows all available epochs.",
     )
     parser.add_argument(
         "--baseline-models",
@@ -357,6 +385,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         labels=labels,
         title=args.title,
         test_accuracy=test_accuracy,
+        plot_common_only=args.plot_common_only,
     )
     per_seed.to_csv(output_dir / "learning_curve_by_seed.csv", index=False)
     summary.to_csv(output_dir / "learning_curve_summary.csv", index=False)
