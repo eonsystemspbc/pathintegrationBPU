@@ -313,6 +313,21 @@ def test_matched_topology_comparisons_are_same_architecture_only(tmp_path: Path)
                     }
                 ]
             ).to_csv(job_dir / "metrics_by_seed.csv", index=False)
+            pd.DataFrame(
+                [
+                    {
+                        "model": model,
+                        "seed": seed,
+                        "experiment": "Acquisition",
+                        "group": "paired",
+                        "phase": "train",
+                        "trial": 1,
+                        "trial_in_phase": 1,
+                        "has_cs": 1,
+                        "learning_response_mean": value,
+                    }
+                ]
+            ).to_csv(job_dir / "ccnlab_trial_history.csv", index=False)
             records.append(
                 {
                     "index": index,
@@ -335,6 +350,8 @@ def test_matched_topology_comparisons_are_same_architecture_only(tmp_path: Path)
 
     paired = pd.read_csv(output_dir / "paired_comparisons.csv")
     matched = pd.read_csv(output_dir / "matched_topology_comparisons.csv")
+    trial_history = pd.read_csv(output_dir / "ccnlab_trial_history.csv")
+    assert set(trial_history["model"]) == set(models)
 
     kalman_paired = paired[
         (paired["model"] == "connectome_kalman_filter")

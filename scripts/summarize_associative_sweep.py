@@ -69,6 +69,16 @@ def write_summary(output_dir: Path, rewrite_metrics: bool) -> int:
         metrics.to_csv(output_dir / "metrics_by_seed.csv", index=False)
         if not history.empty:
             history.to_csv(output_dir / "loss_history.csv", index=False)
+        for filename in (
+            "experiment_scores.csv",
+            "ccnlab_timestep_history.csv",
+            "ccnlab_trial_history.csv",
+        ):
+            frame = _read_csv_if_present(output_dir / filename)
+            if frame.empty:
+                frame = _discover_job_metrics(output_dir, filename)
+            if not frame.empty:
+                frame.to_csv(output_dir / filename, index=False)
     summary.to_csv(output_dir / "metrics_summary.csv", index=False)
     leaderboard.to_csv(output_dir / "leaderboard.csv", index=False)
     records = records_frame.to_dict("records") if not records_frame.empty else []
