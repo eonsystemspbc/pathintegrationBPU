@@ -153,6 +153,23 @@ cat "$OUT/matched_topology_comparisons.csv" | grep connectome_temporal_differenc
 cat "$OUT/matched_topology_comparisons.csv" | grep connectome_rescorla_wagner
 ```
 
+Plot trial-by-trial response curves to inspect acquisition/extinction dynamics:
+
+```bash
+python scripts/plot_ccnlab_learning_curve.py "$OUT" \
+  --learner kalman \
+  --max-trials 40 \
+  --title "FlyWire MB Kalman Graph Features on CCNLab"
+```
+
+The plotter reads `ccnlab_trial_history.csv`, which is written by the CCNLab
+runner and merged by the multi-GPU sweep. It also writes
+`ccnlab_learning_curve_summary.csv`,
+`ccnlab_learning_curve_by_seed.csv`, and
+`ccnlab_learning_curve_paired_comparisons.csv`. The paired table compares
+connectome curves with same-learner random-sparse, degree-preserving, and
+weight-shuffled controls.
+
 For Kalman variants, `--feature-learner-dim` controls covariance size. Larger
 values give a richer graph basis but scale quadratically in runtime and memory.
 Use `matched_topology_comparisons.csv` for topology claims; the broader

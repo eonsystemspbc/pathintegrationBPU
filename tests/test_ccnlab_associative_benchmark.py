@@ -90,6 +90,46 @@ def test_feature_rescorla_wagner_learns_cue_reward_association() -> None:
     assert learned > 0.9
 
 
+def test_extract_response_history_records_trial_learning_response() -> None:
+    bench = _load_module()
+
+    class FakeExperiment:
+        name = "FakeAcquisition"
+        stimuli = {
+            "control": [
+                [
+                    ([("A", 1.0)], "K1", 0.0),
+                    ([], "K1", 1.0),
+                ]
+            ]
+        }
+        data = {
+            "control": [
+                [
+                    {"response": [0.2, 0.4]},
+                    {"response": [0.8, 1.0]},
+                ]
+            ]
+        }
+
+        def phase(self, group: str, trial: int) -> str:
+            return "acquisition"
+
+    timestep_rows, trial_rows = bench.extract_response_history(
+        FakeExperiment(),
+        model_name="connectome_rescorla_wagner",
+        seed=3,
+    )
+
+    assert len(timestep_rows) == 2
+    assert len(trial_rows) == 1
+    assert timestep_rows[0]["active_cs"] == "A"
+    assert timestep_rows[0]["response_mean"] == pytest.approx(0.3)
+    assert trial_rows[0]["learning_response_source"] == "cs_no_us"
+    assert trial_rows[0]["learning_response_mean"] == pytest.approx(0.3)
+    assert trial_rows[0]["phase"] == "acquisition"
+
+
 def test_connectome_factories_preserve_matched_control_sizes() -> None:
     bench = _load_module()
 

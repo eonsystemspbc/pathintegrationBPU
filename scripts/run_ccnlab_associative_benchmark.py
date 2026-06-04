@@ -709,11 +709,143 @@ def make_model_factory(
     )
 
 
+def _phase_label(phase: object) -> str:
+    return "" if phase is None else str(phase)
+
+
+def _cs_labels(cs: Iterable[tuple[str, float]]) -> tuple[str, ...]:
+    return tuple(sorted(str(stim) for stim, mag in cs if float(mag) > 0.0))
+
+
+def _response_stats(values: Iterable[float]) -> tuple[float, float, int]:
+    array = np.asarray(list(values), dtype=np.float64)
+    if array.size == 0:
+        return float("nan"), float("nan"), 0
+    return (
+        float(array.mean()),
+        float(array.std(ddof=1)) if array.size > 1 else float("nan"),
+        int(array.size),
+    )
+
+
+def extract_response_history(
+    exp: Any,
+    model_name: str,
+    seed: int,
+) -> tuple[list[dict[str, float | int | str]], list[dict[str, float | int | str]]]:
+    timestep_rows: list[dict[str, float | int | str]] = []
+    trial_rows: list[dict[str, float | int | str]] = []
+    for group_name, group in exp.stimuli.items():
+        phase_counts: dict[object, int] = {}
+        for trial_index, trial in enumerate(group):
+            phase = exp.phase(group_name, trial_index)
+            phase_counts[phase] = phase_counts.get(phase, 0) + 1
+            trial_in_phase = int(phase_counts[phase])
+            phase_text = _phase_label(phase)
+
+            all_responses: list[float] = []
+            cs_responses: list[float] = []
+            cs_no_us_responses: list[float] = []
+            trial_cs: set[str] = set()
+            trial_us_values: list[float] = []
+            for timestep_index, timestep in enumerate(trial):
+                cs, ctx, us = timestep
+                labels = _cs_labels(cs)
+                has_cs = bool(labels)
+                us_value = float(us)
+                has_us = us_value > 0.0
+                responses = list(exp.data[group_name][trial_index][timestep_index]["response"])
+                response_mean, response_std, subject_count = _response_stats(responses)
+                all_responses.extend(float(value) for value in responses)
+                trial_us_values.append(us_value)
+                if has_cs:
+                    trial_cs.update(labels)
+                    cs_responses.extend(float(value) for value in responses)
+                    if not has_us:
+                        cs_no_us_responses.extend(float(value) for value in responses)
+
+                timestep_rows.append(
+                    {
+                        "model": model_name,
+                        "seed": int(seed),
+                        "experiment": str(exp.name),
+                        "group": str(group_name),
+                        "phase": phase_text,
+                        "trial": int(trial_index + 1),
+                        "trial_in_phase": trial_in_phase,
+                        "timestep": int(timestep_index + 1),
+                        "active_cs": ";".join(labels),
+                        "ctx": str(ctx),
+                        "us": us_value,
+                        "has_cs": int(has_cs),
+                        "has_us": int(has_us),
+                        "response_mean": response_mean,
+                        "response_std": response_std,
+                        "subject_count": subject_count,
+                    }
+                )
+
+            all_mean, all_std, all_count = _response_stats(all_responses)
+            cs_mean, cs_std, cs_count = _response_stats(cs_responses)
+            cs_no_us_mean, cs_no_us_std, cs_no_us_count = _response_stats(
+                cs_no_us_responses
+            )
+            if cs_no_us_count:
+                learning_mean = cs_no_us_mean
+                learning_std = cs_no_us_std
+                learning_source = "cs_no_us"
+                learning_count = cs_no_us_count
+            elif cs_count:
+                learning_mean = cs_mean
+                learning_std = cs_std
+                learning_source = "cs"
+                learning_count = cs_count
+            else:
+                learning_mean = all_mean
+                learning_std = all_std
+                learning_source = "all"
+                learning_count = all_count
+
+            trial_rows.append(
+                {
+                    "model": model_name,
+                    "seed": int(seed),
+                    "experiment": str(exp.name),
+                    "group": str(group_name),
+                    "phase": phase_text,
+                    "trial": int(trial_index + 1),
+                    "trial_in_phase": trial_in_phase,
+                    "active_cs": ";".join(sorted(trial_cs)),
+                    "trial_length": int(len(trial)),
+                    "has_cs": int(bool(trial_cs)),
+                    "has_us": int(any(value > 0.0 for value in trial_us_values)),
+                    "us_mean": float(np.mean(trial_us_values)) if trial_us_values else float("nan"),
+                    "response_mean": all_mean,
+                    "response_std": all_std,
+                    "cs_response_mean": cs_mean,
+                    "cs_response_std": cs_std,
+                    "cs_no_us_response_mean": cs_no_us_mean,
+                    "cs_no_us_response_std": cs_no_us_std,
+                    "learning_response_mean": learning_mean,
+                    "learning_response_std": learning_std,
+                    "learning_response_source": learning_source,
+                    "learning_response_count": learning_count,
+                }
+            )
+    return timestep_rows, trial_rows
+
+
 def simulate_experiment(
     exp: Any,
     model_factory: Callable[[str, int], Any],
     subjects: int,
-) -> pd.DataFrame:
+    model_name: str,
+    seed: int,
+) -> tuple[
+    pd.DataFrame,
+    list[dict[str, float | int | str]],
+    list[dict[str, float | int | str]],
+]:
     exp.reset()
     for g, group in exp.stimuli.items():
         for subject in range(subjects):
@@ -723,7 +855,12 @@ def simulate_experiment(
                     cs, ctx, us = exp.stimulus(g, i, t, vector=True)
                     response = model.act(cs, ctx, us, t)
                     exp.data[g][i][t]["response"].append(response)
-    return exp.simulated_results()
+    timestep_rows, trial_rows = extract_response_history(
+        exp=exp,
+        model_name=model_name,
+        seed=seed,
+    )
+    return exp.simulated_results(), timestep_rows, trial_rows
 
 
 def score_experiment(evaluation: Any, empirical: pd.DataFrame, simulated: pd.DataFrame) -> tuple[str, float]:
@@ -742,7 +879,12 @@ def run_model_seed(
     RescorlaWagner: Any,
     KalmanFilter: Any,
     TemporalDifference: Any,
-) -> tuple[dict[str, float | int | str], list[dict[str, float | int | str]]]:
+) -> tuple[
+    dict[str, float | int | str],
+    list[dict[str, float | int | str]],
+    list[dict[str, float | int | str]],
+    list[dict[str, float | int | str]],
+]:
     started = time.time()
     experiments = load_experiments(
         classical,
@@ -761,6 +903,8 @@ def run_model_seed(
 
     score_rows: list[ExperimentScore] = []
     metadata_rows: list[ModelMetadata] = []
+    timestep_history_rows: list[dict[str, float | int | str]] = []
+    trial_history_rows: list[dict[str, float | int | str]] = []
     for exp_index, exp in enumerate(experiments, start=1):
         factory, metadata = make_model_factory(
             model_name,
@@ -772,7 +916,13 @@ def run_model_seed(
             KalmanFilter,
             TemporalDifference,
         )
-        simulated = simulate_experiment(exp, factory, args.subjects)
+        simulated, timestep_history, trial_history = simulate_experiment(
+            exp,
+            factory,
+            args.subjects,
+            model_name=model_name,
+            seed=seed,
+        )
         score_type, score = score_experiment(evaluation, exp.empirical_results, simulated)
         finite = bool(np.isfinite(score))
         score_rows.append(
@@ -788,6 +938,8 @@ def run_model_seed(
             )
         )
         metadata_rows.append(metadata)
+        timestep_history_rows.extend(timestep_history)
+        trial_history_rows.extend(trial_history)
         print(
             "experiment-score "
             f"model={model_name} seed={seed} index={exp_index}/{len(experiments)} "
@@ -835,7 +987,12 @@ def run_model_seed(
         f"{metrics['test_ccnlab_experiment_count']} elapsed={_format_seconds(time.time() - started)}",
         flush=True,
     )
-    return metrics, [row.__dict__ for row in score_rows]
+    return (
+        metrics,
+        [row.__dict__ for row in score_rows],
+        timestep_history_rows,
+        trial_history_rows,
+    )
 
 
 def serializable_args(args: argparse.Namespace) -> dict[str, Any]:
@@ -852,13 +1009,21 @@ def write_outputs(
     output_dir: Path,
     metrics_rows: list[dict[str, float | int | str]],
     experiment_rows: list[dict[str, float | int | str]],
+    timestep_history_rows: list[dict[str, float | int | str]],
+    trial_history_rows: list[dict[str, float | int | str]],
     args: argparse.Namespace,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     metrics = pd.DataFrame(metrics_rows)
     experiment_scores = pd.DataFrame(experiment_rows)
+    timestep_history = pd.DataFrame(timestep_history_rows)
+    trial_history = pd.DataFrame(trial_history_rows)
     metrics.to_csv(output_dir / "metrics_by_seed.csv", index=False)
     experiment_scores.to_csv(output_dir / "experiment_scores.csv", index=False)
+    if not timestep_history.empty:
+        timestep_history.to_csv(output_dir / "ccnlab_timestep_history.csv", index=False)
+    if not trial_history.empty:
+        trial_history.to_csv(output_dir / "ccnlab_trial_history.csv", index=False)
 
     summary = (
         metrics.groupby("model")
@@ -1177,9 +1342,11 @@ def main(argv: Iterable[str] | None = None) -> int:
 
     metrics_rows: list[dict[str, float | int | str]] = []
     experiment_rows: list[dict[str, float | int | str]] = []
+    timestep_history_rows: list[dict[str, float | int | str]] = []
+    trial_history_rows: list[dict[str, float | int | str]] = []
     for model_name in args.models:
         for seed in args.seeds:
-            metrics, scores = run_model_seed(
+            metrics, scores, timestep_history, trial_history = run_model_seed(
                 model_name,
                 seed,
                 args,
@@ -1192,7 +1359,16 @@ def main(argv: Iterable[str] | None = None) -> int:
             )
             metrics_rows.append(metrics)
             experiment_rows.extend(scores)
-    write_outputs(args.output_dir, metrics_rows, experiment_rows, args)
+            timestep_history_rows.extend(timestep_history)
+            trial_history_rows.extend(trial_history)
+    write_outputs(
+        args.output_dir,
+        metrics_rows,
+        experiment_rows,
+        timestep_history_rows,
+        trial_history_rows,
+        args,
+    )
     print(
         f"complete metrics={args.output_dir / 'metrics_by_seed.csv'} "
         f"report={args.output_dir / 'ccnlab_associative_report.md'}",

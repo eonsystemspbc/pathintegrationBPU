@@ -156,6 +156,9 @@ can be summarized with `scripts/summarize_associative_sweep.py`, which writes
 `matched_topology_comparisons.csv`, and `sweep_report.md`. Use the matched
 topology table for connectome claims because it restricts comparisons to
 same-architecture random-sparse, degree-preserving, and weight-shuffled controls.
+CCNLab sweeps also write trial-response histories; use
+`scripts/plot_ccnlab_learning_curve.py` to inspect acquisition/extinction
+dynamics and paired learning-curve summaries.
 
 The episodic benchmark also includes fast associative-memory variants:
 `hemibrain_fast_memory`, `random_sparse_fast_memory`, and

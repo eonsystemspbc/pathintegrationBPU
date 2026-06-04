@@ -829,6 +829,9 @@ def merge_job_outputs(
 ) -> tuple[object, object, object]:
     metrics = _read_job_csv(records, "metrics_by_seed.csv")
     history = _read_job_csv(records, "loss_history.csv")
+    experiment_scores = _read_job_csv(records, "experiment_scores.csv")
+    ccnlab_timestep_history = _read_job_csv(records, "ccnlab_timestep_history.csv")
+    ccnlab_trial_history = _read_job_csv(records, "ccnlab_trial_history.csv")
     summary = _summary_from_metrics(metrics)
     leaderboard = _leaderboard_from_summary(summary)
     paired = _paired_comparisons_from_metrics(metrics)
@@ -837,6 +840,15 @@ def merge_job_outputs(
         metrics.to_csv(output_dir / "metrics_by_seed.csv", index=False)
     if not history.empty:
         history.to_csv(output_dir / "loss_history.csv", index=False)
+    if not experiment_scores.empty:
+        experiment_scores.to_csv(output_dir / "experiment_scores.csv", index=False)
+    if not ccnlab_timestep_history.empty:
+        ccnlab_timestep_history.to_csv(
+            output_dir / "ccnlab_timestep_history.csv",
+            index=False,
+        )
+    if not ccnlab_trial_history.empty:
+        ccnlab_trial_history.to_csv(output_dir / "ccnlab_trial_history.csv", index=False)
     if not summary.empty:
         summary.to_csv(output_dir / "metrics_summary.csv", index=False)
     if not leaderboard.empty:
