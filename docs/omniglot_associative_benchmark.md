@@ -354,12 +354,82 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --log-every-seconds 30
 ```
 
-The primary positive signal is `hemibrain_conv_fast_memory` beating both
-`random_sparse_conv_fast_memory` and `weight_shuffle_conv_fast_memory` on paired
-accuracy across seeds. `conv_protonet` remains the non-connectomic ceiling for
-the same raw-pixel episode scaffold. To rerun the stricter pure recurrent-key
-ablation from before the residual branch, set
-`--conv-fast-memory-protonet-residual-weight 0.0`.
+### FlyWire MB 5-Way Reversal Results
+
+The current FlyWire MB sweep uses the same `hemibrain_conv_fast_memory` code
+path, but the matrix is `outputs/flywire_mushroom_body/adjacency_unsigned.npz`.
+In figures and paper-facing tables, label this condition as **FlyWire MB
+seeded** rather than hemibrain-seeded.
+
+The benchmark is a 5-way 1-shot Omniglot reversal task. Each episode presents
+one labeled support image per class, queries the initial mapping, then
+re-presents all five classes with exchanged labels and queries the updated
+mapping. Training optimizes cross-entropy only on query timesteps, so support
+examples serve as online memory writes rather than supervised classification
+targets.
+
+The four plotted models are:
+
+- `hemibrain_conv_fast_memory`, labeled **FlyWire MB seeded**: Conv4 visual
+  encoder plus online fast memory whose recurrent key branch is initialized
+  from the FlyWire MB graph.
+- `random_sparse_conv_fast_memory`: same architecture and parameter count, but
+  with randomized sparse recurrent support.
+- `weight_shuffle_conv_fast_memory`: same recurrent support as the FlyWire MB
+  graph, but with shuffled edge weights.
+- `conv_protonet`: non-connectomic Conv4 ProtoNet baseline using online
+  class-prototype memory.
+
+The completed 5-seed sweep reported the following final test accuracies:
+
+| model | test query accuracy | initial query | reversal query |
+| --- | ---: | ---: | ---: |
+| random sparse conv fast memory | 96.393% | 96.526% | 96.260% |
+| FlyWire MB seeded conv fast memory | 96.346% | 96.488% | 96.204% |
+| weight shuffle conv fast memory | 96.126% | 96.252% | 96.000% |
+| Conv ProtoNet | 95.664% | 95.803% | 95.525% |
+| nearest support | 37.988% | 43.702% | 32.273% |
+
+The checked-in learning-curve artifacts under
+`docs/results/omniglot_5way_reversal5_flywire_mb_conv_connectome_5seed/` show a
+slightly different but complementary view. Over the common 9-epoch paired
+validation horizon:
+
+| model | mean validation query accuracy | common AUC | epoch 1 | epoch 5 | final common val |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| FlyWire MB seeded | 98.330% | 7.8690 | 97.807% | 98.463% | 98.339% |
+| random sparse | 98.300% | 7.8671 | 97.677% | 98.490% | 98.305% |
+| weight shuffle | 98.129% | 7.8529 | 97.766% | 98.295% | 97.986% |
+| Conv ProtoNet | 98.057% | 7.8470 | 97.744% | 98.167% | 97.874% |
+
+Paired learning-curve comparisons support a narrow interpretation:
+
+- FlyWire MB vs random sparse is statistically tied over the common horizon:
+  mean validation delta `+0.0306%`, 95% CI `[-0.1327%, +0.1940%]`.
+- FlyWire MB is higher than weight shuffle over the common horizon:
+  mean validation delta `+0.2011%`, 95% CI `[+0.0345%, +0.3677%]`.
+- FlyWire MB has a stronger first epoch than random sparse:
+  epoch-1 delta `+0.1302%`, 95% CI `[+0.0519%, +0.2085%]`.
+- Random sparse remains marginally ahead on final test accuracy, so the
+  biological topology result should be described as a learning-dynamics or
+  stability trend, not as a final-accuracy win over the random sparse null.
+
+The most defensible conclusion is:
+
+> The Conv4 fast-memory architecture lifts connectome/control models above the
+> non-connectomic Conv ProtoNet baseline on this reversal task. FlyWire MB
+> seeded fast memory is competitive with the strongest random sparse control and
+> better than the weight-shuffled same-support control during validation
+> learning, but it does not decisively outperform random sparse at final test.
+
+This is a positive architecture result and a weak/neutral biological-topology
+result. It suggests that the hybrid conv fast-memory scaffold is well matched
+to online Omniglot association and reversal, while the evidence for a specific
+FlyWire MB topology advantage is limited to small learning-curve/stability
+effects.
+
+To rerun the stricter pure recurrent-key ablation from before the residual
+branch, set `--conv-fast-memory-protonet-residual-weight 0.0`.
 
 If the trainable fast-memory sweep does not show a hemibrain advantage, run the
 stricter recurrent-prior variant before changing tasks. This freezes recurrent
