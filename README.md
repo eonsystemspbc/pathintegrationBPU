@@ -142,6 +142,15 @@ supports architecture-matched graph-feature variants such as
 keep the CCNLab learning rule fixed while changing only the feature topology.
 See `docs/ccnlab_associative_benchmark.md` for setup and AWS commands.
 
+For an established event-camera optic-flow benchmark, use
+`scripts/run_dsec_flow_benchmark.py`. It trains a DSEC-Flow model with a
+P-SSE/BAT-inspired encoder, a RAFT-style recurrent flow decoder, and an
+optic-lobe connectome mixer in the encoder/motion-feature stage. The primary
+three arms are `connectome_seeded`, `connectome_weight_shuffle`, and
+`random_init`, all with identical downstream architecture. See
+`docs/dsec_flow_connectome_benchmark.md` for AWS training, multi-GPU sweep, and
+submission-generation commands.
+
 Both episodic few-shot runners support `--expand-factor` for BPU-style
 connectome expansion via a directed signed degree-corrected SBM. The original
 connectome submatrix is restored exactly, and controls are generated after
