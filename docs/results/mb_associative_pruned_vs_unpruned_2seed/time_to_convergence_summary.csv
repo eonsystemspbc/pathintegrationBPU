@@ -1,0 +1,9 @@
+condition,model,seeds,best_val_reversal_acc_mean,first_epoch_95_reversal_mean,first_epoch_97_reversal_mean,first_epoch_99_reversal_mean,first_epoch_within_0p5pct_best_reversal_mean,best_val_loss_epoch_mean,final_epoch_mean
+pruned,degree_preserving_random,2,0.8839192708333334,,,,37.5,39.5,40.0
+pruned,hemibrain_seeded,2,0.9660373263888888,27.0,,,34.0,40.0,40.0
+pruned,random_sparse,2,0.8898871527777777,,,,37.5,39.5,40.0
+pruned,weight_shuffle,2,0.9675564236111112,27.5,,,35.5,40.0,40.0
+unpruned,degree_preserving_random,2,0.9631944444444444,33.5,,,36.5,38.5,40.0
+unpruned,hemibrain_seeded,2,0.9924913194444444,9.5,13.0,31.0,25.5,37.0,40.0
+unpruned,random_sparse,2,0.9734809027777778,22.0,36.5,,34.5,40.0,40.0
+unpruned,weight_shuffle,2,0.9911675347222223,10.5,14.5,37.0,29.5,39.5,40.0
