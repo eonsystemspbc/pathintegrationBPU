@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
 
 BENCHMARK_SCRIPTS = {
     "ccnlab": ROOT / "scripts" / "run_ccnlab_associative_benchmark.py",
+    "dsec_flow": ROOT / "scripts" / "run_dsec_flow_benchmark.py",
     "meta_album": ROOT / "scripts" / "run_meta_album_associative_benchmark.py",
     "omniglot": ROOT / "scripts" / "run_omniglot_associative_benchmark.py",
     "optic_flow": ROOT / "scripts" / "run_optic_flow_benchmark.py",
