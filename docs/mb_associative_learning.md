@@ -519,6 +519,76 @@ python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
 The smoke run is only for checking that the script, CUDA path, matrix loading,
 and outputs work. It should not be interpreted scientifically.
 
+## Pruned MB Circuit Comparison
+
+To ask whether the full MB ROI graph is too broad for the basic
+associative-learning task, use
+`scripts/run_pruned_mb_associative_comparison.py`. It creates a smaller
+recurrent matrix by keeping the sensory and output pools, then keeping internal
+nodes that sit on short directed sensory-to-output paths. The same standard
+`AssociativeRNN` task is run on both the unpruned and pruned matrices.
+
+Controls are regenerated separately for the pruned and unpruned matrices, so
+each condition keeps fair same-size/same-support comparisons:
+
+```text
+hemibrain_seeded
+random_sparse
+degree_preserving_random
+weight_shuffle
+```
+
+AWS command:
+
+```bash
+cd ~/pathintegrationBPU
+source .venv/bin/activate
+
+OUT=/mnt/fast/outputs/mb_associative_pruned_vs_unpruned_5seed
+mkdir -p "$OUT"
+
+python scripts/run_pruned_mb_associative_comparison.py \
+  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --pool-assignments outputs/hemibrain_mushroom_body_plume/pool_assignments.csv \
+  --output-dir "$OUT" \
+  --device cuda \
+  --models hemibrain_seeded random_sparse degree_preserving_random weight_shuffle \
+  --seeds 0 1 2 3 4 \
+  --prune-max-hops 2 \
+  --prune-max-internal-nodes 1024 \
+  --epochs 40 \
+  --patience 8 \
+  --batch-size 64 \
+  --train-batches 240 \
+  --val-batches 60 \
+  --test-batches 160 \
+  --num-odors 64 \
+  --odor-dim 64 \
+  --odors-per-episode 6 \
+  --reversal-count 3 \
+  --reversal-repeats 1 \
+  --odor-sparsity 0.20 \
+  --odor-noise-std 0.03 \
+  --log-every-seconds 30
+```
+
+Main outputs:
+
+- `matrices/pruned_adjacency_unsigned.npz`
+- `matrices/pruned_nodes.csv`
+- `matrices/pruning_report.md`
+- `unpruned/metrics_summary.csv`
+- `pruned/metrics_summary.csv`
+- `pruned_vs_unpruned_summary.csv`
+- `pruned_vs_unpruned_paired_deltas.csv`
+- `pruned_vs_unpruned_report.md`
+
+The most direct question is the paired
+`hemibrain_seeded / test_reversal_probe_accuracy` delta in
+`pruned_vs_unpruned_paired_deltas.csv`. A positive value means the pruned MB
+circuit improved reversal recall over the unpruned MB graph under identical
+task/training settings.
+
 ## Optional Dense Controls
 
 To compare against dense recurrent baselines, add `hemibrain_dense` and/or
