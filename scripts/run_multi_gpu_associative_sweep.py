@@ -367,12 +367,26 @@ def _read_job_csv(
     records: list[dict[str, object]],
     filename: str,
 ) -> object:
+    return _read_job_csv_any(records, (filename,))
+
+
+def _read_job_csv_any(
+    records: list[dict[str, object]],
+    filenames: tuple[str, ...],
+) -> object:
     pd = _pandas()
     frames = []
     for record in records:
         if int(record.get("return_code", 1)) != 0:
             continue
-        path = Path(str(record["output_dir"])) / filename
+        path = next(
+            (
+                Path(str(record["output_dir"])) / filename
+                for filename in filenames
+                if (Path(str(record["output_dir"])) / filename).exists()
+            ),
+            Path(str(record["output_dir"])) / filenames[0],
+        )
         if not path.exists() or path.stat().st_size == 0:
             continue
         try:
@@ -415,6 +429,12 @@ def _summary_from_metrics(metrics: object) -> object:
         "test_yaw_r2",
         "test_forward_r2",
         "test_lateral_r2",
+        "best_val_epe",
+        "final_val_epe",
+        "final_val_1pe",
+        "final_val_2pe",
+        "final_val_3pe",
+        "final_val_ae",
     ]
     first_columns = [
         "runtime",
@@ -422,6 +442,8 @@ def _summary_from_metrics(metrics: object) -> object:
         "trainable_params",
         "recurrent_params",
         "N",
+        "connectome_N",
+        "connectome_edges",
         "input_dim",
         "feature_dim",
         "encoded_dim",
@@ -445,6 +467,8 @@ def _summary_from_metrics(metrics: object) -> object:
 def _primary_metric(summary: object) -> str | None:
     preferred = [
         "test_ccnlab_score_mean",
+        "best_val_epe_mean",
+        "final_val_epe_mean",
         "test_query_accuracy_mean",
         "test_overall_rmse_mean",
         "test_reversal_query_accuracy_mean",
@@ -464,7 +488,7 @@ def _primary_metric(summary: object) -> str | None:
 def _higher_is_better(metric: str | None) -> bool:
     if metric is None:
         return True
-    lower_is_better_tokens = ("loss", "rmse", "mae", "error")
+    lower_is_better_tokens = ("loss", "rmse", "mae", "error", "epe", "ae")
     return not any(token in metric for token in lower_is_better_tokens)
 
 
@@ -828,7 +852,7 @@ def merge_job_outputs(
     output_dir: Path,
     records: list[dict[str, object]],
 ) -> tuple[object, object, object]:
-    metrics = _read_job_csv(records, "metrics_by_seed.csv")
+    metrics = _read_job_csv_any(records, ("metrics_by_seed.csv", "dsec_metrics_by_seed.csv"))
     history = _read_job_csv(records, "loss_history.csv")
     experiment_scores = _read_job_csv(records, "experiment_scores.csv")
     ccnlab_timestep_history = _read_job_csv(records, "ccnlab_timestep_history.csv")
