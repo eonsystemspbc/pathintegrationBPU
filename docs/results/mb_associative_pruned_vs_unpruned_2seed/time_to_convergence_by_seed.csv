@@ -1,0 +1,17 @@
+condition,model,seed,best_val_reversal_acc,first_epoch_95_reversal,first_epoch_97_reversal,first_epoch_99_reversal,first_epoch_within_0p5pct_best_reversal,best_val_loss_epoch,final_epoch
+pruned,degree_preserving_random,0,0.8715711805555556,,,,37,39,40
+pruned,degree_preserving_random,1,0.8962673611111112,,,,38,40,40
+pruned,hemibrain_seeded,0,0.9672309027777778,27.0,,,34,40,40
+pruned,hemibrain_seeded,1,0.96484375,27.0,,,34,40,40
+pruned,random_sparse,0,0.8907118055555555,,,,36,40,40
+pruned,random_sparse,1,0.8890625,,,,39,39,40
+pruned,weight_shuffle,0,0.9670572916666668,28.0,,,36,40,40
+pruned,weight_shuffle,1,0.9680555555555556,27.0,,,35,40,40
+unpruned,degree_preserving_random,0,0.9651475694444444,34.0,,,39,39,40
+unpruned,degree_preserving_random,1,0.9612413194444444,33.0,,,34,38,40
+unpruned,hemibrain_seeded,0,0.99296875,9.0,12.0,32.0,23,37,40
+unpruned,hemibrain_seeded,1,0.9920138888888888,10.0,14.0,30.0,28,37,40
+unpruned,random_sparse,0,0.9743055555555556,23.0,36.0,,33,40,40
+unpruned,random_sparse,1,0.97265625,21.0,37.0,,36,40,40
+unpruned,weight_shuffle,0,0.9910590277777778,11.0,16.0,35.0,29,40,40
+unpruned,weight_shuffle,1,0.9912760416666668,10.0,13.0,39.0,30,39,40
