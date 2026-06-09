@@ -33,13 +33,32 @@ Full run: 288 jobs across 2 GPUs in ~64 min.
 
 ## Negative result (vs the BPU paper)
 
-On both general-purpose tasks the **BPU-faithful frozen connectome is the worst
-model** — it sits at or below its own random-sparse and weight-shuffle controls,
-so the connectome wiring confers **no discriminative advantage** here. A trainable
-dense matrix and a size-matched MLP match (MNIST) or clearly beat (CIFAR-10, dense
-54.8% vs frozen-connectome 46.8%) it. Making the connectome's recurrent weights
-trainable recovers most of the gap, i.e. the value is in the *training*, not the
-fixed structure.
+**The load-bearing comparison is confound-free: connectome-init vs random-init BPU,
+the identical fixed-recurrent architecture differing only in the recurrent matrix.**
+The size-matched MLP is a *feedforward* net, so a connectome-vs-MLP gap would conflate
+architecture (recurrent vs feedforward) with the connectome question; we therefore do
+not lean on it. The clean contrast is connectome_frozen vs random_sparse_frozen /
+weight_shuffle_frozen:
+
+- MNIST: connectome 96.53 vs random 96.68 → connectome **−0.15** (random slightly better)
+- CIFAR-10: connectome 46.82 vs random 49.10 → connectome **−2.28** (random significantly better)
+
+So within the identical architecture, **the connectome wiring confers no advantage over
+a random sparse matrix — and on CIFAR-10 it is significantly *worse***. Its biologically
+specific connectivity is a mildly unhelpful inductive bias for static object discrimination.
+
+The RNN-vs-MLP confound does not rescue the connectome, and in fact cuts the other way:
+this is not a sequence-over-pixels RNN (it is a fixed input iterated T steps, closer to a
+weight-tied deep MLP), and when the recurrent weights are made **trainable** the model
+*beats* the MLP on both tasks (connectome_trainable 97.45 > MLP 97.08; 50.08 > 49.27), and
+dense beats it on CIFAR-10 (54.75). So `connectome_frozen` is not dragged down by "being an
+RNN" — it is dragged down because (a) frozen features lose to trained features (true for all
+frozen models, random included), and (b) among frozen models the connectome is no better than
+random. The value is in *training* and *capacity*, neither of which is about the connectome.
+
+(None of these models are convolutional, so absolute CIFAR accuracy is low by design — the
+experiment isolates the connectome contrast via matched controls, it is not trying to win
+CIFAR-10.)
 
 ## Sample-efficiency regime (mean test acc % by training-data fraction)
 
