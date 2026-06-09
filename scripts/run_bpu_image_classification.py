@@ -160,7 +160,8 @@ class BPUClassifier(nn.Module):
                                     size=(self.N, self.N), device=h.device).coalesce()
         return torch.sparse.mm(W, h.t()).t()
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def hidden(self, x: torch.Tensor) -> torch.Tensor:
+        """Output-pool hidden state after the BPU unroll (pre-readout representation)."""
         b = x.shape[0]
         inj = x @ self.W_in.t()  # [b, n_sensory]
         current = x.new_zeros((b, self.N))
@@ -171,7 +172,10 @@ class BPUClassifier(nn.Module):
             h = torch.relu(h)
             if self.state_clip > 0:
                 h = torch.clamp(h, max=self.state_clip)
-        return self.readout(h.index_select(1, self.output_idx))
+        return h.index_select(1, self.output_idx)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.readout(self.hidden(x))
 
 
 class MLPBaseline(nn.Module):
@@ -188,8 +192,12 @@ class MLPBaseline(nn.Module):
     def recurrent_parameter_count(self) -> int:
         return 0
 
+    def hidden(self, x: torch.Tensor) -> torch.Tensor:
+        """Post-ReLU hidden activations (pre-readout representation)."""
+        return self.net[1](self.net[0](x))
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x)
+        return self.net[2](self.hidden(x))
 
 
 def matched_hidden(bpu_trainable: int, input_dim: int, num_classes: int) -> int:
