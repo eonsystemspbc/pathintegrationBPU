@@ -907,7 +907,12 @@ class ConnectomeMixer2d(nn.Module):
         ).coalesce()
         state = F.silu(tokens)
         for _ in range(max(self.steps, 1)):
-            mixed = torch.sparse.mm(rec, state.t()).t()
+            # torch.sparse.mm has no fp16 CUDA kernel. autocast would re-cast inputs to
+            # half even if we call .float(), so disable autocast for just this op and run
+            # it in fp32, then cast the result back to the (possibly half) state dtype.
+            with torch.autocast(device_type=state.device.type, enabled=False):
+                mixed = torch.sparse.mm(rec.float(), state.float().t()).t()
+            mixed = mixed.to(state.dtype)
             state = F.silu(mixed + state + self.bias)
             state = F.layer_norm(state, (self.N,))
         y = state.reshape(b, h, w, self.N).permute(0, 3, 1, 2).contiguous()
@@ -1092,7 +1097,10 @@ def sequence_flow_loss(
     mag = torch.linalg.norm(flow_gt, dim=1, keepdim=True)
     valid_mask = (valid > 0.5) & torch.isfinite(flow_gt).all(dim=1, keepdim=True) & (mag < max_flow)
     if not torch.any(valid_mask):
-        zero = flow_gt.new_tensor(0.0)
+        # No valid flow pixels in this batch: return a graph-connected zero (gradient 0)
+        # so backward() does not crash with "element 0 ... does not require grad". A bare
+        # flow_gt.new_tensor(0.0) is a leaf with no grad_fn and breaks scaler.scale(loss).backward().
+        zero = sum(p.sum() for p in predictions) * 0.0
         return zero, {"epe": float("nan"), "1pe": float("nan"), "2pe": float("nan"), "3pe": float("nan"), "ae": float("nan")}
     loss = flow_gt.new_tensor(0.0)
     n = len(predictions)
