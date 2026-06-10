@@ -1,0 +1,4 @@
+model,osc_score,osc_score_se,dom_hz,frac_locked,frac_oscillating
+connectome,90.9414155685915,0.03234676836088099,11.0,1.0,1.0
+random,0.0,0.0,0.0,0.0,0.0
+shuffle,0.0,0.0,0.0,0.0,0.0
