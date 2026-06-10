@@ -48,25 +48,45 @@ a mutual-inhibition ring / winnerless competition). With those fixed, the synthe
 So the test **works**: it detects a connectome-specific limit cycle and the matched controls score
 **zero, not merely lower** — exactly the structural-necessity signature, with no readout escape.
 
-## Status: methodology ready, real run blocked on data
+## Real-data result (MANC) — an honest NULL
 
-The definitive run needs a **VNC walking-CPG connectome** (a command DN + local IN/MN subnetwork
-from **neuPrint MANC**, or **FANC** for cross-dataset replication). There is **no VNC connectome in
-this repo or cache**, and extracting it requires a **neuPrint token** (`NEUPRINT_APPLICATION_CREDENTIALS`)
-which is not set. Once the substrate exists at
-`outputs/manc_t1_cpg_seed0/{adjacency_signed.npz, pool_assignments.csv}` (pools tagging
-`command_dn` / `interneuron` / `motor_neuron`), the run is a single command:
+We extracted the real substrate (`scripts/extract_manc_cpg.py`) from neuPrint **MANC v1.2.1**: the
+**T1 (front-leg, right) walking-premotor subnetwork** — DNg100 (command) + 245 recurrent
+leg-neuropil interneurons (intrinsic, ≥15 in+out synapses) + 91 T1 leg motor neurons, **338 neurons /
+535 signed edges, 77% inhibitory**, with genuine recurrence (105 IN↔IN + 154 MN↔MN edges). We then
+ran the validated test, driving the interneuron core with a constant DC step and sweeping the
+dynamical regime (ρ ∈ [0.9, 2.5], gain ∈ [2, 4]).
 
-```bash
-python scripts/run_cpg_oscillation.py \
-  --matrix outputs/manc_t1_cpg_seed0/adjacency_signed.npz \
-  --pool-assignments outputs/manc_t1_cpg_seed0/pool_assignments.csv \
-  --rho-target 0 --band-lo 6 --band-hi 18 --seeds 0 1 2 3 4 \
-  --output-dir outputs/cpg_oscillation_manc
-```
+| model | oscillation score | fraction oscillating |
+|---|---|---|
+| connectome | **~0** | 0% |
+| sign/degree-matched shuffle | **~0** | 0% |
+| matched random | **~0** | 0% |
 
-**Pre-registered prediction:** the connectome reliably oscillates at ~8–14 Hz across seeds with a high
-score; class/sign-matched shuffle and random collapse to a fixed point — a large, clean frozen gap
-(ring-attractor class, not the +0.04 steering regime), ideally replicated on both MANC and FANC.
-Pre-registered kill criterion: if the matched shuffle oscillates (single-band + anti-phase) in >~20%
-of seeds, the structural-necessity claim weakens and we fall back to the silencing/pruning necessity result.
+**The frozen MANC walking-CPG connectome does not oscillate at any swept regime — and neither do the
+controls.** Because the synthetic validates cleanly (oscillator 91 vs shuffle/random 0), this is a
+real result, not a pipeline failure. The mechanism is diagnostic and robust: the recurrent matrix's
+**eigenstructure is dominated by REAL (non-oscillatory) modes** (top eigenvalues −1.50, +1.35, both
+real); the largest *complex* pair is small and **stable** (Re = −0.016 < 0, decaying). There is **no
+dominant supercritical complex pair → no Hopf bifurcation → no limit cycle**; the network settles to a
+fixed point (active — 21% of motor units fire — but static).
+
+## Interpretation — connectome necessary but not sufficient (the project's recurring theme)
+
+The connectivity *alone*, in a frozen rate model, is **not sufficient** to generate the walking rhythm.
+This mirrors the mushroom-body result (the connectome alone doesn't capture associative learning — you
+need the dopamine-gated plasticity) and is consistent with the neuroscience: insect leg rhythm is
+substantially **sensory-entrained**, and intrinsic rhythmogenesis depends on **cell-intrinsic pacemaker
+conductances** (persistent Na⁺/Ca²⁺ currents, adaptation) and **neuromodulatory state** — none of which a
+connectivity-only rate model contains. Adding those would let *many* matrices oscillate, dissolving the
+structural-necessity test; so the clean statement is: **the wiring does not, by itself, encode the limit
+cycle.**
+
+This is a different null than the pre-registered kill criterion (which anticipated "shuffle oscillates
+too"): here the *connectome itself* doesn't oscillate, so there is no connectome-vs-random gap to claim.
+A fair, honest negative — and arguably the most informative outcome, since it cleanly separates "the
+connectome's topology IS the computation" (ring attractor: yes; CPG: no) from circuits whose dynamics
+require ingredients beyond the wiring diagram.
+
+Run: `outputs/cpg_oscillation_manc/` (real MANC) and `outputs/cpg_oscillation_synthetic/` (validation).
+The methodology + extraction are reusable for FANC replication or other rhythmogenic candidates.
