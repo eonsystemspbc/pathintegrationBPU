@@ -1,0 +1,20 @@
+{
+  "dataset": "manc:v1.2.1",
+  "version": "1.7.10",
+  "side": "RHS",
+  "neuromere": "T1",
+  "command_type": "DNg100",
+  "N": 338,
+  "edges": 535,
+  "n_command": 2,
+  "n_interneuron": 245,
+  "n_motor": 91,
+  "pct_inhibitory": 77.4,
+  "nt_sign": {
+    "acetylcholine": 1.0,
+    "gaba": -1.0,
+    "glutamate": -1.0
+  },
+  "mn_to_in_weight": 5,
+  "edge_weight": 2
+}

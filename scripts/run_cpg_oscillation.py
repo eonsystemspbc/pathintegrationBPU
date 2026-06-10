@@ -296,6 +296,8 @@ def parse_args(argv=None):
     p.add_argument("--synthetic-hz", type=float, default=10.0)
     p.add_argument("--command-pattern", type=str, default="")
     p.add_argument("--motor-pattern", type=str, default="")
+    p.add_argument("--drive-pool", choices=("command", "interneuron"), default="command",
+                   help="inject the constant drive into the command pool or tonically into the interneuron core")
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4])
     p.add_argument("--models", nargs="+", choices=MODELS, default=list(MODELS))
     # dynamics
@@ -320,7 +322,9 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
     W, cmd, mn, pool = load_substrate(args)
-    print(f"substrate N={W.shape[0]} edges={W.tocoo().nnz} command={cmd.size} motor={mn.size} "
+    if args.drive_pool == "interneuron":   # tonic drive into the recurrent IN core (DNs may not innervate it)
+        cmd = np.where(pool == "interneuron")[0]
+    print(f"substrate N={W.shape[0]} edges={W.tocoo().nnz} drive({args.drive_pool})={cmd.size} motor={mn.size} "
           f"{'(SYNTHETIC)' if args.synthetic else args.matrix}", flush=True)
     rows, example = [], {}
     for m in args.models:
