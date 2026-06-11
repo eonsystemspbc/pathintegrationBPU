@@ -111,6 +111,7 @@ class TrainSpec:
     mixed_precision: bool
     compile_model: bool
     device: str
+    resume_from: str = ""
 
 
 @dataclass(frozen=True)
@@ -1247,6 +1248,22 @@ def train_one(
     scaler = torch.amp.GradScaler("cuda", enabled=train_spec.mixed_precision and device.type == "cuda")
     run_dir = output_dir / f"{canonical}_seed{seed}"
     run_dir.mkdir(parents=True, exist_ok=True)
+    start_step = 0
+    resumed_best_epe = float("inf")
+    if getattr(train_spec, "resume_from", ""):
+        ckpt_path = Path(train_spec.resume_from)
+        if ckpt_path.is_dir():
+            ckpt_path = ckpt_path / "checkpoint_latest.pt"
+        ck = torch.load(ckpt_path, map_location=device)
+        _load_state_dict_for_model(model, ck)
+        optimizer.load_state_dict(ck["optimizer"])
+        scheduler.load_state_dict(ck["scheduler"])
+        start_step = int(ck["step"])
+        resumed_best_epe = float(ck["best_epe"])
+        logger.log(
+            f"resume model={canonical} seed={seed} from={ckpt_path} "
+            f"start_step={start_step} best_epe={resumed_best_epe:.4f}"
+        )
     config = {
         "model": canonical,
         "seed": int(seed),
@@ -1285,10 +1302,10 @@ def train_one(
         )
         writer.writeheader()
         loader_iter = infinite_loader(train_loader)
-        best_epe = float("inf")
+        best_epe = resumed_best_epe
         start = time.monotonic()
         last_metrics = {"epe": float("nan"), "1pe": float("nan"), "2pe": float("nan"), "3pe": float("nan"), "ae": float("nan")}
-        for step in range(1, train_spec.train_steps + 1):
+        for step in range(start_step + 1, train_spec.train_steps + 1):
             model.train()
             events, flow, valid = move_batch(next(loader_iter), device)
             optimizer.zero_grad(set_to_none=True)
@@ -1616,6 +1633,7 @@ def train_spec_from_args(args: argparse.Namespace) -> TrainSpec:
         mixed_precision=args.mixed_precision,
         compile_model=args.compile_model,
         device=args.device,
+        resume_from=getattr(args, "resume_from", "") or "",
     )
 
 
@@ -1626,6 +1644,8 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--matrix", type=Path, required=True, help="Prepared optic-lobe adjacency .npz/.npy/.csv")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/dsec_flow_connectome"))
     parser.add_argument("--checkpoint", type=Path, default=None)
+    parser.add_argument("--resume-from", default="",
+                        help="path to a checkpoint .pt (or run_dir) to resume training from (restores model/optimizer/scheduler/step)")
     parser.add_argument("--eval-timestamps-dir", type=Path, default=None)
     parser.add_argument("--predict-model", choices=MODEL_CHOICES, default=None)
     parser.add_argument("--predict-seed", type=int, default=None)
