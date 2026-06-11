@@ -156,7 +156,15 @@ def build_model(base_matrix, model_name, args, seed, device):
 def run_one(model_name, base_matrix, args, seed, device):
     torch.manual_seed(args.init_seed + seed)
     model = build_model(base_matrix, model_name, args, seed, device)
+    ckpt = getattr(args, "resume_from", "") or ""
+    if ckpt:
+        sd = torch.load(ckpt, map_location=device)
+        model.load_state_dict(sd, strict=False)
+        print(f"  {model_name} seed={seed} resumed from {ckpt}", flush=True)
     opt = torch.optim.Adam((p for p in model.parameters() if p.requires_grad), lr=args.lr)
+    sched = None
+    if getattr(args, "lr_schedule", "constant") == "cosine":
+        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs, eta_min=args.lr_min)
     train_rng = np.random.default_rng(1000 + seed)
     val_rng = np.random.default_rng(7000 + seed)
     test_rng = np.random.default_rng(9000 + seed)
@@ -179,6 +187,7 @@ def run_one(model_name, base_matrix, args, seed, device):
     best_state = None
     best_rev = float("nan")
     wait = 0
+    curve = []
     t0 = time.time()
     n_train = int(model.N)
     for epoch in range(1, args.epochs + 1):
@@ -195,7 +204,10 @@ def run_one(model_name, base_matrix, args, seed, device):
                 torch.nn.utils.clip_grad_norm_((p for p in model.parameters() if p.requires_grad), args.grad_clip)
             opt.step()
             run_loss += loss.item()
+        if sched is not None:
+            sched.step()
         val_acc, val_rev = epoch_eval(val_rng, args.val_batches)
+        curve.append(round(val_acc, 4))
         msg = (f"  {model_name} seed={seed} epoch={epoch}/{args.epochs} "
                f"train_loss={run_loss/args.train_batches:.4f} val_acc={val_acc:.4f}")
         if args.reversal_pairs > 0:
@@ -213,9 +225,14 @@ def run_one(model_name, base_matrix, args, seed, device):
         model.load_state_dict(best_state)
     test_acc, test_rev = epoch_eval(test_rng, args.test_batches)
     wall = time.time() - t0
+    if getattr(args, "save_model", False):
+        cp = args.output_dir / f"model_{model_name}_seed{seed}.pt"
+        torch.save(model.state_dict(), cp)
+        print(f"  {model_name} seed={seed} saved checkpoint {cp}", flush=True)
+    peak = max(curve) if curve else best_val
     print(f"model-done model={model_name} seed={seed} N={model.N} "
           f"test_acc={test_acc:.4f}" + (f" test_rev_acc={test_rev:.4f}" if args.reversal_pairs > 0 else "")
-          + f" trainable_params={model.trainable_parameter_count()} wall_s={wall:.1f}", flush=True)
+          + f" peak_val={peak:.4f} trainable_params={model.trainable_parameter_count()} wall_s={wall:.1f}", flush=True)
     return {
         "model": model_name, "seed": seed, "N": int(model.N),
         "recurrent_runtime": model.runtime + ("_frozen" if args.freeze_recurrent else ""),
@@ -225,6 +242,8 @@ def run_one(model_name, base_matrix, args, seed, device):
         "trainable_params": model.trainable_parameter_count(),
         "recurrent_params": model.recurrent_parameter_count(),
         "wall_s": round(wall, 1),
+        "peak_val": round(peak, 4),
+        "curve": curve,
     }
 
 
@@ -249,6 +268,10 @@ def parse_args(argv=None):
     p.add_argument("--test-batches", type=int, default=100)
     p.add_argument("--batch-size", type=int, default=64)
     p.add_argument("--lr", type=float, default=1e-3)
+    p.add_argument("--lr-schedule", choices=("constant", "cosine"), default="constant")
+    p.add_argument("--lr-min", type=float, default=1e-5, help="eta_min for cosine schedule")
+    p.add_argument("--save-model", action="store_true", help="save best model state_dict to output-dir")
+    p.add_argument("--resume-from", default="", help="path to a saved state_dict to resume from")
     p.add_argument("--patience", type=int, default=8)
     p.add_argument("--grad-clip", type=float, default=1.0)
     p.add_argument("--state-clip", type=float, default=0.0)
@@ -273,19 +296,21 @@ def main(argv=None):
         for seed in args.seeds:
             rows.append(run_one(model_name, base, args, seed, device))
 
-    # write metrics + summary
-    keys = list(rows[0].keys())
+    # write metrics + summary ("curve" is a list -> keep out of the flat CSV, store in summary)
+    keys = [k for k in rows[0].keys() if k != "curve"]
     with (args.output_dir / "metrics_by_seed.csv").open("w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=keys)
         w.writeheader()
-        w.writerows(rows)
+        w.writerows([{k: r[k] for k in keys} for r in rows])
     summary = {}
     for model_name in args.models:
         accs = [r["test_acc"] for r in rows if r["model"] == model_name]
+        peaks = [r.get("peak_val", r["test_acc"]) for r in rows if r["model"] == model_name]
         revs = [r["test_rev_acc"] for r in rows if r["model"] == model_name and r["test_rev_acc"] is not None]
         summary[model_name] = {
             "test_acc_mean": round(float(np.mean(accs)), 4),
             "test_acc_std": round(float(np.std(accs)), 4),
+            "peak_val_mean": round(float(np.mean(peaks)), 4),
             "n_seeds": len(accs),
             "test_rev_acc_mean": (round(float(np.mean(revs)), 4) if revs else None),
         }
@@ -293,7 +318,8 @@ def main(argv=None):
     config["matrix"] = str(config["matrix"])
     config["output_dir"] = str(config["output_dir"])
     (args.output_dir / "summary.json").write_text(
-        json.dumps({"config": config, "chance": chance, "summary": summary}, indent=2))
+        json.dumps({"config": config, "chance": chance, "summary": summary,
+                    "curves": {f"{r['model']}_seed{r['seed']}": r["curve"] for r in rows}}, indent=2))
     print("=== SUMMARY (test recall accuracy, mean±std over seeds) ===", flush=True)
     for m in args.models:
         s = summary[m]
