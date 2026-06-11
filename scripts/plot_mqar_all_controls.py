@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the MQAR figures from the run logs:
   (1) mqar_all_controls.png       -- connectome vs ALL controls (random/degree/shuffle): curves + bars
-  (2) mqar_connectome_vs_random.png -- connectome vs random_sparse only (the README figure): curves + bars
+  (2) mqar_connectome_grokking_1000ep.png -- connectome vs random_sparse only (the README figure): curves + bars
 All numbers parsed from the training logs; D=8 finals only (the headline regime).
 """
 from __future__ import annotations
@@ -165,8 +165,8 @@ def plot_readme():
     fig.suptitle("Mushroom-body connectome reaches near-SOTA (0.995) on Multi-Query Associative Recall",
                  fontsize=12.5, y=0.99)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    fig.savefig(OUT / "mqar_connectome_vs_random.png", dpi=150); plt.close(fig)
-    print(f"wrote {OUT / 'mqar_connectome_vs_random.png'} (long curve max={max(LONG) if LONG else None})")
+    fig.savefig(OUT / "mqar_connectome_grokking_1000ep.png", dpi=150); plt.close(fig)
+    print(f"wrote {OUT / 'mqar_connectome_grokking_1000ep.png'} (long curve max={max(LONG) if LONG else None})")
 
 
 plot_readme()
