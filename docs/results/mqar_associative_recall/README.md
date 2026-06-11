@@ -11,7 +11,7 @@ recognized benchmark, and the connectome here is **load-bearing** (unlike the op
 where a random control matched or beat it — and the same connectome *ties* its shuffle on DSEC
 optical-flow, confirming the win is task-specific, not generic).
 
-![result](mqar_connectome_vs_random.png)
+![result](mqar_connectome_grokking_1000ep.png)
 
 A control sweep (below) shows the advantage is **topological**: weight-shuffle (the MB graph with
 randomized weights) nearly ties the connectome, while random/degree-preserving topologies fall ~9–16
