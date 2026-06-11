@@ -1,0 +1,5 @@
+model,seed,N,recurrent_runtime,val_acc,test_acc,val_rev_acc,test_rev_acc,trainable_params,recurrent_params,wall_s
+hemibrain_seeded,0,14025,sparse,0.928,0.9278,,,1528392,574660,3077.4
+hemibrain_seeded,1,14025,sparse,0.9317,0.9286,,,1528392,574660,3097.2
+random_sparse,0,14025,sparse,0.8375,0.8348,,,1528392,574660,3108.2
+random_sparse,1,14025,sparse,0.8488,0.8482,,,1528392,574660,3092.8
