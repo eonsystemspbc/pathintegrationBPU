@@ -118,5 +118,55 @@ def plot(models, fname, title):
 
 plot(list(MODELS), "mqar_all_controls.png",
      "Mushroom-body connectome vs all controls on MQAR — the advantage is topological")
-plot(["hemibrain_seeded", "random_sparse"], "mqar_connectome_vs_random.png",
-     "Mushroom-body connectome reaches near-SOTA on Multi-Query Associative Recall, beating matched-random")
+
+
+# ========== FIGURE 2: connectome vs random, showing the climb to near-1.0 ==========
+LONG = [float(m.group(1)) for m in re.finditer(
+    r"hemibrain_seeded seed=0 epoch=\d+/1000 .*?val_acc=([\d.]+)", read("/tmp/mqar_long_clean.log"))]
+CONN, RAND = MODELS["hemibrain_seeded"][1], MODELS["random_sparse"][1]
+
+
+def plot_readme():
+    fig, (axL, axR) = plt.subplots(1, 2, figsize=(13, 5.2), gridspec_kw={"width_ratios": [1.55, 1]})
+    # connectome FULL 1000-epoch curve -> 0.995 (the near-SOTA climb)
+    if LONG:
+        axL.plot(range(1, len(LONG) + 1), LONG, color=CONN, lw=2.2,
+                 label="connectome (FlyWire MB) — 1000 ep + cosine")
+        axL.annotate(f"→ {max(LONG):.3f}\nnear-SOTA", xy=(len(LONG), max(LONG)),
+                     xytext=(len(LONG) - 240, 0.86), fontsize=9.5, color=CONN, fontweight="bold",
+                     arrowprops=dict(arrowstyle="->", color=CONN))
+    # random_sparse 200-epoch curves (matched-budget comparison)
+    for i, (sd, c) in enumerate(sorted(CURVES["random_sparse"].items())):
+        axL.plot(range(1, len(c) + 1), c, color=RAND, lw=1.8 if i == 0 else 1.0, alpha=0.9 if i == 0 else 0.4,
+                 label="random_sparse — 200 ep" if i == 0 else None)
+    axL.axhline(CEIL, ls="--", color="#2e7d32", lw=1.4, label="attention SOTA = 1.00")
+    axL.axhline(CHANCE, ls=":", color="grey", lw=1.1, label=f"chance = {CHANCE:.3f}")
+    axL.axvline(200, ls=":", color="0.6", lw=1.0)
+    axL.text(206, 0.06, "matched 200-ep:\nconnectome 0.925\nvs random 0.836", fontsize=7.5, color="0.35")
+    axL.set_xlabel("training epoch"); axL.set_ylabel("validation recall accuracy")
+    axL.set_title("A  Connectome grokks to near-SOTA on MQAR (full MB, D=8)", fontsize=11, loc="left")
+    axL.set_ylim(-0.02, 1.05); axL.set_xlim(0, 1000)
+    axL.legend(loc="lower right", fontsize=8.5, framealpha=0.92); axL.grid(alpha=0.25)
+
+    cm, _, _ = stat("hemibrain_seeded"); rm, rs, _ = stat("random_sparse")
+    names = ["attention\n(SOTA)", "connectome\n(1000 ep)", "connectome\n(200 ep)", "random\n(200 ep)", "chance"]
+    vals = [CEIL, LONG_CONN, cm, rm, CHANCE]
+    errs = [0, 0, stat("hemibrain_seeded")[1], rs, 0]
+    cols = ["#2e7d32", CONN, CONN, RAND, "grey"]
+    x = np.arange(len(names))
+    b = axR.bar(x, vals, yerr=errs, color=cols, capsize=3, alpha=[0.95, 0.95, 0.6, 0.9, 0.9][0])
+    for bi, c2, a2 in zip(b, cols, [0.95, 0.95, 0.62, 0.9, 0.9]):
+        bi.set_alpha(a2)
+    for bi, v in zip(b, vals):
+        axR.text(bi.get_x() + bi.get_width() / 2, v + 0.014, f"{v:.3f}", ha="center", fontsize=9)
+    axR.set_xticks(x); axR.set_xticklabels(names, fontsize=8)
+    axR.set_ylabel("final test recall accuracy"); axR.set_ylim(0, 1.1)
+    axR.set_title("B  Final accuracy (D=8)", fontsize=11, loc="left"); axR.grid(axis="y", alpha=0.25)
+    fig.suptitle("Mushroom-body connectome reaches near-SOTA (0.995) on Multi-Query Associative Recall",
+                 fontsize=12.5, y=0.99)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    fig.savefig(OUT / "mqar_connectome_vs_random.png", dpi=150); plt.close(fig)
+    print(f"wrote {OUT / 'mqar_connectome_vs_random.png'} (long curve max={max(LONG) if LONG else None})")
+
+
+plot_readme()
