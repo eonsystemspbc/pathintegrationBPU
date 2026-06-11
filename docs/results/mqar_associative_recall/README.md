@@ -3,13 +3,21 @@
 **Headline:** on **Multi-Query Associative Recall** (MQAR; Arora et al. 2023, *Zoology* — the standard
 in-context-memory benchmark used to explain the attention-vs-recurrent gap in language models), a
 plain recurrent network whose recurrent weights are **seeded from the full FlyWire mushroom-body
-connectome (all 14,025 neurons)** reaches **0.928 ± 0.0004** test recall accuracy — near the
-attention SOTA ceiling of **1.00** — and **beats a size/density-matched random recurrent
-(0.842 ± 0.007) by +0.087 (~13σ)**. This is the project's clearest connectome win on a recognized
-benchmark, and the connectome here is **load-bearing** (unlike the optic-lobe/CIFAR regimes where a
-random control matched or beat it).
+connectome (all 14,025 neurons)** reaches **0.925 ± 0.003** test recall accuracy at 200 epochs (5 seeds)
+— and, with longer training (1000 epochs + cosine lr decay), **0.995**, essentially matching the
+attention SOTA ceiling of **1.00**. It **beats a size/density-matched random recurrent (0.836 ± 0.008)
+by ~9 points (~11σ)** and grokks ~2× faster. This is the project's clearest connectome win on a
+recognized benchmark, and the connectome here is **load-bearing** (unlike the optic-lobe/CIFAR regimes
+where a random control matched or beat it — and the same connectome *ties* its shuffle on DSEC
+optical-flow, confirming the win is task-specific, not generic).
 
 ![result](mqar_connectome_vs_random.png)
+
+A control sweep (below) shows the advantage is **topological**: weight-shuffle (the MB graph with
+randomized weights) nearly ties the connectome, while random/degree-preserving topologies fall ~9–16
+points behind — see [`mqar_all_controls.png`](mqar_all_controls.png).
+
+![all controls](mqar_all_controls.png)
 
 ## Why MQAR, and why it fits the mushroom body
 
@@ -31,27 +39,48 @@ between stored bindings) is free to matter.
   between conditions. `scripts/run_mqar_associative_recall.py`.
 - Substrate: **full MB, `--max-neurons 0`** (all 14,025 neurons, 574,660 edges). Using all neurons is
   load-bearing — see "what didn't work."
-- Controls: `random_sparse` (size + edge-count matched). Stronger controls (`degree_preserving_random`,
-  `weight_shuffle`) running. 2 seeds, 200 epochs.
+- Controls: `random_sparse` (size + edge-count matched), `degree_preserving_random` (preserves the
+  in/out-degree sequence, randomizes wiring), `weight_shuffle` (the MB graph with permuted weights —
+  isolates topology vs weights). connectome/random at 5 seeds, degree/shuffle at 2 seeds, 200 epochs.
 - SOTA ceiling: a causal Transformer **+ a width-3 depthwise causal short-conv** reaches **1.0000** on
   the identical episodes (`scripts/run_mqar_attention_baseline.py`); the "gather/shift primitive," not
   raw attention, is what's load-bearing (plain 2- and 4-layer encoders plateau at ~0.29).
 
 ## Result
 
-| model (full MB, D=8) | test recall acc | note |
-|---|---|---|
-| attention + short-conv | **1.000** | SOTA ceiling (structural gather) |
-| **connectome (hemibrain_seeded)** | **0.928 ± 0.0004** | grokks fast; near-SOTA |
-| random (size+density matched) | 0.842 ± 0.007 | grokks ~2× slower, lands ~9 pts lower |
-| chance | 0.031 | |
+| model (full MB, D=8) | test recall acc | seeds | note |
+|---|---|---|---|
+| attention + short-conv | **1.000** | — | SOTA ceiling (structural gather) |
+| **connectome — 1000 ep + cosine** | **0.995** | 1 | longer training ⇒ near-SOTA (see below) |
+| **connectome (hemibrain_seeded), 200 ep** | **0.925 ± 0.003** | 5 | grokks fast |
+| weight-shuffle (MB topology, random weights) | 0.914 ± 0.003 | 2 | **≈ connectome ⇒ advantage is topological** |
+| random_sparse (random topology) | 0.836 ± 0.008 | 5 | grokks ~2× slower, ~9 pts lower |
+| degree-preserving random | 0.768 ± 0.033 | 2 | random topology, matched degree |
+| chance | 0.031 | — | |
 
-Both cores **grok** (a sharp flat→rise transition as the recurrence learns the gather), but the
-connectome grokks **earlier** (≈0.80 by epoch 100 vs random's ≈0.55) **and converges higher**. So the
-connectome advantage is **both sample-efficiency and final accuracy** — a clear, reproducible,
-near-zero-variance gap. The remaining ~7-point gap to attention's 1.00 is the **recurrent-architecture
-class limit** (a single-vector recurrence lacks the structural content-addressed gather), not a
-connectome-specific shortfall.
+Both connectome and random **grok** (a sharp flat→rise transition as the recurrence learns the gather),
+but the connectome grokks **earlier** (≈0.80 by epoch 100 vs random's ≈0.55) **and converges higher** —
+an edge in **both sample-efficiency and final accuracy**, reproducible across seeds with near-zero
+variance.
+
+**Two refinements from the full control + long-training runs:**
+
+1. **The advantage is topological, not synaptic.** `weight_shuffle` (the connectome's *exact graph* with
+   permuted edge weights) reaches **0.914 ≈ connectome's 0.925**, while size/density-matched
+   `random_sparse` (0.836) and `degree_preserving_random` (0.768) — both *random topologies* — fall
+   9–16 points behind. So it is the mushroom body's **wiring graph** (which neurons connect to which),
+   not the specific synaptic strengths, that carries the associative-memory advantage. This is the
+   cleaner, more robust claim for a connectome (the graph is what reconstruction recovers; weights are
+   the hard-to-measure part), and `weight_shuffle` is what *explains* the win as topological — it is not
+   an independent control. The independent comparison is **connectome/shuffle (MB topology) ≫
+   random/degree (random topology)**.
+
+2. **The 0.93 "ceiling" was an optimization plateau, not an architecture limit.** With **1000 epochs +
+   cosine lr decay** the vanilla connectome climbs to **0.995** (peak val 0.9953) — essentially the
+   attention ceiling. So a connectome-seeded *single-vector recurrence* can reach MQAR SOTA on its own,
+   given enough training; the earlier 0.93-at-200-epochs was under-converged. (Whether matched-random
+   *also* reaches ~1.0 at convergence — making the edge purely sample-efficiency — vs. plateaus lower,
+   is the matched long-run comparison, in progress.)
 
 ## What didn't work (honest controls)
 
