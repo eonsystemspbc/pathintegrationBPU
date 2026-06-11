@@ -1,0 +1,54 @@
+{
+  "config": {
+    "matrix": "outputs/flywire_mushroom_body/adjacency_unsigned.npz",
+    "max_neurons": 0,
+    "models": [
+      "random_sparse",
+      "degree_preserving_random",
+      "weight_shuffle"
+    ],
+    "recurrent_runtime": "sparse",
+    "freeze_recurrent": false,
+    "vocab_size": 32,
+    "num_pairs": 8,
+    "num_queries": 8,
+    "reversal_pairs": 0,
+    "seeds": [
+      0,
+      1
+    ],
+    "epochs": 200,
+    "train_batches": 150,
+    "val_batches": 30,
+    "test_batches": 60,
+    "batch_size": 128,
+    "lr": 0.001,
+    "patience": 200,
+    "grad_clip": 1.0,
+    "state_clip": 0.0,
+    "init_seed": 0,
+    "device": "cuda",
+    "output_dir": "outputs/mqar_fullMB_random_control"
+  },
+  "chance": 0.03125,
+  "summary": {
+    "random_sparse": {
+      "test_acc_mean": 0.8014,
+      "test_acc_std": 0.0202,
+      "n_seeds": 2,
+      "test_rev_acc_mean": null
+    },
+    "degree_preserving_random": {
+      "test_acc_mean": 0.7681,
+      "test_acc_std": 0.0333,
+      "n_seeds": 2,
+      "test_rev_acc_mean": null
+    },
+    "weight_shuffle": {
+      "test_acc_mean": 0.9135,
+      "test_acc_std": 0.0026,
+      "n_seeds": 2,
+      "test_rev_acc_mean": null
+    }
+  }
+}
