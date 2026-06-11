@@ -1,0 +1,47 @@
+{
+  "config": {
+    "matrix": "outputs/flywire_mushroom_body/adjacency_unsigned.npz",
+    "max_neurons": 0,
+    "models": [
+      "hemibrain_seeded",
+      "random_sparse"
+    ],
+    "recurrent_runtime": "sparse",
+    "freeze_recurrent": false,
+    "vocab_size": 32,
+    "num_pairs": 8,
+    "num_queries": 8,
+    "reversal_pairs": 0,
+    "seeds": [
+      0,
+      1
+    ],
+    "epochs": 200,
+    "train_batches": 150,
+    "val_batches": 30,
+    "test_batches": 60,
+    "batch_size": 128,
+    "lr": 0.001,
+    "patience": 200,
+    "grad_clip": 1.0,
+    "state_clip": 0.0,
+    "init_seed": 0,
+    "device": "cuda",
+    "output_dir": "outputs/mqar_fullMB_D8"
+  },
+  "chance": 0.03125,
+  "summary": {
+    "hemibrain_seeded": {
+      "test_acc_mean": 0.9282,
+      "test_acc_std": 0.0004,
+      "n_seeds": 2,
+      "test_rev_acc_mean": null
+    },
+    "random_sparse": {
+      "test_acc_mean": 0.8415,
+      "test_acc_std": 0.0067,
+      "n_seeds": 2,
+      "test_rev_acc_mean": null
+    }
+  }
+}
