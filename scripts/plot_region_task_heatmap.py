@@ -28,7 +28,7 @@ CELLS = {
     ("mushroom body", 2): (-2.9, "0.386 vs 0.375", False),
     ("central complex", 0): (0.5, "1.031 vs 1.036", False),
     ("central complex", 1): (-3.0, "0.816 vs 0.841", False),
-    ("central complex", 2): (None, "running", True),        # native path (consistent run pending)
+    ("central complex", 2): (8.5, "0.388 vs 0.424", True),  # native path (connectome beats random)
 }
 
 nR, nT = len(REGIONS), len(TASKS)
