@@ -21,14 +21,14 @@ TASKS = ["optic flow\n(real DSEC)", "associative\n(MQAR)", "path\nintegration"]
 # adv% = sign-corrected connectome advantage over random control (positive = connectome better)
 CELLS = {
     ("optic lobe", 0):    (12.0, "1.089 vs 1.238", True),   # native flow
-    ("optic lobe", 1):    (None, "running", False),         # OL->MQAR (long pole)
+    ("optic lobe", 1):    (8.5, "0.953 vs 0.878", False),   # OL->MQAR: off-diagonal but ~= MB native (generic, capacity-driven)
     ("optic lobe", 2):    (-3.4, "0.390 vs 0.377", False),  # OL->path (partial)
     ("mushroom body", 0): (3.3,  "1.049 vs 1.085", False),
     ("mushroom body", 1): (10.6, "0.925 vs 0.836", True),   # native MQAR
     ("mushroom body", 2): (-2.9, "0.386 vs 0.375", False),
     ("central complex", 0): (0.5, "1.031 vs 1.036", False),
     ("central complex", 1): (-3.0, "0.816 vs 0.841", False),
-    ("central complex", 2): (8.5, "0.388 vs 0.424", True),  # native path (connectome beats random)
+    ("central complex", 2): (7.8, "0.390 vs 0.423", True),  # native path (connectome beats random)
 }
 
 nR, nT = len(REGIONS), len(TASKS)
@@ -66,9 +66,9 @@ ax.set_title("Connectome vs random-control advantage across the region × task m
              fontsize=12.5, pad=12)
 cbar = fig.colorbar(im, ax=ax, shrink=0.8, pad=0.02)
 cbar.set_label("connectome advantage over random (%)", fontsize=10)
-fig.text(0.5, 0.005, "Flow column = REAL DSEC event-camera flow (synthetic flow does not discriminate by region). "
-         "1 seed for flow/path cells; OL→MQAR & native CX→path still running.",
-         ha="center", fontsize=7.5, color="0.4")
+fig.text(0.5, 0.005, "Flow column = REAL DSEC event-camera flow (synthetic flow does not discriminate by region). 1 seed for flow/path cells. "
+         "NB: MQAR does NOT isolate a region — OL (off-diagonal) ~= MB (native); the OL gap is capacity/topology-generic (size-match test pending).",
+         ha="center", fontsize=7.0, color="0.4")
 fig.tight_layout(rect=[0, 0.02, 1, 1])
 fig.savefig(OUT / "region_task_heatmap.png", dpi=150)
 print(f"wrote {OUT/'region_task_heatmap.png'}")
