@@ -1,0 +1,64 @@
+{
+ "task": "mod_sum",
+ "config": {
+  "task": "mod_sum",
+  "matrix": "outputs/flywire_optic_lobe_bpu/adjacency_unsigned.npz",
+  "max_neurons": 14025,
+  "models": [
+   "hemibrain_seeded",
+   "weight_shuffle",
+   "random_sparse",
+   "degree_preserving_random"
+  ],
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "recurrent_runtime": "sparse",
+  "epochs": 20,
+  "train_batches": 100,
+  "val_batches": 20,
+  "test_batches": 40,
+  "batch_size": 64,
+  "lr": 0.001,
+  "grad_clip": 1.0,
+  "state_clip": 5.0,
+  "device": "auto",
+  "classes": 10,
+  "dim": 32,
+  "noise": 1.0,
+  "mod": 7,
+  "length": 10,
+  "items": 5,
+  "vocab": 20,
+  "out": "outputs/arbitrary_x/mod_sum/OL"
+ },
+ "summary": {
+  "hemibrain_seeded": {
+   "test_acc_mean": 0.13841145833333332,
+   "test_acc_std": 0.005901181871679504,
+   "n_seeds": 3
+  },
+  "weight_shuffle": {
+   "test_acc_mean": 0.13515625,
+   "test_acc_std": 0.003375385780420757,
+   "n_seeds": 3
+  },
+  "random_sparse": {
+   "test_acc_mean": 0.140625,
+   "test_acc_std": 0.0025315393353155676,
+   "n_seeds": 3
+  },
+  "degree_preserving_random": {
+   "test_acc_mean": 0.13893229166666665,
+   "test_acc_std": 0.0011200944358128353,
+   "n_seeds": 3
+  }
+ },
+ "connectome_minus_control_gap": {
+  "weight_shuffle": 0.003255208333333315,
+  "random_sparse": -0.0022135416666666796,
+  "degree_preserving_random": -0.0005208333333333315
+ }
+}
