@@ -71,10 +71,32 @@ def gen_sort(rng, B, spec, _c=None):
             mask[b, N + t] = 1.0
     return inputs, targets, mask
 
+# ---- sequential MNIST: REAL image classification, recurrence REQUIRED (readout only after all rows) ----
+_MNIST = {}
+_SPLIT = "train"
+def load_mnist():
+    if _MNIST: return
+    import torchvision
+    root = str(ROOT / "data" / "torchvision")
+    for split, is_train in [("train", True), ("test", False)]:
+        ds = torchvision.datasets.MNIST(root, train=is_train, download=True)
+        X = (ds.data.numpy().astype(np.float32) / 255.0 - 0.1307) / 0.3081  # [N,28,28] standardized
+        _MNIST[split] = (X, ds.targets.numpy().astype(np.int64))
+
+def gen_seq_mnist(rng, B, spec, _c=None):
+    X, y = _MNIST[_SPLIT]
+    idx = rng.integers(0, len(y), size=B)
+    inputs = X[idx].astype(np.float32)         # [B,28,28] -> T=28 rows of input_dim=28
+    T = inputs.shape[1]
+    targets = np.zeros((B, T), dtype=np.int64); targets[:, -1] = y[idx]
+    mask = np.zeros((B, T), dtype=np.float32); mask[:, -1] = 1.0  # classify ONLY after all rows -> needs W_rec
+    return inputs, targets, mask
+
 TASKS = {
     "static_class": dict(gen=gen_static_class, input_dim=lambda s: s["dim"],   output_dim=lambda s: s["classes"]),
     "mod_sum":      dict(gen=gen_mod_sum,      input_dim=lambda s: s["mod"] + 1, output_dim=lambda s: s["mod"]),
     "sort":         dict(gen=gen_sort,         input_dim=lambda s: s["vocab"] + 2, output_dim=lambda s: s["vocab"]),
+    "seq_mnist":    dict(gen=gen_seq_mnist,    input_dim=lambda s: 28, output_dim=lambda s: 10),
 }
 
 
@@ -89,9 +111,15 @@ def masked_acc(logits, targets, mask):
 
 
 def build_model(base, model_name, input_dim, output_dim, runtime, state_clip, seed, device):
-    rec = mb.matrix_for_model(base, model_name, seed)
-    rt = mb.runtime_for_model(model_name, runtime)
+    # 'no_recurrence' = ablation control: connectome topology but W_rec zeroed+frozen, proving
+    # whether the recurrent pathway (and thus the connectome) is load-bearing for the task.
+    src = "hemibrain_seeded" if model_name == "no_recurrence" else model_name
+    rec = mb.matrix_for_model(base, src, seed)
+    rt = mb.runtime_for_model(src, runtime)
     model = mb.AssociativeRNN(rec, input_dim=input_dim, runtime=rt, state_clip=state_clip, seed=seed)
+    if model_name == "no_recurrence":
+        with torch.no_grad(): model.W_rec_values.zero_()
+        model.W_rec_values.requires_grad_(False)
     # REQUIRED OVERRIDE: AssociativeRNN hardcodes readout=Linear(N,1); widen for K-way output.
     scale = 1.0 / math.sqrt(max(model.N, 1))
     readout = nn.Linear(model.N, output_dim)
@@ -101,42 +129,48 @@ def build_model(base, model_name, input_dim, output_dim, runtime, state_clip, se
 
 
 def train_eval(task, base, model_name, spec, seed, args, device):
+    global _SPLIT
     g = TASKS[task]
     in_dim, out_dim = g["input_dim"](spec), g["output_dim"](spec)
     centroids = None
     if task == "static_class":
         centroids = np.random.default_rng(7777).standard_normal((spec["classes"], spec["dim"])).astype(np.float32)
+    if task == "seq_mnist":
+        load_mnist()
     model = build_model(base, model_name, in_dim, out_dim, args.recurrent_runtime, args.state_clip, seed, device)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     drng = np.random.default_rng(DATA_BASE + seed)   # same data stream across models for a given seed
-    best_val, hist = 0.0, []
+    best_val, hist, wrec_grad = 0.0, [], 0.0  # wrec_grad = |grad| on W_rec at first step (proof of use)
     for epoch in range(1, args.epochs + 1):
-        model.train()
-        for _ in range(args.train_batches):
+        model.train(); _SPLIT = "train"
+        for i in range(args.train_batches):
             xi, yi, mi = g["gen"](drng, args.batch_size, spec, centroids)
             x = torch.from_numpy(xi).to(device); y = torch.from_numpy(yi).to(device); mk = torch.from_numpy(mi).to(device)
             opt.zero_grad()
             loss = masked_ce(model(x), y, mk)
             loss.backward()
+            if epoch == 1 and i == 0:
+                gp = getattr(model, "W_rec_values", None)
+                wrec_grad = float(gp.grad.norm()) if (gp is not None and gp.grad is not None) else 0.0
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
             opt.step()
-        # val
-        model.eval(); vrng = np.random.default_rng(VAL_BASE + seed); accs = []
+        # val (held-out test split for real-data tasks)
+        model.eval(); _SPLIT = "test"; vrng = np.random.default_rng(VAL_BASE + seed); accs = []
         with torch.no_grad():
             for _ in range(args.val_batches):
                 xi, yi, mi = g["gen"](vrng, args.batch_size, spec, centroids)
                 accs.append(masked_acc(model(torch.from_numpy(xi).to(device)),
                                        torch.from_numpy(yi).to(device), torch.from_numpy(mi).to(device)))
         va = float(np.mean(accs)); best_val = max(best_val, va); hist.append(va)
-        print(f"  task={task} model={model_name} seed={seed} epoch={epoch}/{args.epochs} val_acc={va:.4f}", flush=True)
+        print(f"  task={task} model={model_name} seed={seed} epoch={epoch}/{args.epochs} val_acc={va:.4f} wrec_grad={wrec_grad:.3g}", flush=True)
     # test
-    model.eval(); trng = np.random.default_rng(TEST_BASE + seed); taccs = []
+    model.eval(); _SPLIT = "test"; trng = np.random.default_rng(TEST_BASE + seed); taccs = []
     with torch.no_grad():
         for _ in range(args.test_batches):
             xi, yi, mi = g["gen"](trng, args.batch_size, spec, centroids)
             taccs.append(masked_acc(model(torch.from_numpy(xi).to(device)),
                                     torch.from_numpy(yi).to(device), torch.from_numpy(mi).to(device)))
-    return dict(test_acc=float(np.mean(taccs)), best_val=best_val, N=model.N, edges=base.nnz, curve=hist)
+    return dict(test_acc=float(np.mean(taccs)), best_val=best_val, N=model.N, edges=base.nnz, curve=hist, wrec_grad=wrec_grad)
 
 
 def main():
@@ -169,14 +203,14 @@ def main():
           f"input_dim={TASKS[args.task]['input_dim'](spec)} output_dim={TASKS[args.task]['output_dim'](spec)} device={device}", flush=True)
     rows, per_model = [], {}
     for mdl in args.models:
-        accs = []
+        accs, wgrads = [], []
         for s in args.seeds:
             t0 = time.time()
             r = train_eval(args.task, base, mdl, spec, s, args, device)
-            accs.append(r["test_acc"])
-            rows.append(dict(task=args.task, model=mdl, seed=s, test_acc=r["test_acc"], best_val=r["best_val"], N=r["N"], edges=r["edges"], wall_s=round(time.time() - t0, 1)))
-            print(f"model-done task={args.task} model={mdl} seed={s} test_acc={r['test_acc']:.4f} wall={rows[-1]['wall_s']}s", flush=True)
-        per_model[mdl] = dict(test_acc_mean=float(np.mean(accs)), test_acc_std=float(np.std(accs)), n_seeds=len(accs))
+            accs.append(r["test_acc"]); wgrads.append(r["wrec_grad"])
+            rows.append(dict(task=args.task, model=mdl, seed=s, test_acc=r["test_acc"], best_val=r["best_val"], wrec_grad=r["wrec_grad"], N=r["N"], edges=r["edges"], wall_s=round(time.time() - t0, 1)))
+            print(f"model-done task={args.task} model={mdl} seed={s} test_acc={r['test_acc']:.4f} wrec_grad={r['wrec_grad']:.3g} wall={rows[-1]['wall_s']}s", flush=True)
+        per_model[mdl] = dict(test_acc_mean=float(np.mean(accs)), test_acc_std=float(np.std(accs)), wrec_grad_mean=float(np.mean(wgrads)), n_seeds=len(accs))
     args.out.mkdir(parents=True, exist_ok=True)
     import csv
     with open(args.out / "metrics_by_seed.csv", "w", newline="") as f:
