@@ -1,0 +1,76 @@
+{
+ "task": "seq_mnist",
+ "config": {
+  "task": "seq_mnist",
+  "matrix": "outputs/flywire_optic_lobe_bpu/adjacency_unsigned.npz",
+  "max_neurons": 14025,
+  "models": [
+   "hemibrain_seeded",
+   "weight_shuffle",
+   "random_sparse",
+   "degree_preserving_random",
+   "no_recurrence"
+  ],
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "recurrent_runtime": "sparse",
+  "epochs": 25,
+  "train_batches": 100,
+  "val_batches": 20,
+  "test_batches": 40,
+  "batch_size": 64,
+  "lr": 0.001,
+  "grad_clip": 1.0,
+  "state_clip": 5.0,
+  "device": "auto",
+  "classes": 10,
+  "dim": 32,
+  "noise": 1.0,
+  "mod": 7,
+  "length": 10,
+  "items": 5,
+  "vocab": 20,
+  "out": "outputs/arbitrary_x/seq_mnist/OL"
+ },
+ "summary": {
+  "hemibrain_seeded": {
+   "test_acc_mean": 0.94921875,
+   "test_acc_std": 0.009605457365368752,
+   "wrec_grad_mean": 0.039908844977617264,
+   "n_seeds": 3
+  },
+  "weight_shuffle": {
+   "test_acc_mean": 0.9537760416666666,
+   "test_acc_std": 0.003380404944205028,
+   "wrec_grad_mean": 0.03854065264264742,
+   "n_seeds": 3
+  },
+  "random_sparse": {
+   "test_acc_mean": 0.9272135416666666,
+   "test_acc_std": 0.010147899879374356,
+   "wrec_grad_mean": 0.039067476987838745,
+   "n_seeds": 3
+  },
+  "degree_preserving_random": {
+   "test_acc_mean": 0.9322916666666666,
+   "test_acc_std": 0.006389502159575655,
+   "wrec_grad_mean": 0.03828034922480583,
+   "n_seeds": 3
+  },
+  "no_recurrence": {
+   "test_acc_mean": 0.122265625,
+   "test_acc_std": 0.003880120944206081,
+   "wrec_grad_mean": 0.0,
+   "n_seeds": 3
+  }
+ },
+ "connectome_minus_control_gap": {
+  "weight_shuffle": -0.00455729166666663,
+  "random_sparse": 0.022005208333333415,
+  "degree_preserving_random": 0.01692708333333337,
+  "no_recurrence": 0.826953125
+ }
+}
