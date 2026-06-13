@@ -1,0 +1,64 @@
+{
+ "task": "static_class",
+ "config": {
+  "task": "static_class",
+  "matrix": "outputs/cx_polar_bump_seed0/adjacency_unsigned.npz",
+  "max_neurons": 0,
+  "models": [
+   "hemibrain_seeded",
+   "weight_shuffle",
+   "random_sparse",
+   "degree_preserving_random"
+  ],
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "recurrent_runtime": "sparse",
+  "epochs": 20,
+  "train_batches": 100,
+  "val_batches": 20,
+  "test_batches": 40,
+  "batch_size": 64,
+  "lr": 0.001,
+  "grad_clip": 1.0,
+  "state_clip": 5.0,
+  "device": "auto",
+  "classes": 10,
+  "dim": 32,
+  "noise": 1.0,
+  "mod": 7,
+  "length": 10,
+  "items": 5,
+  "vocab": 20,
+  "out": "outputs/arbitrary_x/static_class/CX"
+ },
+ "summary": {
+  "hemibrain_seeded": {
+   "test_acc_mean": 0.9929687499999998,
+   "test_acc_std": 0.0014615849167085371,
+   "n_seeds": 3
+  },
+  "weight_shuffle": {
+   "test_acc_mean": 0.9936197916666667,
+   "test_acc_std": 0.0025779934730759462,
+   "n_seeds": 3
+  },
+  "random_sparse": {
+   "test_acc_mean": 0.9933593749999999,
+   "test_acc_std": 0.00223260783847426,
+   "n_seeds": 3
+  },
+  "degree_preserving_random": {
+   "test_acc_mean": 0.9944010416666668,
+   "test_acc_std": 0.0013278696649981327,
+   "n_seeds": 3
+  }
+ },
+ "connectome_minus_control_gap": {
+  "weight_shuffle": -0.0006510416666668517,
+  "random_sparse": -0.0003906250000000888,
+  "degree_preserving_random": -0.0014322916666669183
+ }
+}
