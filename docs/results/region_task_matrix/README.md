@@ -27,19 +27,25 @@ uses **REAL DSEC event-camera flow** (synthetic flow doesn't discriminate by reg
   not biology**: subsampling OL to 14,025 neurons collapses its MQAR score 0.953 → 0.83 ≈ MB@14,025's
   0.80 (both ≪ full OL's 0.953). Associative learning is **generic structured-recurrence
   sample-efficiency** (~1.8× over random, region-agnostic), not mushroom-body alignment.
-- **Foreign tasks are null for every region (the new ✗ column):** image classification **±0.1%** and
-  arithmetic **within ±1.6%** of random across all three regions. The wiring buys **nothing** off the
-  fly's computational domain → **not a general substrate** (the claim this work argues against).
+- **Foreign tasks are null for every region (the ✗ column):** on **sequential MNIST** (real image
+  classification, 28 rows fed one per step, digit read out only after the last row) the connectome
+  **ties `weight_shuffle`** in all 3 regions (MB 0.961/0.964, OL 0.949/0.954, CX 0.971/0.970) — it
+  edges only *fully*-random by +1.4–2.4%, which is generic structured sparsity. Crucially this is
+  **not the T=1 circularity**: the recurrence is *proven* load-bearing — the `no_recurrence` ablation
+  (W_rec zeroed) **collapses to 0.12 ≈ chance** (−84 pts) and the connectome receives real gradient
+  (`wrec_grad` 0.27–0.42). So the wiring is genuinely *used* and still buys nothing wiring-specific.
+  Arithmetic (running-sum-mod-m) sits at chance for all models. → **not a general substrate.**
 
 **Bottom line:** the connectome is **not universal**. Its advantage is **region-specific for the
 sensorimotor tasks (flow/OL, path/CX)**, a **generic recurrence benefit** on associative/memory tasks
 (not MB-specific), and **absent** on non-recurrent / foreign tasks.
 
 ## Caveats (being honest)
-- **`static_class` (image classification) is partly null *by construction*:** it's a T=1 task, so the
-  recurrent matrix multiplies the zero initial state and is never used — connectome = random is
-  *guaranteed*, making this cell a **sanity check** (the harness doesn't leak) more than independent
-  evidence. It is reported straight, not oversold.
+- **The image-classification cell is now `seq_mnist`, not the old T=1 toy.** The earlier `static_class`
+  (T=1) was partly null *by construction* (the recurrent matrix multiplies the zero state → never
+  used). It was replaced by **sequential MNIST**, where the readout fires only after all 28 rows so
+  `W_rec` is the sole pathway — verified by the `no_recurrence` collapse and non-zero `wrec_grad`. The
+  result holds: connectome ties its topology-matched control even when recurrence is provably load-bearing.
 - **`arithmetic` (running-sum mod-m) sits at chance** (~1/7) for *all* models — nobody learned it in
   20 epochs, so it's a "wiring doesn't rescue a hard task" null, not "learned-but-no-edge."
 - **`sort` is excluded:** it's the one *learnable, recurrence-using* foreign task and shows a small
