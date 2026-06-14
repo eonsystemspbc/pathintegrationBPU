@@ -33,7 +33,7 @@ def run_region(name, region_dir, out_root, epochs, seeds, train_count, train_rec
     cfg = TrainConfig(
         seeds=tuple(seeds), epochs=epochs, batch_size=64, num_workers=2, lr=1e-3,
         patience=4, grad_clip=1.0, include_gru=False, device="cuda",
-        models=("connectome_bpu", "random", "weight_shuffle"),
+        models=("connectome_bpu", "random", "weight_shuffle", "degree_shuffle"),
         log_every_seconds=30, recurrent_runtime="auto", train_recurrent=train_recurrent)
     spec = TaskSpec(
         train_count=train_count, val_count=2000, test_count=2000, train_T=50,
