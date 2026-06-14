@@ -28,7 +28,7 @@ optic flow and the mushroom body on associative recall, filling out the region �
 | **`scripts/`** | entry points, grouped by topic — see [`scripts/README.md`](scripts/README.md). |
 | **`connectomes/`** | prepared connectome substrates (adjacency `.npz` + structure runs), used as `--matrix` inputs. *(git-ignored data; regenerable via `scripts/connectome/`.)* |
 | **`data/`** | external datasets (DSEC flow, MNIST, Omniglot, larva). *(git-ignored.)* |
-| **`outputs/`** | raw run artifacts (checkpoints, metrics), grouped under `outputs/results/<topic>/` — see [`outputs/README.md`](outputs/README.md). *(git-ignored.)* |
+| **`outputs/`** | raw run artifacts (checkpoints, metrics), grouped under `outputs/runs/<topic>/` — see [`outputs/README.md`](outputs/README.md). *(git-ignored.)* |
 | **`docs/`** | method writeups (`docs/<topic>.md`) and **curated results** with figures (`docs/results/<experiment>/`). Index: [`docs/results/README.md`](docs/results/README.md). |
 | **`experiments/`** | experiment configs. **`flywire_cache/`** raw connectome dumps. **`plumetracknets/`** plume sub-project. **`tests/`** unit tests. |
 
@@ -50,7 +50,7 @@ python scripts/figures/plot_region_task_heatmap.py
 
 # the central-complex / path result (strongest, degree-control-surviving cell)
 python scripts/path/run_path_offdiagonal.py \
-  --regions CX:connectomes/cx_polar_bump_seed0 --out-root outputs/results/path/cx_deg \
+  --regions CX:connectomes/cx_polar_bump_seed0 --out-root outputs/runs/path/cx_deg \
   --seeds 0 1 2 --epochs 12 --train-count 8000      # models: connectome / random / weight_shuffle / degree_shuffle
 
 # a task-specificity control (sequential MNIST — foreign to every region)

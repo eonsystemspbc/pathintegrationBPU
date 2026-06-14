@@ -1,7 +1,7 @@
 # Curated results
 
 Each subdir holds the figures, summary CSVs, and a `README.md` writeup for one experiment.
-(Raw checkpoints/metrics are in `outputs/results/`; these are the cited artifacts.)
+(Raw checkpoints/metrics are in `outputs/runs/`; these are the cited artifacts.)
 
 ## ⭐ Task–region alignment (the headline thread)
 - **[`region_task_matrix/`](region_task_matrix/README.md)** — the region × task advantage grid + the

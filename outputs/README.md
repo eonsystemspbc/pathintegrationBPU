@@ -3,7 +3,7 @@
 Checkpoints, per-run metrics, and intermediate logs. **Not tracked in git** (large/regenerable).
 Curated results — the figures and summary CSVs you actually cite — live in `docs/results/<experiment>/`.
 
-Runs are grouped by topic under `outputs/results/`:
+Runs are grouped by topic under `outputs/runs/`:
 
 | dir | contents |
 |---|---|
@@ -16,4 +16,4 @@ Runs are grouped by topic under `outputs/results/`:
 | `results/misc/` | everything else (low-power proxy, etc.) |
 
 Connectome **inputs** (matrices) are *not* here — they live in `connectomes/`. Scripts default to
-writing fresh runs under `outputs/`; file them into `outputs/results/<topic>/` to keep this tidy.
+writing fresh runs under `outputs/`; file them into `outputs/runs/<topic>/` to keep this tidy.

@@ -3,7 +3,7 @@
 All scripts run from the repo root (`python scripts/<topic>/<script>.py …`) and import the library
 from `src/`. Several scripts cross-import each other (e.g. the continual-learning scripts reuse
 `run_mb_associative_learning`); this works because each topic subdir is added to `sys.path` at
-import time. Connectome matrices live in `connectomes/`; raw outputs go to `outputs/results/`.
+import time. Connectome matrices live in `connectomes/`; raw outputs go to `outputs/runs/`.
 
 | subdir | purpose | key scripts |
 |---|---|---|
