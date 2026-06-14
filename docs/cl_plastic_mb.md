@@ -1,6 +1,6 @@
 # Plastic mushroom-body continual learner
 
-`scripts/run_cl_plastic_mb.py` builds the *biologically faithful* alternative to the
+`scripts/continual/run_cl_plastic_mb.py` builds the *biologically faithful* alternative to the
 static-matrix continual-learning models in `run_continual_learning.py`. Those models
 take a frozen connectome adjacency matrix and train it (or its projections) with
 backprop; every one of them — connectome, pruned, random, dense, MLP — forgets the
@@ -69,9 +69,9 @@ numbers are directly comparable to the static-matrix table.
 
 ```bash
 for SIGN in unsigned signed; do
-  python scripts/run_cl_plastic_mb.py \
-    --matrix outputs/flywire_mushroom_body/adjacency_${SIGN}.npz \
-    --pool-assignments outputs/flywire_mushroom_body/pool_assignments.csv \
+  python scripts/continual/run_cl_plastic_mb.py \
+    --matrix connectomes/flywire_mushroom_body/adjacency_${SIGN}.npz \
+    --pool-assignments connectomes/flywire_mushroom_body/pool_assignments.csv \
     --max-neurons 0 --seeds 0 1 2 \
     --plastic-epochs 40 --patience 10 --plastic-lr 0.5 \
     --device-ids 0 1 --output-dir outputs/cl_plastic_mb_${SIGN}

@@ -67,7 +67,7 @@ source /home/ec2-user/pathintegrationBPU/.venv/bin/activate
 
 TARTAN_ROOT=/home/ec2-user/tartanair_v2
 
-python scripts/run_tartanair_optic_flow_benchmark.py \
+python scripts/flow/run_tartanair_optic_flow_benchmark.py \
   --mode download \
   --tartanair-root "$TARTAN_ROOT" \
   --envs ArchVizTinyHouseDay AbandonedFactory \
@@ -97,7 +97,7 @@ TARTAN_ROOT=/home/ec2-user/tartanair_v2
 OUT=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/tartanair_optic_lobe_flow_4model_seed0
 mkdir -p "$OUT"
 
-python scripts/run_tartanair_optic_flow_benchmark.py \
+python scripts/flow/run_tartanair_optic_flow_benchmark.py \
   --mode train \
   --matrix "$MATRIX" \
   --tartanair-root "$TARTAN_ROOT" \

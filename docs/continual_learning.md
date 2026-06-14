@@ -1,6 +1,6 @@
 # Continual Learning — Split-CIFAR-10 (domain-incremental)
 
-`scripts/run_continual_learning.py` tests whether a connectome-derived (or pruned)
+`scripts/continual/run_continual_learning.py` tests whether a connectome-derived (or pruned)
 recurrent backbone resists catastrophic forgetting better than a trainable dense
 matrix or a size-matched MLP. It is the continual-learning leg of the
 connectome-vs-dense story (alongside the optic-flow sample-efficiency and BPU
@@ -63,9 +63,9 @@ cap (≈5000) is ~100 MB.
 ## Example (both GPUs)
 
 ```bash
-python scripts/run_continual_learning.py \
-  --matrix outputs/flywire_optic_lobe_bpu/adjacency_unsigned.npz \
-  --pool-assignments outputs/flywire_optic_lobe_bpu/pool_assignments.csv \
+python scripts/continual/run_continual_learning.py \
+  --matrix connectomes/flywire_optic_lobe_bpu/adjacency_unsigned.npz \
+  --pool-assignments connectomes/flywire_optic_lobe_bpu/pool_assignments.csv \
   --device-ids 0 1 --max-neurons 5000 --seeds 0 1 2 \
   --output-dir outputs/continual_learning
 ```

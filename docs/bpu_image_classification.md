@@ -1,6 +1,6 @@
 # BPU Image Classification (MNIST / CIFAR-10)
 
-`scripts/run_bpu_image_classification.py` reproduces the BPU paper's recipe on
+`scripts/classification/run_bpu_image_classification.py` reproduces the BPU paper's recipe on
 its own image-classification tasks and tests it head-to-head against dense and
 size-matched alternatives. The point is an **explicit, fair negative result**:
 on general-purpose AI tasks, a connectome-derived *frozen* recurrent matrix is
@@ -51,9 +51,9 @@ efficiency narrative.
 ## Example (both GPUs)
 
 ```bash
-python scripts/run_bpu_image_classification.py \
-  --matrix outputs/flywire_optic_lobe_bpu/adjacency_unsigned.npz \
-  --pool-assignments outputs/flywire_optic_lobe_bpu/pool_assignments.csv \
+python scripts/classification/run_bpu_image_classification.py \
+  --matrix connectomes/flywire_optic_lobe_bpu/adjacency_unsigned.npz \
+  --pool-assignments connectomes/flywire_optic_lobe_bpu/pool_assignments.csv \
   --device-ids 0 1 --max-neurons 5000 \
   --tasks mnist cifar10 --fractions 5 10 15 20 30 50 75 100 --seeds 0 1 2 \
   --output-dir outputs/bpu_image_classification

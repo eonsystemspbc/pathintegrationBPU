@@ -33,7 +33,7 @@ never run a random matrix *inside the BPU architecture itself*.
 
 ## 2. Our reproduction (signed & unsigned larva, full size-matched controls)
 
-`outputs/larva_bpu_reproduction_signed/` and `…_reproduction/` (unsigned). Larva
+`connectomes/larva_bpu_reproduction_signed/` and `…_reproduction/` (unsigned). Larva
 adjacency built from Winding et al. 2023, scaled to ρ=0.95, T=4, ReLU, input→sensory,
 readout←output, seeds 0–2.
 

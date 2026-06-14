@@ -58,7 +58,7 @@ MATRIX=/mnt/fast/connectomes/flywire_optic_lobe/adjacency_unsigned.npz
 OUT=/mnt/fast/outputs/dsec_flow_optic_lobe_3model_3seed
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_dsec_flow_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/flow/run_dsec_flow_benchmark.py \
   --mode train \
   --dsec-root "$DSEC_ROOT" \
   --matrix "$MATRIX" \
@@ -91,7 +91,7 @@ Use explicit validation sequences if you want a sequence-level split:
 ## Smoke Run
 
 ```bash
-python experiments/hemibrain_cx_bpu/scripts/run_dsec_flow_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/flow/run_dsec_flow_benchmark.py \
   --mode train \
   --dsec-root "$DSEC_ROOT" \
   --matrix "$MATRIX" \
@@ -115,7 +115,7 @@ python experiments/hemibrain_cx_bpu/scripts/run_dsec_flow_benchmark.py \
 Each model/seed pair can be launched as a separate child job:
 
 ```bash
-python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark dsec_flow \
   --output-dir "$OUT" \
   --gpus 0 1 2 \
@@ -146,7 +146,7 @@ BEST="$OUT/connectome_seeded_seed0/checkpoint_best.pt"
 TEST_ROOT=/mnt/fast/dsec/test
 EVAL_TS=/mnt/fast/dsec/test_foward_optical_flow_timestamps
 
-python experiments/hemibrain_cx_bpu/scripts/run_dsec_flow_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/flow/run_dsec_flow_benchmark.py \
   --mode predict \
   --dsec-root "$TEST_ROOT" \
   --matrix "$MATRIX" \

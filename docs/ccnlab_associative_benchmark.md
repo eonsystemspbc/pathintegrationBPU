@@ -52,9 +52,9 @@ source .venv/bin/activate
 OUT=/mnt/fast/outputs/ccnlab_smoke
 mkdir -p "$OUT"
 
-python scripts/run_ccnlab_associative_benchmark.py \
+python scripts/associative/run_ccnlab_associative_benchmark.py \
   --ccnlab-root /mnt/fast/ccnlab \
-  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
   --models hemibrain_seeded random_sparse degree_preserving_random weight_shuffle rescorla_wagner \
   --seeds 0 \
@@ -77,7 +77,7 @@ source .venv/bin/activate
 OUT=/mnt/fast/outputs/ccnlab_classical_mb_5seed
 mkdir -p "$OUT"
 
-python scripts/run_multi_gpu_associative_sweep.py \
+python scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark ccnlab \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -86,7 +86,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --seeds 0 1 2 3 4 \
   -- \
   --ccnlab-root /mnt/fast/ccnlab \
-  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --subjects 20 \
   --experiments Acquisition_ContinuousVsPartial Extinction_ContinuousVsPartial Generalization_NovelVsInhibitor Generalization_AddVsRemove Competition_OvershadowingAndForwardBlocking Recovery_Overshadowing HigherOrder_SensoryPreconditioning \
   --feature-dim 512 \
@@ -101,7 +101,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
 Summarize the completed sweep:
 
 ```bash
-python scripts/summarize_associative_sweep.py "$OUT"
+python scripts/associative/summarize_associative_sweep.py "$OUT"
 cat "$OUT/matched_topology_comparisons.csv" | grep hemibrain_seeded
 ```
 
@@ -123,7 +123,7 @@ source .venv/bin/activate
 OUT=/mnt/fast/outputs/ccnlab_classical_flywire_mb_feature_learners_5seed
 mkdir -p "$OUT"
 
-python scripts/run_multi_gpu_associative_sweep.py \
+python scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark ccnlab \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -135,7 +135,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --seeds 0 1 2 3 4 \
   -- \
   --ccnlab-root /mnt/fast/ccnlab \
-  --matrix outputs/flywire_mushroom_body/adjacency_unsigned.npz \
+  --matrix connectomes/flywire_mushroom_body/adjacency_unsigned.npz \
   --subjects 20 \
   --experiments Acquisition_ContinuousVsPartial Extinction_ContinuousVsPartial Generalization_NovelVsInhibitor Generalization_AddVsRemove Competition_OvershadowingAndForwardBlocking Recovery_Overshadowing HigherOrder_SensoryPreconditioning \
   --feature-learner-dim 128 \
@@ -147,7 +147,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
 Summarize topology-specific deltas by learning rule:
 
 ```bash
-python scripts/summarize_associative_sweep.py "$OUT"
+python scripts/associative/summarize_associative_sweep.py "$OUT"
 cat "$OUT/matched_topology_comparisons.csv" | grep connectome_kalman_filter
 cat "$OUT/matched_topology_comparisons.csv" | grep connectome_temporal_difference
 cat "$OUT/matched_topology_comparisons.csv" | grep connectome_rescorla_wagner
@@ -156,7 +156,7 @@ cat "$OUT/matched_topology_comparisons.csv" | grep connectome_rescorla_wagner
 Plot trial-by-trial response curves to inspect acquisition/extinction dynamics:
 
 ```bash
-python scripts/plot_ccnlab_learning_curve.py "$OUT" \
+python scripts/figures/plot_ccnlab_learning_curve.py "$OUT" \
   --learner kalman \
   --max-trials 40 \
   --title "FlyWire MB Kalman Graph Features on CCNLab"
@@ -194,7 +194,7 @@ To run the same CCNLab model family with a FlyWire mushroom-body topology, use
 the FlyWire prepared matrix:
 
 ```bash
---matrix outputs/flywire_mushroom_body/adjacency_unsigned.npz \
+--matrix connectomes/flywire_mushroom_body/adjacency_unsigned.npz \
 --models connectome_seeded random_sparse degree_preserving_random weight_shuffle rescorla_wagner kalman_filter temporal_difference
 ```
 

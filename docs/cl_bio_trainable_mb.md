@@ -1,6 +1,6 @@
 # Trainable connectome CL system vs engineered baselines
 
-`scripts/run_cl_bio_trainable_mb.py` answers a direct follow-up to the frozen-reservoir
+`scripts/continual/run_cl_bio_trainable_mb.py` answers a direct follow-up to the frozen-reservoir
 study (`run_cl_bio_replay_mb.py`): *if we stop treating the connectome as a frozen
 reservoir and make it **trainable**, does its specific wiring finally matter — and can
 the trainable system match the best engineered CL method?*
@@ -61,9 +61,9 @@ Forgetting), so the numbers compare directly to the frozen-reservoir table in
 
 ```bash
 for SIGN in unsigned signed; do
-  python scripts/run_cl_bio_trainable_mb.py \
-    --matrix outputs/flywire_mushroom_body/adjacency_${SIGN}.npz \
-    --pool-assignments outputs/flywire_mushroom_body/pool_assignments.csv \
+  python scripts/continual/run_cl_bio_trainable_mb.py \
+    --matrix connectomes/flywire_mushroom_body/adjacency_${SIGN}.npz \
+    --pool-assignments connectomes/flywire_mushroom_body/pool_assignments.csv \
     --max-neurons 0 --seeds 0 1 2 \
     --tbio-epochs 30 --tbio-lr 1e-3 --tbio-ewc-lambda 3000 --replay-batch 128 \
     --mlp-hidden 1024 --mlp-epochs 30 --er-buffer-per-task 500 \

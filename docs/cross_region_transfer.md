@@ -44,13 +44,13 @@ ls /home/ubuntu/pathintegrationBPU/outputs/adjacency_unsigned.npz
 ls /home/ubuntu/pathintegrationBPU/outputs/graph_metadata.json
 ls /home/ubuntu/pathintegrationBPU/outputs/pool_assignments.csv
 
-ls /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz
-ls /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/graph_metadata.json
-ls /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/pool_assignments.csv
+ls /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz
+ls /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume/graph_metadata.json
+ls /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume/pool_assignments.csv
 ```
 
 If the CX artifacts live in a prior run folder such as
-`outputs/cx_polar_bump_seed0`, pass that folder with `--cx-dir`.
+`connectomes/cx_polar_bump_seed0`, pass that folder with `--cx-dir`.
 
 ## Run The Cross Conditions
 
@@ -64,10 +64,10 @@ source /home/ubuntu/pathintegrationBPU/.venv/bin/activate
 CROSS_OUT=/home/ubuntu/pathintegrationBPU/outputs/cross_region_transfer_seed0
 mkdir -p "$CROSS_OUT"
 
-python /home/ubuntu/pathintegrationBPU/scripts/run_cross_region_transfer.py \
+python /home/ubuntu/pathintegrationBPU/scripts/transfer/run_cross_region_transfer.py \
   --pairs cross \
   --cx-dir /home/ubuntu/pathintegrationBPU/outputs \
-  --mb-dir /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume \
+  --mb-dir /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume \
   --output-dir "$CROSS_OUT" \
   --device cuda \
   --seeds 0 \
@@ -91,10 +91,10 @@ source /home/ubuntu/pathintegrationBPU/.venv/bin/activate
 CROSS_OUT=/home/ubuntu/pathintegrationBPU/outputs/cross_region_transfer_all_seed0
 mkdir -p "$CROSS_OUT"
 
-python /home/ubuntu/pathintegrationBPU/scripts/run_cross_region_transfer.py \
+python /home/ubuntu/pathintegrationBPU/scripts/transfer/run_cross_region_transfer.py \
   --pairs all \
   --cx-dir /home/ubuntu/pathintegrationBPU/outputs \
-  --mb-dir /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume \
+  --mb-dir /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume \
   --output-dir "$CROSS_OUT" \
   --device cuda \
   --seeds 0 \

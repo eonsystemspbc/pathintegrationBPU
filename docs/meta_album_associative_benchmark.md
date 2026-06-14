@@ -62,10 +62,10 @@ source experiments/hemibrain_cx_bpu/.venv/bin/activate
 OUT=experiments/hemibrain_cx_bpu/outputs/meta_album_10way_1shot_dataset_split
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_meta_album_associative_benchmark.py \
   --dataset meta_album \
   --data-root /home/ubuntu/meta_album \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
   --device cuda \
   --split-mode dataset \
@@ -91,7 +91,7 @@ python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark
 Use explicit dataset names when you want full control:
 
 ```bash
-python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_meta_album_associative_benchmark.py \
   --dataset meta_album \
   --data-root /home/ubuntu/meta_album \
   --split-mode dataset \
@@ -109,10 +109,10 @@ This is the version most aligned with mushroom-body associative updating.
 OUT=experiments/hemibrain_cx_bpu/outputs/meta_album_10way_1shot_reversal5
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_meta_album_associative_benchmark.py \
   --dataset meta_album \
   --data-root /home/ubuntu/meta_album \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
   --device cuda \
   --split-mode dataset \
@@ -144,10 +144,10 @@ degree-corrected SBM before training:
 OUT=experiments/hemibrain_cx_bpu/outputs/meta_album_10way_1shot_reversal5_expand2
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_meta_album_associative_benchmark.py \
   --dataset meta_album \
   --data-root /home/ubuntu/meta_album \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
   --device cuda \
   --split-mode dataset \
@@ -189,7 +189,7 @@ to one GPU, writes per-job logs under `jobs/`, then merges the child
 OUT=experiments/hemibrain_cx_bpu/outputs/meta_album_10way_1shot_reversal5_expand2_sweep
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark meta_album \
   --output-dir "$OUT" \
   --gpus 0 1 2 3 \
@@ -198,7 +198,7 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
   -- \
   --dataset meta_album \
   --data-root /home/ubuntu/meta_album \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --split-mode dataset \
   --way 10 \
   --shot 1 \
@@ -229,7 +229,7 @@ of a failed child log is copied into the sweep log.
 To summarize a completed sweep without rerunning it:
 
 ```bash
-python scripts/summarize_associative_sweep.py "$OUT"
+python scripts/associative/summarize_associative_sweep.py "$OUT"
 cat "$OUT/leaderboard.csv"
 cat "$OUT/paired_comparisons.csv"
 ```
@@ -258,7 +258,7 @@ If you know the OpenML dataset IDs, the script can prefetch them and then scan
 the OpenML cache for `labels.csv` files:
 
 ```bash
-python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_meta_album_associative_benchmark.py \
   --dataset meta_album \
   --data-root /home/ubuntu/meta_album_openml \
   --openml-ids 12345 23456 34567 \
@@ -274,9 +274,9 @@ extract Meta-Album datasets yourself and pass `--dataset-dirs` or `--data-root`.
 This verifies the benchmark code without images or downloads:
 
 ```bash
-python experiments/hemibrain_cx_bpu/scripts/run_meta_album_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_meta_album_associative_benchmark.py \
   --dataset synthetic \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir /tmp/meta_album_assoc_smoke \
   --device cpu \
   --models hemibrain_seeded random_sparse gru nearest_support \

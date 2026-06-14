@@ -116,7 +116,7 @@ source /home/ec2-user/pathintegrationBPU/.venv/bin/activate
 OUT=/home/ec2-user/pathintegrationBPU/pathintegrationBPU/outputs/flywire_optic_lobe_flow_medium_3seed
 mkdir -p "$OUT"
 
-python scripts/run_optic_flow_benchmark.py \
+python scripts/flow/run_optic_flow_benchmark.py \
   --mode all \
   --output-dir "$OUT" \
   --cache-dir "$OUT" \
@@ -135,7 +135,7 @@ python scripts/run_optic_flow_benchmark.py \
 For a quick AWS smoke run before launching the full optic lobe:
 
 ```bash
-python scripts/run_optic_flow_benchmark.py \
+python scripts/flow/run_optic_flow_benchmark.py \
   --mode all \
   --output-dir "$OUT" \
   --cache-dir "$OUT" \
@@ -182,7 +182,7 @@ training.
 To inspect the generated input sequence and the corresponding target motion:
 
 ```bash
-python scripts/visualize_optic_flow_training_data.py \
+python scripts/flow/visualize_optic_flow_training_data.py \
   --output outputs/optic_flow_training_sample.mp4 \
   --difficulty medium \
   --seed 3 \
@@ -261,7 +261,7 @@ MATRIX=outputs/flywire_optic_lobe_flow_medium_3seed/adjacency_unsigned.npz
 OUT=/mnt/fast/outputs/flywire_optic_lobe_flow_medium_frozen_5seed
 mkdir -p "$OUT"
 
-python scripts/run_multi_gpu_associative_sweep.py \
+python scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark optic_flow \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -278,7 +278,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   --batch-size 64 \
   --log-every-seconds 30
 
-python scripts/summarize_associative_sweep.py "$OUT"
+python scripts/associative/summarize_associative_sweep.py "$OUT"
 cat "$OUT/leaderboard.csv"
 cat "$OUT/paired_comparisons.csv"
 ```

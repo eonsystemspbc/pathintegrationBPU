@@ -1,8 +1,8 @@
 # Optic-Flow Data-Efficiency Sweep
 
-`scripts/run_optic_flow_data_efficiency.py` measures how **sparse**, **pruned**,
+`scripts/flow/run_optic_flow_data_efficiency.py` measures how **sparse**, **pruned**,
 and **dense** connectome-derived recurrent models learn the optic-lobe
-optic-flow regression task (defined in `scripts/run_optic_flow_benchmark.py`)
+optic-flow regression task (defined in `scripts/flow/run_optic_flow_benchmark.py`)
 when only a limited fraction of the training data is available.
 
 ## What it compares
@@ -57,7 +57,7 @@ artifacts (produced by `run_optic_flow_benchmark.py --mode prepare`):
 Single run on one GPU:
 
 ```bash
-python scripts/run_optic_flow_data_efficiency.py \
+python scripts/flow/run_optic_flow_data_efficiency.py \
   --matrix outputs/flywire_optic_lobe/adjacency_unsigned.npz \
   --pool-assignments outputs/flywire_optic_lobe/pool_assignments.csv \
   --max-neurons 3000 --fractions 5 10 15 20 30 50 75 100 --seeds 0 1 2 \
@@ -67,7 +67,7 @@ python scripts/run_optic_flow_data_efficiency.py \
 Spread the (family × fraction × seed) grid across both GPUs:
 
 ```bash
-python scripts/run_optic_flow_data_efficiency.py \
+python scripts/flow/run_optic_flow_data_efficiency.py \
   --matrix outputs/flywire_optic_lobe/adjacency_unsigned.npz \
   --pool-assignments outputs/flywire_optic_lobe/pool_assignments.csv \
   --max-neurons 3000 --device-ids 0 1 \

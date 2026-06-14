@@ -1,6 +1,6 @@
 # Biological connectome CL system vs engineered baselines
 
-`scripts/run_cl_bio_replay_mb.py` is the constructive experiment: assemble the *full*
+`scripts/continual/run_cl_bio_replay_mb.py` is the constructive experiment: assemble the *full*
 biological continual-learning toolkit on the connectome substrate and benchmark it
 against a strong engineered method (experience replay). It answers two questions at
 once — *can a connectome-grounded model match the best non-biological CL method?* and,
@@ -57,9 +57,9 @@ comparison is on accuracy *and* resource cost.
 
 ```bash
 for SIGN in unsigned signed; do
-  python scripts/run_cl_bio_replay_mb.py \
-    --matrix outputs/flywire_mushroom_body/adjacency_${SIGN}.npz \
-    --pool-assignments outputs/flywire_mushroom_body/pool_assignments.csv \
+  python scripts/continual/run_cl_bio_replay_mb.py \
+    --matrix connectomes/flywire_mushroom_body/adjacency_${SIGN}.npz \
+    --pool-assignments connectomes/flywire_mushroom_body/pool_assignments.csv \
     --max-neurons 0 --seeds 0 1 2 \
     --plastic-epochs 40 --plastic-lr 0.5 --lambda-consol 2000 --replay-batch 128 \
     --mlp-hidden 1024 --mlp-epochs 30 --er-buffer-per-task 500 \

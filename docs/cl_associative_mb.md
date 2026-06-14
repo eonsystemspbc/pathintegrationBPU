@@ -1,6 +1,6 @@
 # Split-Odor continual associative learning on the MB
 
-`scripts/run_cl_associative_mb.py` is **experiment #1**: the continual-learning analog of
+`scripts/continual/run_cl_associative_mb.py` is **experiment #1**: the continual-learning analog of
 the central-complex ring-attractor test, run on the mushroom body's *native* modality.
 
 ## Why
@@ -55,9 +55,9 @@ result is reported at full MB and reproduced at cap-5000.
 ## Example
 
 ```bash
-python scripts/run_cl_associative_mb.py \
-  --matrix outputs/flywire_mushroom_body/adjacency_unsigned.npz \
-  --pool-assignments outputs/flywire_mushroom_body/pool_assignments.csv \
+python scripts/continual/run_cl_associative_mb.py \
+  --matrix connectomes/flywire_mushroom_body/adjacency_unsigned.npz \
+  --pool-assignments connectomes/flywire_mushroom_body/pool_assignments.csv \
   --max-neurons 0 --seeds 0 1 2 \
   --num-tasks 5 --odors-per-task 20 --odor-dim 100 \
   --train-per-odor 200 --epochs 30 --timesteps 10 \

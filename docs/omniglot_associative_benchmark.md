@@ -33,10 +33,10 @@ source experiments/hemibrain_cx_bpu/.venv/bin/activate
 OUT=experiments/hemibrain_cx_bpu/outputs/omniglot_20way_1shot_mb_seeded
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_omniglot_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_omniglot_associative_benchmark.py \
   --dataset omniglot \
   --download \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
   --device cuda \
   --models hemibrain_seeded random_sparse weight_shuffle gru nearest_support \
@@ -67,10 +67,10 @@ mushroom-body associative updating.
 OUT=experiments/hemibrain_cx_bpu/outputs/omniglot_20way_1shot_reversal10_mb_seeded
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_omniglot_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_omniglot_associative_benchmark.py \
   --dataset omniglot \
   --download \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
   --device cuda \
   --models hemibrain_seeded random_sparse weight_shuffle gru nearest_support \
@@ -100,10 +100,10 @@ Meta-Album:
 OUT=experiments/hemibrain_cx_bpu/outputs/omniglot_20way_1shot_reversal10_expand2
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_omniglot_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_omniglot_associative_benchmark.py \
   --dataset omniglot \
   --download \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$OUT" \
   --device cuda \
   --models hemibrain_seeded random_sparse weight_shuffle gru nearest_support \
@@ -139,7 +139,7 @@ Use the launcher to distribute independent model/seed jobs across GPUs:
 OUT=experiments/hemibrain_cx_bpu/outputs/omniglot_20way_1shot_reversal10_expand2_sweep
 mkdir -p "$OUT"
 
-python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark omniglot \
   --output-dir "$OUT" \
   --gpus 0 1 2 3 \
@@ -148,7 +148,7 @@ python experiments/hemibrain_cx_bpu/scripts/run_multi_gpu_associative_sweep.py \
   -- \
   --dataset omniglot \
   --download \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --way 20 \
   --shot 1 \
   --queries-per-class 1 \
@@ -182,7 +182,7 @@ write paired seed-level learning summaries:
 ```bash
 OUT=/mnt/fast/outputs/omniglot_5way_reversal5_flywire_mb_conv_connectome_5seed
 
-python scripts/plot_omniglot_learning_curve.py "$OUT" \
+python scripts/figures/plot_omniglot_learning_curve.py "$OUT" \
   --label "hemibrain_conv_fast_memory=FlyWire MB seeded" \
   --title "FlyWire MB Conv Fast Memory on Omniglot Reversal"
 ```
@@ -214,7 +214,7 @@ query labels are never part of the key computation.
 OUT=/mnt/fast/outputs/omniglot_5way_reversal2_fast_memory
 mkdir -p "$OUT"
 
-python scripts/run_multi_gpu_associative_sweep.py \
+python scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark omniglot \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -224,7 +224,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   -- \
   --dataset omniglot \
   --download \
-  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --way 5 \
   --shot 1 \
   --queries-per-class 2 \
@@ -260,7 +260,7 @@ episode scaffold can support higher accuracy.
 OUT=/mnt/fast/outputs/omniglot_5way_reversal5_rawpixels_protonet_5seed
 mkdir -p "$OUT"
 
-python scripts/run_multi_gpu_associative_sweep.py \
+python scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark omniglot \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -270,7 +270,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   -- \
   --dataset omniglot \
   --download \
-  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --way 5 \
   --shot 1 \
   --queries-per-class 4 \
@@ -315,7 +315,7 @@ strong visual scaffold.
 OUT=/mnt/fast/outputs/omniglot_5way_reversal5_conv_connectome_5seed
 mkdir -p "$OUT"
 
-python scripts/run_multi_gpu_associative_sweep.py \
+python scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark omniglot \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -325,7 +325,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   -- \
   --dataset omniglot \
   --download \
-  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --way 5 \
   --shot 1 \
   --queries-per-class 4 \
@@ -357,7 +357,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
 ### FlyWire MB 5-Way Reversal Results
 
 The current FlyWire MB sweep uses the same `hemibrain_conv_fast_memory` code
-path, but the matrix is `outputs/flywire_mushroom_body/adjacency_unsigned.npz`.
+path, but the matrix is `connectomes/flywire_mushroom_body/adjacency_unsigned.npz`.
 In figures and paper-facing tables, label this condition as **FlyWire MB
 seeded** rather than hemibrain-seeded.
 
@@ -440,7 +440,7 @@ the connectome itself is useful rather than merely an editable sparse mask:
 OUT=/mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_frozen_5seed
 mkdir -p "$OUT"
 
-python scripts/run_multi_gpu_associative_sweep.py \
+python scripts/associative/run_multi_gpu_associative_sweep.py \
   --benchmark omniglot \
   --output-dir "$OUT" \
   --gpus 0 1 \
@@ -450,7 +450,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
   -- \
   --dataset omniglot \
   --download \
-  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --way 5 \
   --shot 1 \
   --queries-per-class 2 \
@@ -474,7 +474,7 @@ python scripts/run_multi_gpu_associative_sweep.py \
 To summarize a completed sweep without rerunning it:
 
 ```bash
-python scripts/summarize_associative_sweep.py \
+python scripts/associative/summarize_associative_sweep.py \
   /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2
 cat /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2/leaderboard.csv
 cat /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2/paired_comparisons.csv
@@ -485,9 +485,9 @@ cat /mnt/fast/outputs/omniglot_5way_reversal2_fast_memory_v2/paired_comparisons.
 Use this to verify the pipeline without downloading Omniglot:
 
 ```bash
-python experiments/hemibrain_cx_bpu/scripts/run_omniglot_associative_benchmark.py \
+python experiments/hemibrain_cx_bpu/scripts/associative/run_omniglot_associative_benchmark.py \
   --dataset synthetic \
-  --matrix experiments/hemibrain_cx_bpu/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --matrix experiments/hemibrain_cx_bpu/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir /tmp/omniglot_assoc_smoke \
   --device cpu \
   --models hemibrain_seeded random_sparse gru nearest_support \

@@ -25,7 +25,7 @@ a ring attractor (the EB result: 21–27σ).
 
 ## Methodology — validated on a synthetic ground truth
 
-`scripts/run_cpg_oscillation.py`: frozen firing-rate RNN, constant DC drive into a `command` pool,
+`scripts/path/run_cpg_oscillation.py`: frozen firing-rate RNN, constant DC drive into a `command` pool,
 oscillation read from a `motor` pool as the **single-band spectral peak-prominence** (bounded
 narrowband score — broadband chaos does *not* count). Controls: connectome vs **class/sign-preserving
 shuffle** (permute W within each sign×pool block — matched E/I + degree, scrambled loop) and
@@ -50,7 +50,7 @@ So the test **works**: it detects a connectome-specific limit cycle and the matc
 
 ## Real-data result (MANC) — an honest NULL
 
-We extracted the real substrate (`scripts/extract_manc_cpg.py`) from neuPrint **MANC v1.2.1**: the
+We extracted the real substrate (`scripts/connectome/extract_manc_cpg.py`) from neuPrint **MANC v1.2.1**: the
 **T1 (front-leg, right) walking-premotor subnetwork** — DNg100 (command) + 245 recurrent
 leg-neuropil interneurons (intrinsic, ≥15 in+out synapses) + 91 T1 leg motor neurons, **338 neurons /
 535 signed edges, 77% inhibitory**, with genuine recurrence (105 IN↔IN + 154 MN↔MN edges). We then

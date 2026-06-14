@@ -1,7 +1,7 @@
 # Mushroom Body Associative Learning Benchmark
 
 This document describes the mushroom-body associative-learning benchmark in
-`scripts/run_mb_associative_learning.py`, how to reproduce the current run, and
+`scripts/associative/run_mb_associative_learning.py`, how to reproduce the current run, and
 how to interpret the outputs.
 
 The benchmark is designed to test whether the hemibrain mushroom-body
@@ -275,7 +275,7 @@ This benchmark assumes the repository has already prepared a hemibrain
 mushroom-body adjacency artifact:
 
 ```text
-/home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz
+/home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz
 ```
 
 From a fresh AWS shell:
@@ -309,8 +309,8 @@ source /home/ubuntu/pathintegrationBPU/.venv/bin/activate
 ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_seed0_60ep
 mkdir -p "$ASSOC_OUT"
 
-python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
-  --matrix /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+python /home/ubuntu/pathintegrationBPU/scripts/associative/run_mb_associative_learning.py \
+  --matrix /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$ASSOC_OUT" \
   --device cuda \
   --models hemibrain_seeded random_sparse weight_shuffle \
@@ -501,8 +501,8 @@ PY
 For a fast sanity check:
 
 ```bash
-python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
-  --matrix /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+python /home/ubuntu/pathintegrationBPU/scripts/associative/run_mb_associative_learning.py \
+  --matrix /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir /home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_smoke \
   --device cuda \
   --models hemibrain_seeded random_sparse \
@@ -523,7 +523,7 @@ and outputs work. It should not be interpreted scientifically.
 
 To ask whether the full MB ROI graph is too broad for the basic
 associative-learning task, use
-`scripts/run_pruned_mb_associative_comparison.py`. It creates a smaller
+`scripts/associative/run_pruned_mb_associative_comparison.py`. It creates a smaller
 recurrent matrix by keeping the sensory and output pools, then keeping internal
 nodes that sit on short directed sensory-to-output paths. The same standard
 `AssociativeRNN` task is run on both the unpruned and pruned matrices.
@@ -547,9 +547,9 @@ source .venv/bin/activate
 OUT=/mnt/fast/outputs/mb_associative_pruned_vs_unpruned_5seed
 mkdir -p "$OUT"
 
-python scripts/run_pruned_mb_associative_comparison.py \
-  --matrix outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
-  --pool-assignments outputs/hemibrain_mushroom_body_plume/pool_assignments.csv \
+python scripts/associative/run_pruned_mb_associative_comparison.py \
+  --matrix connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+  --pool-assignments connectomes/hemibrain_mushroom_body_plume/pool_assignments.csv \
   --output-dir "$OUT" \
   --device cuda \
   --models hemibrain_seeded random_sparse degree_preserving_random weight_shuffle \
@@ -598,8 +598,8 @@ To compare against dense recurrent baselines, add `hemibrain_dense` and/or
 ASSOC_OUT=/home/ubuntu/pathintegrationBPU/outputs/mb_associative_learning_dense_controls_seed0
 mkdir -p "$ASSOC_OUT"
 
-python /home/ubuntu/pathintegrationBPU/scripts/run_mb_associative_learning.py \
-  --matrix /home/ubuntu/pathintegrationBPU/outputs/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
+python /home/ubuntu/pathintegrationBPU/scripts/associative/run_mb_associative_learning.py \
+  --matrix /home/ubuntu/pathintegrationBPU/connectomes/hemibrain_mushroom_body_plume/adjacency_unsigned.npz \
   --output-dir "$ASSOC_OUT" \
   --device cuda \
   --models hemibrain_seeded hemibrain_dense random_sparse weight_shuffle random_dense \

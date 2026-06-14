@@ -54,4 +54,4 @@ sensorimotor tasks (flow/OL, path/CX)**, a **generic recurrence benefit** on ass
   machine — the **within-region** connectome-vs-random gap is the valid signal, not cross-region
   absolutes.
 
-Regenerate: `python scripts/plot_region_task_heatmap.py` (edit the `CELLS` dict as cells land).
+Regenerate: `python scripts/figures/plot_region_task_heatmap.py` (edit the `CELLS` dict as cells land).

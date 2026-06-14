@@ -6,7 +6,7 @@ odor-plume comparison analysis outputs.
 
 Included generated artifacts:
 
-- `outputs/hemibrain_mushroom_body_plume/`: hemibrain mushroom-body neuron,
+- `connectomes/hemibrain_mushroom_body_plume/`: hemibrain mushroom-body neuron,
   ROI, pool-assignment, graph-metadata, and adjacency artifacts used to build
   the BPU.
 - `outputs/odor_plume_mb_bpu/analysis/`: CSV summaries and reward plots from
@@ -28,7 +28,7 @@ Intentionally not included:
 
 ## Same-size seeded RNN comparison
 
-`scripts/run_mb_plume_seeded_rnn_comparison.sh` launches a stricter paired
+`scripts/plume/run_mb_plume_seeded_rnn_comparison.sh` launches a stricter paired
 comparison for the plume task:
 
 - `random_rnn`: dense RNN with hidden size equal to the hemibrain mushroom-body

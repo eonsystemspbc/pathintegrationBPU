@@ -36,14 +36,14 @@ between stored bindings) is free to matter.
   sequence `[k₁v₁…k₈v₈ | q₁…q₈]`, masked cross-entropy on query steps. Chance = 1/32 = 0.031.
 - Model: `MatrixEpisodicRNN` — `h_t = relu(W_rec·h_{t-1} + W_in·x_t + b)`, linear readout. `W_rec`
   **trainable, seeded from the connectome**; the recurrent topology is the only thing that differs
-  between conditions. `scripts/run_mqar_associative_recall.py`.
+  between conditions. `scripts/mqar/run_mqar_associative_recall.py`.
 - Substrate: **full MB, `--max-neurons 0`** (all 14,025 neurons, 574,660 edges). Using all neurons is
   load-bearing — see "what didn't work."
 - Controls: `random_sparse` (size + edge-count matched), `degree_preserving_random` (preserves the
   in/out-degree sequence, randomizes wiring), `weight_shuffle` (the MB graph with permuted weights —
   isolates topology vs weights). connectome/random at 5 seeds, degree/shuffle at 2 seeds, 200 epochs.
 - SOTA ceiling: a causal Transformer **+ a width-3 depthwise causal short-conv** reaches **1.0000** on
-  the identical episodes (`scripts/run_mqar_attention_baseline.py`); the "gather/shift primitive," not
+  the identical episodes (`scripts/mqar/run_mqar_attention_baseline.py`); the "gather/shift primitive," not
   raw attention, is what's load-bearing (plain 2- and 4-layer encoders plateau at ~0.29).
 
 ## Result
@@ -89,7 +89,7 @@ variance.
   connectome caps at ~0.53. The near-SOTA result requires the **real, complete** connectome (ρ≈0.95).
 - **The delta-rule store reaches full SOTA but washes out.** Bolting a content-addressed fast-weight
   store (DeltaNet-style key→value outer-product memory, the KC→MBON-plasticity analog;
-  `scripts/run_mqar_delta_store.py`) on top of the connectome reaches **1.0000** — but a **zeroed-core
+  `scripts/mqar/run_mqar_delta_store.py`) on top of the connectome reaches **1.0000** — but a **zeroed-core
   ablation** (W_rec := 0, no connectome) also reaches 1.0000, and at a tight key bottleneck all cores tie
   (key_dim=8: connectome 0.867 ≈ random 0.865 ≈ zeroed 0.863). The store is **substrate-agnostic**: it,
   not the connectome, reaches SOTA. So the connectome's *load-bearing* win is the **vanilla** 0.93 — not
@@ -98,13 +98,13 @@ variance.
 ## Provenance / reproduce
 
 ```
-python scripts/run_mqar_associative_recall.py \
-  --matrix outputs/flywire_mushroom_body/adjacency_unsigned.npz \
+python scripts/mqar/run_mqar_associative_recall.py \
+  --matrix connectomes/flywire_mushroom_body/adjacency_unsigned.npz \
   --models hemibrain_seeded random_sparse --max-neurons 0 \
   --vocab-size 32 --num-pairs 8 --num-queries 8 \
   --seeds 0 1 --epochs 200 --train-batches 150 --batch-size 128 --lr 1e-3 --patience 200 \
   --output-dir outputs/mqar_fullMB_D8
-python scripts/plot_mqar_results.py /tmp/mqar_fullMB.log
+python scripts/figures/plot_mqar_results.py /tmp/mqar_fullMB.log
 ```
 
 Numbers: `outputs/mqar_fullMB_D8/summary.json` + `metrics_by_seed.csv` + `learning_curves.json`.
