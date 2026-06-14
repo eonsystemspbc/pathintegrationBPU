@@ -13,6 +13,14 @@ measure the connectome's advantage over its own random null.
 connectome better**. **Black box = native/matched task** (diagonal). **✗ = foreign task, null.** Flow
 uses **REAL DSEC event-camera flow** (synthetic flow doesn't discriminate by region).
 
+## Publication figures
+- **[Figure 1](figure1_alignment_matrix.png)** — the region × task alignment matrix (clean).
+- **[Figure 2](figure2_cx_path_controls.png)** — the CX → path control hierarchy: the advantage is
+  the central complex's *specific wiring topology* (connectome ≈ `weight_shuffle` beat random;
+  degree-matched random is *worse* than random).
+
+Regenerate both: `python scripts/figures/make_paper_figures.py`.
+
 ## What the grid shows
 - **Native diagonal carries the advantage:** optic lobe → flow **+12.0%**, central complex → path
   **+7.8%**, mushroom body → MQAR **+10.6%** — each region beats its random null on its own task.
