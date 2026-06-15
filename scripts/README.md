@@ -5,6 +5,17 @@ from `src/`. Several scripts cross-import each other (e.g. the continual-learnin
 `run_mb_associative_learning`); this works because each topic subdir is added to `sys.path` at
 import time. Connectome matrices live in `connectomes/`; raw outputs go to `outputs/runs/`.
 
+**One-shot grid driver — `run_region_task_grid.py`** reproduces the *entire* region × task grid
+(3 regions × {flow, MQAR, path} on/off the diagonal, plus the foreign tasks seq-MNIST & arithmetic)
+by calling the per-task harnesses below, each with its matched controls + seeds:
+```
+python scripts/run_region_task_grid.py --dry-run        # preview every command, run nothing
+python scripts/run_region_task_grid.py --tasks mqar path seq_mnist arithmetic   # skip slow DSEC flow
+python scripts/run_region_task_grid.py --max-neurons 7349   # size-matched grid (all regions @7349)
+python scripts/run_region_task_grid.py --quick          # tiny budgets to smoke-test the wiring
+```
+Results land in `outputs/runs/`; then `python scripts/figures/plot_region_task_heatmap.py`.
+
 | subdir | purpose | key scripts |
 |---|---|---|
 | **`connectome/`** | build/select connectome substrates | `select_connectome.py`, `make_ol_subsamples.py`, `extract_manc_cpg.py` |
