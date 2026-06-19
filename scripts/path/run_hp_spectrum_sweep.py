@@ -59,8 +59,16 @@ MODELS_DEFAULT = (
     "weight_shuffle",
     "spectrum_full",
     "spectrum_topk",
-    "no_recurrence",
 )
+
+
+def train_mode_for(model_name: str, base_mode: str) -> str:
+    """Per-model recurrent-training mode. The connectome and its sparse controls train their
+    real synaptic weights on the fixed wiring graph ('observed'); the dense spectrum surrogates
+    have no sparse support to preserve, so they train as a dense recurrent matrix ('dense')."""
+    if base_mode == "frozen":
+        return "frozen"
+    return "dense" if model_name.startswith("spectrum") else base_mode
 LRS_DEFAULT = (3e-4, 1e-3, 3e-3, 1e-2, 3e-2)
 RHOS_OAT = (0.90, 0.99)        # 0.95 is the center (covered by the LR axis)
 WDS_OAT = (1e-5, 1e-4)         # 0.0 is the center
@@ -111,6 +119,10 @@ def main(argv=None):
     p.add_argument("--val-count", type=int, default=2000)
     p.add_argument("--test-count", type=int, default=2000)
     p.add_argument("--batch-size", type=int, default=64)
+    p.add_argument("--train-recurrent", default="observed", choices=("frozen", "observed", "dense"),
+                   help="recurrent training regime: observed=train connectome synapse weights on the "
+                        "fixed wiring graph (entire model learns, connectome as prior); frozen=reservoir; "
+                        "dense=full NxN trainable. Spectrum surrogates always use dense.")
     p.add_argument("--prep-only", action="store_true", help="generate data splits then exit (run once before sharding)")
     a = p.parse_args(argv)
 
@@ -146,7 +158,7 @@ def main(argv=None):
     my_groups = [g for idx, g in enumerate(groups) if idx % shard_n == shard_i]
     all_cells = build_cells(a.models, a.seeds, a.lrs)
     print(f"[shard {shard_i}/{shard_n}] device={device} groups={len(my_groups)}/{len(groups)} "
-          f"total_cells={len(all_cells)}", flush=True)
+          f"total_cells={len(all_cells)} train_recurrent={a.train_recurrent}", flush=True)
 
     results_csv = out / f"results_shard{shard_i}.csv"
     written = 0
@@ -171,10 +183,11 @@ def main(argv=None):
                 cell_matrix = base_for_cells
             else:
                 cell_matrix = base_for_cells * np.float32(cell["rho"] / CENTER_RHO)
+            tr_mode = train_mode_for(model_name, a.train_recurrent)
             try:
                 model = _make_model(
                     graph, model_name, seed, device, spec,
-                    recurrent_runtime="auto", train_recurrent="frozen",
+                    recurrent_runtime="auto", train_recurrent=tr_mode,
                     rho_target=None, k_override=cell["K"], spectrum_k=16,
                     matrix_override=cell_matrix,
                 )
@@ -182,6 +195,7 @@ def main(argv=None):
                     seeds=(seed,), epochs=a.epochs, batch_size=a.batch_size, num_workers=2,
                     lr=cell["lr"], patience=a.patience, grad_clip=1.0, device=a.device,
                     weight_decay=cell["wd"], log_every_seconds=120.0,
+                    train_recurrent=tr_mode,
                 )
                 hist = train_one_model(model, train_loader, val_loader, cfg, device,
                                        model_name=model_name, seed=seed, task_spec=spec)
@@ -190,6 +204,7 @@ def main(argv=None):
                                           log_every_seconds=120.0)
                 row = {
                     "axis": cell["axis"], "model": model_name, "seed": seed,
+                    "train_recurrent": tr_mode,
                     "lr": cell["lr"], "rho": cell["rho"], "wd": cell["wd"],
                     "K": (cell["K"] if cell["K"] is not None else int(getattr(model, "K", 0))),
                     "best_val_loss": float(hist["best_val_loss"]),
