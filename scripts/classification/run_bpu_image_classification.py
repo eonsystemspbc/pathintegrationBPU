@@ -15,7 +15,8 @@ and for sample efficiency is established elsewhere in this repo.
 
 Biological wiring of the task:
   * pixels are projected (trainable W_in) into the connectome's *sensory* pool
-    (lamina/photoreceptor-side input neurons) only;
+    (the optic-lobe input-flow-biased ROI pool, a proxy for lamina/photoreceptor-side
+    inputs -- not type-verified; see docs/results/pool_fidelity/) only;
   * BPU dynamics run for T timesteps with the (constant) input current;
   * classification logits are read (trainable readout) from the *output* pool's
     final hidden state.
@@ -390,7 +391,7 @@ def enumerate_jobs(tasks, models, fractions, seeds) -> list[Job]:
 
 def pool_aware_truncate(matrix, pools, max_neurons, force_pools=("sensory",)):
     """Cap to max_neurons, force-keeping every neuron in ``force_pools`` (e.g. the
-    photoreceptor/sensory inputs), filling the remaining budget by top activity."""
+    input-flow-biased sensory pool), filling the remaining budget by top activity."""
     matrix = matrix.tocsr()
     n = int(matrix.shape[0])
     if max_neurons <= 0 or n <= max_neurons:

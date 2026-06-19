@@ -14,7 +14,7 @@ code**. This script models that mechanism and asks whether it changes the story.
 ```
 image x (z-scored)
   → [FIXED] random retina  W_enc : input → sensory pool      (shared by every model & seed)
-  → [FIXED] expansion      M[internal, sensory] : PN → KC    (connectome | random | shuffle)
+  → [FIXED] expansion      M[internal, sensory] : input→internal (≈PN→KC*)  (connectome | random | shuffle)
   → relu → k-WTA (keep top --k-frac, APL global inhibition)
          → homeostatic per-KC input normalization → L2 normalize   ⇒ sparse KC code
   → [PLASTIC] readout      W_out : KC → 2-logit shared head   (the ONLY thing that learns)
@@ -78,9 +78,14 @@ for SIGN in unsigned signed; do
 done
 ```
 
-The MB substrate has sensory(PN)=1089, internal(KC)=11518, output(MBON)=1418; the KC
+The MB substrate has sensory=1089, internal=11518, output=1418; the KC
 expansion uses the full 11,518-unit internal pool (`--max-neurons 0`). Both runs
 together finish in ~2 minutes.
+
+\* The sensory/internal/output pools are an ROI-flow heuristic (`src/pools.py`) used as
+PN/KC/MBON proxies — the FlyWire MB export has no cell-type labels. The correspondence is
+type-verified on the hemibrain MB (internal≈Kenyon cells, output≈majority MBON); see
+[`docs/results/pool_fidelity/`](results/pool_fidelity/).
 
 ## Outputs
 

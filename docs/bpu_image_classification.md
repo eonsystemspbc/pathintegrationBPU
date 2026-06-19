@@ -10,7 +10,9 @@ connectome's value lives elsewhere — fly-native tasks and sample efficiency.
 ## BPU architecture (as implemented)
 
 - Pixels are flattened and projected by a trainable `W_in` **into the sensory
-  pool only** (the optic-lobe lamina/photoreceptor-side input neurons).
+  pool only** (the optic-lobe *input-flow-biased* pool — an ROI-flow proxy for the
+  lamina/photoreceptor-side inputs, not a type-verified photoreceptor set, since the
+  FlyWire OL export carries no cell types; see `docs/results/pool_fidelity/`).
 - The connectome adjacency is the recurrent matrix `W_rec`; dynamics run for
   `--timesteps` steps with the (constant) input current: `h ← relu(W_rec·h + W_in·x + b)`.
 - A trainable linear readout maps the **output pool's** final hidden state to
@@ -36,7 +38,7 @@ The FlyWire optic-lobe connectome (`run_optic_flow_benchmark.py --mode prepare`)
 is used for these vision tasks. A dense `N×N` matrix at the full `N = 96,816` is
 infeasible, so `--max-neurons` caps the network (default 3000–5000); the cap is
 applied identically to all models so `N` is matched. The cap **force-keeps every
-sensory neuron** (so all photoreceptor inputs survive) and fills the remaining
+sensory neuron** (so the entire input-flow-biased sensory pool survives) and fills the remaining
 budget by node activity. Sparse/pruned families train at `--lr` (default 1e-3);
 the dense family trains at `--dense-lr` (default 1e-4).
 

@@ -47,10 +47,17 @@ connectome-vs-random matrix as the CX structure test. Controls are regenerated f
 
 ## Substrate
 
-FlyWire MB. `--max-neurons 0` uses the full graph (N=14025; sensory 1089 / internal/KC
-11518 / output/MBON 1418); a cap force-keeps sensory and fills by activity (note: caps
+FlyWire MB. `--max-neurons 0` uses the full graph (N=14025; sensory 1089 / internal
+11518 / output 1418); a cap force-keeps sensory and fills by activity (note: caps
 below the sensory count drop the output pool — use `0` or a cap ≥ ~2000). The headline
 result is reported at full MB and reproduced at cap-5000.
+
+These sensory/internal/output pools are an **ROI-flow heuristic** (`src/pools.py`), not
+cell-type labels — the FlyWire MB export has no `type` annotations. They are used as
+PN/KC/MBON *proxies*; on the type-annotated hemibrain MB the same heuristic recovers the
+expected classes (internal≈Kenyon cells, output≈majority MBON, sensory≈dopaminergic +
+projection-neuron input). See [`docs/results/pool_fidelity/`](results/pool_fidelity/). The
+proxy labeling does not affect the connectome-vs-control comparison, which shares the same pools.
 
 ## Example
 

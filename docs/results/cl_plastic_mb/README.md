@@ -4,7 +4,8 @@ Can we model the mushroom body *faithfully* — with **plastic, dopamine-gated K
 synapses on a sparse Kenyon-cell code**, instead of a frozen adjacency matrix trained by
 backprop — and does that change the continual-learning story? Split-CIFAR-10
 domain-incremental, single shared 2-logit parity head, FlyWire MB substrate
-(PN=1089 / KC=11518 / MBON=1418), 3 seeds. Method: `docs/cl_plastic_mb.md`.
+(ROI-flow pools 1089 / 11518 / 1418, used as PN/KC/MBON proxies — type-verified on the
+hemibrain MB, see [`../pool_fidelity/`](../pool_fidelity/)), 3 seeds. Method: `docs/cl_plastic_mb.md`.
 
 ![unsigned](cl_plastic_mb_unsigned.png)
 
