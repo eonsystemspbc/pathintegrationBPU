@@ -465,25 +465,78 @@ def _matrix_fingerprint(matrix: sparse.csr_matrix) -> str:
 
 
 def _real_schur_cached(
-    matrix: sparse.csr_matrix, schur_cache: "Path | None" = None
-) -> np.ndarray:
-    """Real Schur form T of the (densified) matrix: A = Z T Z^T, eigenvalues on T's
-    quasi-diagonal. T is seed-independent, so we cache it to disk: the per-seed surrogate
-    then only needs a cheap random rotation."""
+    matrix: sparse.csr_matrix, schur_cache: "Path | None" = None, want_z: bool = False
+):
+    """Real Schur factors of the (densified) matrix: A = Z T Z^T, with Z orthogonal (the Schur
+    basis) and T quasi-upper-triangular (eigenvalues on its quasi-diagonal). Both are
+    seed-independent, so they are cached to disk. Returns T by default, or (T, Z) when want_z."""
+    fp = _matrix_fingerprint(matrix)
+    t_file = schur_cache / f"schurT_{fp}.npy" if schur_cache is not None else None
+    z_file = schur_cache / f"schurZ_{fp}.npy" if schur_cache is not None else None
+    if t_file is not None and t_file.exists() and (not want_z or z_file.exists()):
+        t_mat = np.load(t_file)
+        return (t_mat, np.load(z_file)) if want_z else t_mat
     dense = (
         matrix.toarray().astype(np.float64)
         if sparse.issparse(matrix)
         else np.asarray(matrix, dtype=np.float64)
     )
-    if schur_cache is not None:
-        cache_file = schur_cache / f"schurT_{_matrix_fingerprint(matrix)}.npy"
-        if cache_file.exists():
-            return np.load(cache_file)
-    t_mat, _ = scipy_linalg.schur(dense, output="real")
+    t_mat, z_mat = scipy_linalg.schur(dense, output="real")
     if schur_cache is not None:
         schur_cache.mkdir(parents=True, exist_ok=True)
-        np.save(schur_cache / f"schurT_{_matrix_fingerprint(matrix)}.npy", t_mat)
-    return t_mat
+        np.save(t_file, t_mat)
+        np.save(z_file, z_mat)
+    return (t_mat, z_mat) if want_z else t_mat
+
+
+def eigenvector_matched_control_matrix(
+    matrix: sparse.csr_matrix,
+    seed: int,
+    rho_target: float = RHO_TARGET,
+    max_dense_n: int = 20_000,
+    schur_cache: "Path | None" = None,
+) -> sparse.csr_matrix:
+    """Eigenvector-matched surrogate -- the DUAL of spectrum_matched_control_matrix.
+
+    spectrum_full keeps the connectome's eigenvalues and RANDOMIZES the directions (V T V^T);
+    this keeps the connectome's Schur-vector BASIS Z (the orthogonal directions spanning its
+    invariant subspaces, plus its non-normal coupling) and RANDOMIZES the eigenvalues:
+        surrogate = Z T_rand Z^T,
+    where T_rand has the connectome's strictly-upper coupling but random eigenvalues on its
+    diagonal blocks (rescaled to rho_target). Answers: does keeping the connectome's directional
+    structure -- with random eigenvalues -- recover the advantage that matching the eigenvalues
+    (with random directions) did not? Dense; requires a dense Schur (guarded by max_dense_n).
+    """
+    n = int(matrix.shape[0])
+    if n > max_dense_n:
+        raise ConnectomePreparationError(
+            f"eigenvector-matched control needs a dense Schur; N={n} exceeds max_dense_n={max_dense_n}."
+        )
+    t_mat, z_mat = _real_schur_cached(matrix, schur_cache=schur_cache, want_z=True)
+    rng = np.random.default_rng(seed)
+    t_rand = np.triu(t_mat).astype(np.float64)  # keep the strictly-upper coupling
+    # randomize the eigenvalues: 1x1 real blocks, and 2x2 blocks (complex pairs) on the diagonal.
+    # eig(Z T_rand Z^T) = eig(T_rand) = the diagonal blocks, so we track the exact spectral radius
+    # from the blocks we assign (power iteration overestimates it for this non-normal matrix).
+    scale = float(np.std(np.diag(t_mat))) or 1.0
+    max_mag, i = 1e-12, 0
+    while i < n:
+        if i + 1 < n and abs(t_mat[i + 1, i]) > 1e-12:  # 2x2 block (complex eigenvalue pair p +/- i*sqrt(qr))
+            p = rng.normal(0.0, scale)
+            q, r = rng.uniform(0.2, 1.0) * scale, rng.uniform(0.2, 1.0) * scale
+            t_rand[i, i], t_rand[i, i + 1] = p, q
+            t_rand[i + 1, i], t_rand[i + 1, i + 1] = -r, p
+            max_mag = max(max_mag, float(np.hypot(p, np.sqrt(q * r))))
+            i += 2
+        else:  # 1x1 block (real eigenvalue)
+            val = rng.normal(0.0, scale)
+            t_rand[i, i] = val
+            max_mag = max(max_mag, abs(val))
+            i += 1
+    t_rand *= rho_target / max_mag  # rescale so the surrogate's spectral radius == rho_target exactly
+    z32 = z_mat.astype(np.float32)
+    surrogate = (z32 @ t_rand.astype(np.float32)) @ z32.T
+    return sparse.csr_matrix(surrogate)
 
 
 def spectrum_matched_control_matrix(

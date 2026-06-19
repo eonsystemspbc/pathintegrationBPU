@@ -32,6 +32,7 @@ from .connectome import (
     degree_preserving_shuffle_matrix,
     load_prepared_graph,
     pool_indices,
+    eigenvector_matched_control_matrix,
     power_iteration_radius,
     random_control_matrix,
     spectrum_matched_control_matrix,
@@ -120,6 +121,17 @@ def _control_matrix(
     spectrum_k: int = 16,
     schur_cache: "Path | None" = None,
 ) -> sparse.csr_matrix:
+    if name == "eigvec_matched":
+        start = time.perf_counter()
+        tqdm.write(f"control-build-start model=eigvec_matched seed={seed} N={primary.shape[0]} edges={primary.nnz}")
+        matrix = eigenvector_matched_control_matrix(
+            primary, seed=50_000 + seed, rho_target=RHO_TARGET, schur_cache=schur_cache,
+        )
+        tqdm.write(
+            f"control-build-done model=eigvec_matched edges={matrix.nnz} "
+            f"elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return matrix
     if name == "spectrum_full" or name.startswith("spectrum_top"):
         mode = "full" if name == "spectrum_full" else "topk"
         k = spectrum_k
@@ -249,8 +261,8 @@ def _make_model(
     runtime = _select_recurrent_runtime(
         graph, recurrent_runtime, device, train_recurrent=train_recurrent
     )
-    if model_name == "spectrum_full" or model_name.startswith("spectrum_top"):
-        runtime = "dense"  # spectrum-matched surrogates are dense N x N
+    if model_name == "spectrum_full" or model_name.startswith("spectrum_top") or model_name == "eigvec_matched":
+        runtime = "dense"  # spectrum/eigenvector-matched surrogates are dense N x N
     n = int(graph.metadata["N"])
     if train_recurrent == "dense" and n > 20_000:
         raise RuntimeError(
