@@ -36,6 +36,23 @@ neurons via a free learned W_in, and ego-motion is read by a dense linear layer 
 there is no privileged "sensory" site; the "retinotopic lattice" is a stimulus-side description, not
 wiring. It's a substrate/reservoir comparison. The input *modality* is right; the input *site* is not.
 
-**Bottom line.** Output modalities are biologically appropriate for all three regions, and the input
-*site* is genuinely input-side for the CX, a validated proxy for the MB, and not pool-gated for the
-OL. Across the board, "sensory" means "extra-regional-input-biased," not "sensory-organ afferent."
+### Optic lobe — made faithful  (`--bio-io`)
+![OL faithful](io_OL_faithful.png)
+The OL can now be made faithful. The default ROI-flow "sensory" heuristic fails for the OL because the
+real input is light on **photoreceptors**, which are *sources* in the connectome (they send synapses,
+receive ~none) — so "receives input from outside the region" can't find them. Instead,
+`scripts/connectome/assign_optic_lobe_io.py` identifies the I/O cells from the OL's **retinotopic layer
+stack + graph source/sink structure** (no cell types needed):
+- **INPUT pool = 9,319 neurons**, **97% of their synapses in the lamina (LA)** — the
+  photoreceptor→lamina visual-input layer (incl. 3,305 photoreceptor-like sources).
+- **OUTPUT pool = 2,193 neurons**, **62% lobula plate (LOP)** + projecting to the central brain — the
+  lobula-plate tangential cells (HS/VS = ego-motion) + lobula columnar (LC/LPLC) projection neurons.
+
+`run_optic_flow_benchmark.py --bio-io` then injects the visual input ONLY into the lamina pool and reads
+ego-motion ONLY from the lobula-plate pool (pool-gated, like the CX/MB trainer), instead of a free
+projection over all neurons. So the input now enters the real visual-input cells and the output is read
+from the real ego-motion cells — *some* genuine matching, even without cell-type labels.
+
+**Bottom line.** Output modalities are biologically appropriate for all three regions. The input *site*
+is genuinely input-side for the CX, a validated proxy for the MB, and — with `--bio-io` — now the real
+lamina/photoreceptor layer for the OL (output read from the lobula-plate ego-motion cells).

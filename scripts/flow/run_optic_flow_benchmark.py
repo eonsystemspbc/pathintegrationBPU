@@ -152,6 +152,7 @@ class TrainSpec:
     recurrent_prior_l2: float
     device: str
     log_every_seconds: float
+    bio_io_csv: "str | None" = None  # if set, pool-gate I/O to the lamina/lobula-plate pools
 
 
 @dataclass(frozen=True)
@@ -358,6 +359,8 @@ class SparseOpticFlowRNN(nn.Module):
         state_clip: float,
         seed: int,
         freeze_recurrent: bool = False,
+        input_indices: "np.ndarray | None" = None,
+        output_indices: "np.ndarray | None" = None,
     ) -> None:
         super().__init__()
         recurrent = recurrent.astype(np.float32).tocoo()
@@ -368,17 +371,27 @@ class SparseOpticFlowRNN(nn.Module):
         self.input_dim = int(input_dim)
         self.output_dim = int(output_dim)
         self.state_clip = float(state_clip)
+        # Biological (pool-gated) I/O: inject the visual input ONLY into the lamina/photoreceptor
+        # INPUT pool and read ego-motion ONLY from the lobula-plate OUTPUT pool, instead of a free
+        # projection over all N neurons. When indices are None, fall back to the free-over-all-N model.
+        self.pool_gated = input_indices is not None and output_indices is not None
+        if self.pool_gated:
+            self.register_buffer("input_indices", torch.as_tensor(np.asarray(input_indices), dtype=torch.long))
+            self.register_buffer("output_indices", torch.as_tensor(np.asarray(output_indices), dtype=torch.long))
+            n_in, n_out = int(self.input_indices.numel()), int(self.output_indices.numel())
+        else:
+            n_in, n_out = self.N, self.N
         generator = torch.Generator(device="cpu")
         generator.manual_seed(int(seed))
         scale_in = 1.0 / math.sqrt(max(self.input_dim, 1))
-        scale_out = 1.0 / math.sqrt(max(self.N, 1))
+        scale_out = 1.0 / math.sqrt(max(n_out, 1))
         self.W_in = nn.Parameter(
-            torch.empty(self.N, self.input_dim, dtype=torch.float32).uniform_(
+            torch.empty(n_in, self.input_dim, dtype=torch.float32).uniform_(
                 -scale_in, scale_in, generator=generator
             )
         )
         self.b_rec = nn.Parameter(torch.zeros(self.N, dtype=torch.float32))
-        self.readout = nn.Linear(self.N, self.output_dim)
+        self.readout = nn.Linear(n_out, self.output_dim)
         nn.init.uniform_(self.readout.weight, -scale_out, scale_out)
         nn.init.zeros_(self.readout.bias)
         indices = np.vstack([recurrent.row, recurrent.col]).astype(np.int64)
@@ -413,11 +426,17 @@ class SparseOpticFlowRNN(nn.Module):
         ).coalesce()
         outputs: list[torch.Tensor] = []
         for t in range(T):
-            h = torch.sparse.mm(W, h.t()).t() + inputs[:, t, :] @ self.W_in.t() + self.b_rec
-            h = torch.relu(h)
+            rec = torch.sparse.mm(W, h.t()).t() + self.b_rec
+            injection = inputs[:, t, :] @ self.W_in.t()
+            if self.pool_gated:
+                rec = rec.index_add(1, self.input_indices, injection)  # input -> lamina pool only
+            else:
+                rec = rec + injection
+            h = torch.relu(rec)
             if self.state_clip > 0:
                 h = torch.clamp(h, max=self.state_clip)
-            outputs.append(self.readout(h))
+            read = h.index_select(1, self.output_indices) if self.pool_gated else h  # read lobula-plate pool
+            outputs.append(self.readout(read))
         return torch.stack(outputs, dim=1)
 
 
@@ -798,6 +817,17 @@ def train_one_model(
     log_event(
         f"model-build-matrix-done model={model_name} seed={seed} edges={recurrent.nnz} elapsed={_format_seconds(time.monotonic() - build_start)}"
     )
+    in_idx = out_idx = None
+    if train_spec.bio_io_csv:
+        bio = pd.read_csv(train_spec.bio_io_csv)
+        if int(bio["index"].max()) >= recurrent.shape[0]:
+            raise ValueError(
+                f"--bio-io needs the FULL optic-lobe matrix (N={int(bio['index'].max())+1}); "
+                f"got N={recurrent.shape[0]}. Do not combine --bio-io with --max-neurons."
+            )
+        in_idx = bio.loc[bio["pool"] == "input", "index"].to_numpy(np.int64)
+        out_idx = bio.loc[bio["pool"] == "output", "index"].to_numpy(np.int64)
+        log_event(f"bio-io pool-gated input_neurons={in_idx.size} output_neurons={out_idx.size}")
     model = SparseOpticFlowRNN(
         recurrent=recurrent,
         input_dim=spec.input_dim,
@@ -805,6 +835,8 @@ def train_one_model(
         state_clip=train_spec.state_clip,
         seed=seed + 1_000,
         freeze_recurrent=train_spec.freeze_recurrent,
+        input_indices=in_idx,
+        output_indices=out_idx,
     ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=train_spec.lr)
     rng = np.random.default_rng(seed + 12345)
@@ -1181,6 +1213,14 @@ def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
         default=0.0,
         help="L2 penalty weight that keeps trainable recurrent weights near their initialization.",
     )
+    parser.add_argument(
+        "--bio-io",
+        action="store_true",
+        help="Biological pool-gated I/O: inject the visual input ONLY into the lamina/photoreceptor "
+             "input pool and read ego-motion ONLY from the lobula-plate output pool, instead of a "
+             "free projection over all neurons. Needs the FULL optic-lobe matrix and "
+             "connectomes/<dir>/bio_io_assignments.csv (scripts/connectome/assign_optic_lobe_io.py).",
+    )
     parser.add_argument("--device", choices=("auto", "cuda", "cpu"), default="auto")
     parser.add_argument("--log-every-seconds", type=float, default=30.0)
     args = parser.parse_args(argv)
@@ -1243,6 +1283,11 @@ def train_spec_from_args(args: argparse.Namespace) -> TrainSpec:
         recurrent_prior_l2=float(args.recurrent_prior_l2),
         device=args.device,
         log_every_seconds=args.log_every_seconds,
+        bio_io_csv=(
+            str(Path(args.matrix).parent / "bio_io_assignments.csv")
+            if getattr(args, "bio_io", False) and args.matrix is not None
+            else None
+        ),
     )
 
 

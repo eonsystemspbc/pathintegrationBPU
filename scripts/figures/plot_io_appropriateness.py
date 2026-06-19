@@ -176,6 +176,31 @@ def main():
                  "comparison, not a biological sensory->motor mapping. The input MODALITY (hex luminance "
                  "-> ego-motion) is right; the input SITE is not.")))
 
+    # FAITHFUL optic lobe (--bio-io pool-gated): input -> lamina/photoreceptor, output -> lobula plate
+    bio_csv = ROOT / "connectomes" / "flywire_optic_lobe_bpu" / "bio_io_assignments.csv"
+    if bio_csv.exists():
+        bio = pd.read_csv(bio_csv)
+        n_phot = int((bio.assignment_reason == "photoreceptor_source").sum())
+        n_lam = int((bio.assignment_reason == "lamina_dominant").sum())
+        n_oo = int((bio.pool == "output").sum())
+        la_mean = round(100 * float(bio[bio.pool == "input"]["la_frac"].mean()))
+        lop_mean = round(100 * float(bio[bio.pool == "output"]["lop_frac"].mean()))
+        draw_region(dict(
+            title="Optic lobe  →  optic flow   (FAITHFUL: --bio-io pool-gated)",
+            input="61-d hex-lattice\nluminance (vision)", output="ego-motion\n(yaw / fwd / lateral)",
+            conn_title="OL connectome\nN=96,816", recur="recurrent W_rec", n_sens=n_phot + n_lam, n_out=n_oo,
+            sens_seg=dict(N=n_phot + n_lam, canon_pct=la_mean, segs=[
+                ("photoreceptor\nsources", n_phot, C_SENS), ("lamina cells\n(LA-dominant)", n_lam, C_FB)]),
+            out_seg=dict(N=n_oo, canon_pct=lop_mean, segs=[
+                ("lobula-plate projection\n(LPTC/LC → central brain)", n_oo, C_OUTP)]),
+            fname="io_OL_faithful.png",
+            verdict=("FAITHFUL pool-gated I/O (`--bio-io`): input now enters the real "
+                     f"lamina/photoreceptor visual-input layer ({la_mean}% of those neurons' synapses are "
+                     f"in the lamina; incl. {n_phot} photoreceptor sources), and ego-motion is read from "
+                     f"the lobula-plate output cells ({lop_mean}% lobula-plate, projecting to the central "
+                     "brain = the LPTC/LC ego-motion neurons). Identified from the retinotopic layer stack "
+                     "+ graph source/sink structure — no cell types needed.")))
+
     mbf = load_pools("flywire_mushroom_body")
     hb = load_pools("hemibrain_mushroom_body_plume")
     hb_s = segments(hb, "sensory", r"PN|PAM|PPL", None, "PN + PAM dopaminergic\n(odor + reinforcement input)")
