@@ -64,12 +64,14 @@ def is_spectrum(name):
     return name == "spectrum_full" or name.startswith("spectrum_top")
 
 
-def build_cells(models, seeds, lrs):
+def build_cells(models, seeds, lrs, lr_only=False):
     cells = []
     for m in models:
         for s in seeds:
             for lr in lrs:
                 cells.append(dict(axis="lr", model=m, seed=s, lr=lr, rho=CENTER_RHO, wd=0.0))
+            if lr_only:
+                continue
             for rho in RHOS_OAT:
                 cells.append(dict(axis="rho", model=m, seed=s, lr=CENTER_LR, rho=rho, wd=0.0))
             for wd in WDS_OAT:
@@ -175,6 +177,7 @@ def main(argv=None):
     p.add_argument("--num-pairs", type=int, default=8)
     p.add_argument("--num-queries", type=int, default=8)
     p.add_argument("--spectrum-k", type=int, default=16)
+    p.add_argument("--lr-only", action="store_true", help="sweep only the learning-rate axis (skip rho/wd OAT)")
     p.add_argument("--init-seed", type=int, default=0)
     p.add_argument("--freeze-recurrent", action="store_true",
                    help="reservoir regime (default OFF = trainable, matching the 3x3 MB cell)")
@@ -202,7 +205,7 @@ def main(argv=None):
     device = torch.device(a.device if torch.cuda.is_available() or a.device == "cpu" else "cpu")
     groups = [(m, s) for m in a.models for s in a.seeds]
     my_groups = [g for idx, g in enumerate(groups) if idx % shard_n == shard_i]
-    all_cells = build_cells(a.models, a.seeds, a.lrs)
+    all_cells = build_cells(a.models, a.seeds, a.lrs, lr_only=a.lr_only)
     print(f"[shard {shard_i}/{shard_n}] device={device} groups={len(my_groups)}/{len(groups)} "
           f"cells={len(all_cells)} (freeze={a.freeze_recurrent})", flush=True)
 
