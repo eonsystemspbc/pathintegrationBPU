@@ -444,10 +444,10 @@ def build_paths(output_dir: Path, cache_dir: Path | None = None) -> OutputPaths:
 
 
 def resolve_device(requested: str) -> torch.device:
-    if requested == "cuda":
+    if requested.startswith("cuda"):
         if not torch.cuda.is_available():
             raise RuntimeError("--device cuda requested, but torch.cuda.is_available() is false")
-        return torch.device("cuda")
+        return torch.device(requested)  # honors an explicit index, e.g. cuda:1
     if requested == "cpu":
         return torch.device("cpu")
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
