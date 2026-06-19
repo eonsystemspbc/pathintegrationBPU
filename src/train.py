@@ -227,6 +227,7 @@ def _make_model(
     spectrum_k: int = 16,
     schur_cache: "Path | None" = None,
     matrix_override: "sparse.csr_matrix | None" = None,
+    state_clip: float = 0.0,
 ) -> nn.Module:
     torch.manual_seed(seed)
     if device.type == "cuda":
@@ -284,6 +285,7 @@ def _make_model(
             output_dim=output_dim,
             input_dim=input_dim,
             train_recurrent=(train_recurrent == "observed"),
+            state_clip=state_clip,
         ).to(device)
     else:
         model = CXBPU(
@@ -295,6 +297,7 @@ def _make_model(
             output_dim=output_dim,
             input_dim=input_dim,
             train_recurrent=(train_recurrent == "dense"),
+            state_clip=state_clip,
         ).to(device)
     if train_recurrent == "frozen":
         assert_bpu_trainable_surface(model)

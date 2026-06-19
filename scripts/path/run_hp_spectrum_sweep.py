@@ -123,6 +123,9 @@ def main(argv=None):
                    help="recurrent training regime: observed=train connectome synapse weights on the "
                         "fixed wiring graph (entire model learns, connectome as prior); frozen=reservoir; "
                         "dense=full NxN trainable. Spectrum surrogates always use dense.")
+    p.add_argument("--state-clip", type=float, default=0.0,
+                   help="clamp hidden activations to this max each step (>0); stabilizes dense-trainable "
+                        "(the deep unrolled recurrent otherwise diverges). 0 = off (the frozen default).")
     p.add_argument("--prep-only", action="store_true", help="generate data splits then exit (run once before sharding)")
     a = p.parse_args(argv)
 
@@ -190,7 +193,7 @@ def main(argv=None):
                     graph, model_name, seed, device, spec,
                     recurrent_runtime="auto", train_recurrent=tr_mode,
                     rho_target=None, k_override=cell["K"], spectrum_k=16,
-                    matrix_override=cell_matrix,
+                    matrix_override=cell_matrix, state_clip=a.state_clip,
                 )
                 cfg = TrainConfig(
                     seeds=(seed,), epochs=a.epochs, batch_size=a.batch_size, num_workers=2,
