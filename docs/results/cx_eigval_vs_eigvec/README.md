@@ -74,10 +74,29 @@ but has random eigenvalues on the diagonal blocks, rescaled to ρ=0.95 from the 
 eigenvalues. Generators in `src/connectome.py` (`eigenvector_matched_control_matrix`,
 `spectrum_matched_control_matrix`); figures from `scripts/figures/plot_eigval_vs_eigvec.py`.
 
-## Caveats
-- **Density confound** for the connectome comparison only: the dense surrogates have N² connections
-  vs the connectome's ~512k. The *eigenvalues-vs-eigenvectors* conclusion is density-controlled
-  (both surrogates dense); the "eigvec beats the sparse connectome" line is not.
+## It is NOT a trainable-parameter effect
+The recurrent matrix is **frozen** in every model, so all seven have the **identical trainable
+surface: 22,943 parameters** (`W_in`/`b_in`/`W_out`/`b_out`, over the *same* sensory/output pools).
+The dense surrogates' ~31M recurrent entries are all frozen (`requires_grad=False`) and contribute
+**zero** trainable parameters — verified:
+
+| model | trainable params | frozen recurrent entries |
+|---|---|---|
+| connectome (sparse) | **22,943** | 511,930 |
+| `eigvec_matched` (dense) | **22,943** | 30,779,740 |
+
+So `eigvec_matched`'s edge is **not** more capacity to fit. The eigenvalues-vs-eigenvectors result
+(`eigvec_matched` vs `spectrum_full`) is fully clean: same density, same frozen-param count, only
+the preserved half differs. And the part where `eigvec_matched` beats the *sparse* connectome is
+**reservoir expressiveness**, not fitting capacity — a dense frozen reservoir mixes information
+across the network more richly each timestep, so the same-size readout reading the same output pool
+gets richer fixed features.
+
+## Other caveats
+- **Density** still differs between the dense surrogates and the sparse connectome (~512k vs N²
+  *frozen* connections); the *eigenvalues-vs-eigenvectors* conclusion is density-controlled (both
+  surrogates dense), the "eigvec beats the sparse connectome" line is not (it's the reservoir-
+  expressiveness effect above).
 - For a **non-normal** matrix the eigenvectors aren't fully separable from the rates; `eigvec_matched`
   preserves the connectome's orthogonal **Schur basis + coupling** (the numerically stable analog of
   "matched eigenvectors") and randomizes only the eigenvalues.
