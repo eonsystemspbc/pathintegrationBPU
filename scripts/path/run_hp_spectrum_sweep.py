@@ -165,14 +165,18 @@ def main(argv=None):
               f"nnz={base_nnz} in {build_s:.1f}s ({len(group_cells)} cells)", flush=True)
         for cell in group_cells:
             ct = time.time()
-            # base matrices are already at rho 0.95; only rescale when sweeping rho away from it
-            rho_arg = None if abs(cell["rho"] - CENTER_RHO) < 1e-9 else cell["rho"]
+            # base matrices are already at rho=0.95; rescale to a swept rho by a cheap scalar
+            # multiply (scaling multiplies every eigenvalue) -> no per-cell power iteration.
+            if abs(cell["rho"] - CENTER_RHO) < 1e-9:
+                cell_matrix = base_for_cells
+            else:
+                cell_matrix = base_for_cells * np.float32(cell["rho"] / CENTER_RHO)
             try:
                 model = _make_model(
                     graph, model_name, seed, device, spec,
                     recurrent_runtime="auto", train_recurrent="frozen",
-                    rho_target=rho_arg, k_override=cell["K"], spectrum_k=16,
-                    matrix_override=base_for_cells,
+                    rho_target=None, k_override=cell["K"], spectrum_k=16,
+                    matrix_override=cell_matrix,
                 )
                 cfg = TrainConfig(
                     seeds=(seed,), epochs=a.epochs, batch_size=a.batch_size, num_workers=2,
