@@ -23,7 +23,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
-METRIC = "test_heading_bump_angular_error"  # primary, lower = better
+# primary metric: the trained val-MSE objective (matches the headline heatmap, e.g. CX≈0.39).
+# overridable via --metric (e.g. test_heading_bump_angular_error).
+METRIC = "best_val_loss"
 CENTER_LR = 1e-3
 MODEL_ORDER = ["connectome_bpu", "spectrum_full", "spectrum_topk",
                "degree_shuffle", "weight_shuffle", "random", "no_recurrence"]
@@ -95,10 +97,13 @@ def plot_best_bar(best, out):
 
 
 def main(argv=None):
+    global METRIC
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--results", default="outputs/runs/hp_sweep/path/results_shard*.csv")
     p.add_argument("--out", default="docs/results/hp_spectrum_sweep")
+    p.add_argument("--metric", default=METRIC, help="metric column (lower=better); default best_val_loss")
     a = p.parse_args(argv)
+    METRIC = a.metric
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
 
     df = load(a.results)
