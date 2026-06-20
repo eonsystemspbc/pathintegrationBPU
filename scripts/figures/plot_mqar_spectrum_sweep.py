@@ -17,19 +17,20 @@ import matplotlib.pyplot as plt
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "docs" / "results" / "mqar_mb_spectrum"
 NICE = {"hemibrain_seeded": "MB connectome", "weight_shuffle": "weight-shuffle\n(topology kept)",
-        "degree_preserving_random": "degree-matched\nrandom", "random_sparse": "random",
+        "degree_preserving_random": "degree-matched\nrandom", "random_sparse": "random", "eigvec_matched": "eigvec-matched\n(eigenVECTORS)",
         "spectrum_full": "spectrum-full\n(eigenVALUES)", "spectrum_topk": "spectrum-topk"}
 COLOR = {"hemibrain_seeded": "#1f77b4", "weight_shuffle": "#17becf",
-         "degree_preserving_random": "#7f7f7f", "random_sparse": "#7f7f7f",
+         "degree_preserving_random": "#7f7f7f", "random_sparse": "#7f7f7f", "eigvec_matched": "#2ca02c",
          "spectrum_full": "#9467bd", "spectrum_topk": "#9467bd"}
-ORDER = ["hemibrain_seeded", "weight_shuffle", "degree_preserving_random", "spectrum_topk",
-         "spectrum_full", "random_sparse"]
+ORDER = ["hemibrain_seeded", "weight_shuffle", "degree_preserving_random", "random_sparse",
+         "eigvec_matched", "spectrum_full", "spectrum_topk"]
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--results", nargs="+",
-                   default=["outputs/runs/hp_sweep/mb_mqar/results_shard*.csv"])
+                   default=["outputs/runs/hp_sweep/mb_mqar/results_shard*.csv",
+                            "outputs/runs/hp_sweep/mb_mqar_eigvec/results_shard*.csv"])
     a = p.parse_args()
     files = []
     for g in a.results:

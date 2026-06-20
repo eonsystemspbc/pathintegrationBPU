@@ -11,14 +11,15 @@ one that matters is **topology**. Higher accuracy = better (chance = 0.03):
 | 🥈 | the real connectome | 0.71 | yes |
 | 🥉 | **degree** sequence only | 0.31 | partly |
 | 4 | sparse random | 0.20 | baseline |
-| 5 | **eigenVALUES** (dynamics) | 0.16 | **no — worse than random** |
-| — | **eigenVECTORS** (geometry) | *running now* | (predict: no — it's dense, throws away the graph) |
+| 5 | **eigenVECTORS** (geometry) | 0.17 | **no — below random** (dense → graph gone) |
+| 6 | **eigenVALUES** (dynamics) | 0.16 | **no — below random** |
 
-**So:** the connectome's **dynamics (eigenvalues) don't transfer** — they land *below* random. What
-associative recall needs is the **sparse wiring topology**: keep the graph and scramble the weights
-→ you still win; replace the graph with a dense surrogate → you fail. (The eigenvector control is the
-one cell still computing; it is dense, so it discards the sparse graph the MB needs — prediction is
-it won't help either.) Full breakdown below.
+**So:** **neither** half of a dense surrogate transfers here — eigenvectors (0.17) *and* eigenvalues
+(0.16) both land *below* random. What associative recall needs is the **sparse wiring topology**:
+keep the graph and scramble the weights → you still win (0.75); replace the graph with any **dense**
+matrix → you fail. (This is the **mirror image of CX**, where the dense eigenvector surrogate *won*:
+there the task is a low-dimensional manifold, so the eigenvectors are the computation; here the task
+is a sparse graph lookup, so making it dense destroys it.) Full breakdown below.
 
 ## TL;DR
 MQAR (multi-query associative recall) is the associative-memory task; the **mushroom body** is the
@@ -33,21 +34,24 @@ synaptic weights and not its eigenvalue spectrum**:
 - **Topology beyond degree is decisive.** connectome **0.708** ≫ degree-matched random **0.313** ≫
   ER random **0.203**. The degree sequence alone buys only ~+0.11 over random; the *specific
   connectivity graph* adds **+0.40** more.
-- **Eigenvalues hurt.** The spectrum surrogates sit **below** random (spectrum-full 0.159,
-  spectrum-topk 0.156 vs random 0.203) — matching the CX result that the connectome's eigenvalues,
-  with random eigenvectors, are an actively poor substrate.
+- **Neither dense surrogate helps — the spectrum *or* the eigenvectors.** Both sit **below** random:
+  `eigvec_matched` (connectome eigenVECTORS, dense) **0.173**, `spectrum_full`/`topk` (eigenVALUES)
+  **0.159/0.156**, vs random **0.203**. This is the **opposite of CX**: there the dense eigenvector
+  surrogate was the *best* model; here it's near the *bottom*, because a dense matrix — eigenvectors
+  or not — discards the sparse connectivity graph that associative recall actually runs on.
 
 ![control hierarchy](mqar_control_hierarchy.png)
 
-## Result (60 cells = 6 models × 5 LR × 2 seeds; test accuracy, higher = better; chance = 0.031)
+## Result (70 cells = 7 models × 5 LR × 2 seeds; test accuracy, higher = better; chance = 0.031)
 | model | preserves | best test_acc | per-seed (best LR) | vs random |
 |---|---|---|---|---|
 | weight-shuffle | topology, weights shuffled | **0.752** | 0.761 / 0.742 | +270% |
 | **MB connectome** | the real MB wiring + weights | **0.708** | 0.651 / 0.765 | +249% |
 | degree-matched random | in/out degree sequence only | 0.313 | 0.434 / 0.192 | +54% |
 | random (ER) | nothing | 0.203 | 0.200 / 0.206 | — |
-| spectrum-full | connectome eigenVALUES, random vectors | 0.159 | 0.157 / 0.161 | −22% |
-| spectrum-topk | connectome top-k eigenVALUES | 0.156 | 0.159 / 0.154 | −23% |
+| **eigvec-matched** | connectome eigenVECTORS, random λ (**dense**) | 0.173 | 0.173 / 0.174 | **−15%** |
+| spectrum-full | connectome eigenVALUES, random vectors (**dense**) | 0.159 | 0.157 / 0.161 | −22% |
+| spectrum-topk | connectome top-k eigenVALUES (**dense**) | 0.156 | 0.159 / 0.154 | −23% |
 
 ### Full LR sweep (mean over 2 seeds, test accuracy — higher = better; chance 0.031)
 | model | lr=3e-4 | lr=1e-3 | lr=3e-3 | lr=1e-2 | lr=3e-2 |
@@ -74,13 +78,24 @@ where the headline findings live:
 | connectome **vs** degree-matched | 0.708 vs 0.313 | **topology beyond degree is most of it** |
 | degree-matched **vs** random | 0.313 vs 0.203 | degree sequence alone buys a little |
 
-The two **spectrum** surrogates are **dense** (~196M trainable params, ~340× the sparse models), so
-their comparison is *not* density/parameter-matched. They are reported because they still **lose to
-sparse random despite far more capacity** — i.e. the connectome's eigenvalue structure is a poor
-associative-recall substrate even with a large parameter budget — but a dense_random control (as in
-[../cx_dense_trainable](../cx_dense_trainable)) would be needed to cleanly separate "dense hurts
-here" from "eigenvalues hurt." (In CX, density *helped*; in MQAR the dense surrogates are far worse,
-so the two tasks differ and that comparison is left as an explicit open control.)
+### Did eigenvectors beat the connectome (fairly)? — No, on both counts
+The **three dense surrogates** — `eigvec_matched` (eigenVECTORS), `spectrum_full`, `spectrum_topk`
+(eigenVALUES) — are dense (~196M params, ~340× the sparse models), so comparing them to the sparse
+connectome is **not** density-matched. On MQAR that confound cuts **against** them: *every* dense
+surrogate lands **below** sparse random (0.173 / 0.159 / 0.156 vs 0.203) despite far more capacity —
+i.e. **being dense is a *liability* here**, because it throws away the sparse graph the task runs on.
+
+| comparison | result | reading |
+|---|---|---|
+| eigvec **vs** connectome | 0.173 vs 0.708 | eigenvectors **lose 4×** — but *unfairly*: connectome wins partly because it's **sparse** (keeps the graph) |
+| eigvec **vs** spectrum (both **dense**, density-matched) | 0.173 vs 0.159 | the **fair** test: eigenvectors edge eigenvalues by a hair, **but both are below random** |
+
+So unlike CX (eigvec **beat** the connectome, helped by density), here eigvec **loses** to the
+connectome — and even the density-matched comparison shows the eigenvectors give only a sliver over
+the eigenvalues, with neither dense surrogate clearing random. A `dense_random` MQAR control (as in
+[../cx_dense_trainable](../cx_dense_trainable)) would pin "dense hurts here" exactly; the existing
+dense surrogates already show its direction. **In CX density helped; in MQAR it hurts — the tasks
+genuinely differ.**
 
 ## Interpretation
 - **Associative recall lives in the connectivity graph.** The MB's advantage on its region-matched

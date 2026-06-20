@@ -14,20 +14,21 @@ import numpy as np
 import pandas as pd
 
 NICE = {"hemibrain_seeded": "MB connectome", "weight_shuffle": "weight-shuffle (topology kept)",
-        "degree_preserving_random": "degree-matched random", "random_sparse": "random",
+        "degree_preserving_random": "degree-matched random", "random_sparse": "random", "eigvec_matched": "eigvec-matched (eigenVECTORS)",
         "spectrum_full": "spectrum-full (eigenVALUES)", "spectrum_topk": "spectrum-topk"}
 WHAT = {"hemibrain_seeded": "the real MB wiring + weights", "weight_shuffle": "topology, weights shuffled",
-        "degree_preserving_random": "in/out degree sequence only", "random_sparse": "nothing (ER random)",
+        "degree_preserving_random": "in/out degree sequence only", "random_sparse": "nothing (ER random)", "eigvec_matched": "connectome eigenVECTORS, random eigenvalues (dense)",
         "spectrum_full": "connectome eigenVALUES, random eigenvectors",
         "spectrum_topk": "connectome top-k eigenVALUES"}
-ORDER = ["hemibrain_seeded", "weight_shuffle", "degree_preserving_random", "spectrum_topk",
-         "spectrum_full", "random_sparse"]
+ORDER = ["hemibrain_seeded", "weight_shuffle", "degree_preserving_random", "random_sparse",
+         "eigvec_matched", "spectrum_full", "spectrum_topk"]
 
 
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--results", nargs="+",
-                   default=["outputs/runs/hp_sweep/mb_mqar/results_shard*.csv"])
+                   default=["outputs/runs/hp_sweep/mb_mqar/results_shard*.csv",
+                            "outputs/runs/hp_sweep/mb_mqar_eigvec/results_shard*.csv"])
     a = p.parse_args()
     files = []
     for g in a.results:
