@@ -32,6 +32,7 @@ from .connectome import (
     degree_preserving_shuffle_matrix,
     load_prepared_graph,
     pool_indices,
+    dense_random_control_matrix,
     eigenvector_matched_control_matrix,
     power_iteration_radius,
     random_control_matrix,
@@ -167,6 +168,17 @@ def _control_matrix(
             f"control-build-done model=random edges={matrix.nnz} elapsed={_format_duration(time.perf_counter() - start)}"
         )
         return _scale_control(matrix)
+    if name == "dense_random":
+        start = time.perf_counter()
+        tqdm.write(
+            f"control-build-start model=dense_random seed={seed} N={primary.shape[0]} (dense init)"
+        )
+        matrix = dense_random_control_matrix(primary, seed=60_000 + seed, rho_target=RHO_TARGET)
+        tqdm.write(
+            f"control-build-done model=dense_random edges={matrix.nnz} "
+            f"elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return matrix  # already rescaled to RHO_TARGET inside the generator
     if name == "degree_shuffle":
         start = time.perf_counter()
         tqdm.write(
@@ -262,8 +274,9 @@ def _make_model(
     runtime = _select_recurrent_runtime(
         graph, recurrent_runtime, device, train_recurrent=train_recurrent
     )
-    if model_name == "spectrum_full" or model_name.startswith("spectrum_top") or model_name == "eigvec_matched":
-        runtime = "dense"  # spectrum/eigenvector-matched surrogates are dense N x N
+    if (model_name == "spectrum_full" or model_name.startswith("spectrum_top")
+            or model_name == "eigvec_matched" or model_name == "dense_random"):
+        runtime = "dense"  # spectrum / eigenvector-matched / dense-random surrogates are dense N x N
     n = int(graph.metadata["N"])
     if train_recurrent == "dense" and n > 20_000:
         raise RuntimeError(

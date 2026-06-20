@@ -186,7 +186,8 @@ def main(argv=None):
         base_mat = _control_matrix(base_csr, model_name, seed, spectrum_k=16, schur_cache=schur_cache)
         # spectrum surrogates are fully dense; densify ONCE and reuse across this group's HP cells
         # (avoids a 54M-nnz CSR round-trip + toarray per cell). Cheap sparse controls stay sparse.
-        _is_dense_surrogate = model_name.startswith("spectrum") or model_name == "eigvec_matched"
+        _is_dense_surrogate = (model_name.startswith("spectrum") or model_name == "eigvec_matched"
+                               or model_name == "dense_random")
         base_for_cells = base_mat.toarray().astype(np.float32) if _is_dense_surrogate else base_mat
         base_nnz = int(base_mat.nnz)
         build_s = time.time() - t0

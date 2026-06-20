@@ -590,6 +590,23 @@ def spectrum_matched_control_matrix(
     return sparse.csr_matrix(surrogate)
 
 
+def dense_random_control_matrix(
+    matrix: sparse.csr_matrix, seed: int, rho_target: float = RHO_TARGET
+) -> sparse.csr_matrix:
+    """Dense N x N random-init control: every entry nonzero (Gaussian ~N(0,1/N), spectral radius
+    ~1 by the circular law), rescaled to rho_target. Same DENSITY as the spectral surrogates but
+    with NO connectome structure (random eigenvectors AND random eigenvalues). Comparing it to the
+    *sparse* `random` control isolates the pure 'dense init' effect from any spectral structure,
+    and comparing the spectral surrogates to it isolates structure from density."""
+    n = int(matrix.shape[0])
+    rng = np.random.default_rng(seed)
+    surrogate = (rng.standard_normal((n, n)) / np.sqrt(n)).astype(np.float32)
+    rho = _dense_power_iteration_radius(surrogate, iters=80, seed=seed)
+    if rho > 0:
+        surrogate = surrogate * np.float32(rho_target / rho)
+    return sparse.csr_matrix(surrogate)
+
+
 def _dense_power_iteration_radius(mat: np.ndarray, iters: int = 80, seed: int = 0) -> float:
     rng = np.random.default_rng(seed + 1)
     x = rng.standard_normal(mat.shape[1]).astype(mat.dtype)
