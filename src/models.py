@@ -28,6 +28,7 @@ class CXBPU(nn.Module):
         output_dim: int = OUTPUT_DIM,
         input_dim: int = INPUT_DIM,
         train_recurrent: bool = False,
+        state_clip: float = 0.0,
     ) -> None:
         super().__init__()
         if sparse.issparse(recurrent):
@@ -47,6 +48,7 @@ class CXBPU(nn.Module):
         self.output_dim = int(output_dim)
         self.input_dim = int(input_dim)
         self.reset_each_timestep = bool(reset_each_timestep)
+        self.state_clip = float(state_clip)  # clamp activations each step (>0); stabilizes dense-trainable
         self.train_recurrent_mode = "dense" if train_recurrent else "frozen"
         rec_tensor = torch.as_tensor(rec_array, dtype=torch.float32)
         if train_recurrent:
@@ -89,6 +91,8 @@ class CXBPU(nn.Module):
                         injection,
                     )
                 h = torch.relu(next_h)
+                if self.state_clip > 0:
+                    h = torch.clamp(h, max=self.state_clip)
             readout = h.index_select(1, self.output_indices)
             outputs.append(readout @ self.W_out.t() + self.b_out)
         return torch.stack(outputs, dim=1)
@@ -105,6 +109,7 @@ class SparseCXBPU(nn.Module):
         output_dim: int = OUTPUT_DIM,
         input_dim: int = INPUT_DIM,
         train_recurrent: bool = False,
+        state_clip: float = 0.0,
     ) -> None:
         super().__init__()
         if not sparse.issparse(recurrent):
@@ -121,6 +126,7 @@ class SparseCXBPU(nn.Module):
         self.output_dim = int(output_dim)
         self.input_dim = int(input_dim)
         self.reset_each_timestep = bool(reset_each_timestep)
+        self.state_clip = float(state_clip)
         self.train_recurrent_mode = "observed" if train_recurrent else "frozen"
         indices = torch.as_tensor(
             np.vstack([recurrent.row, recurrent.col]), dtype=torch.long
@@ -180,6 +186,8 @@ class SparseCXBPU(nn.Module):
                 if microstep == 0:
                     next_h = next_h.index_add(1, self.sensory_indices, injection)
                 h = torch.relu(next_h)
+                if self.state_clip > 0:
+                    h = torch.clamp(h, max=self.state_clip)
             readout = h.index_select(1, self.output_indices)
             outputs.append(readout @ self.W_out.t() + self.b_out)
         return torch.stack(outputs, dim=1)

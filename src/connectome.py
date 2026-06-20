@@ -7,9 +7,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+import hashlib
+
 import networkx as nx
 import numpy as np
 import pandas as pd
+from scipy import linalg as scipy_linalg
 from scipy import sparse
 from scipy.sparse import linalg as sparse_linalg
 
@@ -440,6 +443,230 @@ def degree_preserving_shuffle_matrix(
     return sparse.coo_matrix(
         (shuffled_weights, (out_rows, out_cols)), shape=matrix.shape
     ).tocsr()
+
+
+def _random_orthogonal(n: int, rng: np.random.Generator) -> np.ndarray:
+    """Haar-distributed n x n orthogonal matrix (QR of a Gaussian, sign-corrected)."""
+    gaussian = rng.standard_normal((n, n))
+    q, r = np.linalg.qr(gaussian)
+    diag_sign = np.sign(np.diag(r))
+    diag_sign[diag_sign == 0] = 1.0
+    return q * diag_sign
+
+
+def _matrix_fingerprint(matrix: sparse.csr_matrix) -> str:
+    coo = matrix.tocoo()
+    hasher = hashlib.sha1()
+    hasher.update(np.ascontiguousarray(coo.row.astype(np.int64)))
+    hasher.update(np.ascontiguousarray(coo.col.astype(np.int64)))
+    hasher.update(np.ascontiguousarray(coo.data.astype(np.float64)))
+    hasher.update(str(matrix.shape).encode())
+    return hasher.hexdigest()[:16]
+
+
+def _real_schur_cached(
+    matrix: sparse.csr_matrix, schur_cache: "Path | None" = None, want_z: bool = False
+):
+    """Real Schur factors of the (densified) matrix: A = Z T Z^T, with Z orthogonal (the Schur
+    basis) and T quasi-upper-triangular (eigenvalues on its quasi-diagonal). Both are
+    seed-independent, so they are cached to disk. Returns T by default, or (T, Z) when want_z."""
+    fp = _matrix_fingerprint(matrix)
+    t_file = schur_cache / f"schurT_{fp}.npy" if schur_cache is not None else None
+    z_file = schur_cache / f"schurZ_{fp}.npy" if schur_cache is not None else None
+    if t_file is not None and t_file.exists() and (not want_z or z_file.exists()):
+        t_mat = np.load(t_file)
+        return (t_mat, np.load(z_file)) if want_z else t_mat
+    dense = (
+        matrix.toarray().astype(np.float64)
+        if sparse.issparse(matrix)
+        else np.asarray(matrix, dtype=np.float64)
+    )
+    t_mat, z_mat = scipy_linalg.schur(dense, output="real")
+    if schur_cache is not None:
+        schur_cache.mkdir(parents=True, exist_ok=True)
+        np.save(t_file, t_mat)
+        np.save(z_file, z_mat)
+    return (t_mat, z_mat) if want_z else t_mat
+
+
+def eigenvector_matched_control_matrix(
+    matrix: sparse.csr_matrix,
+    seed: int,
+    rho_target: float = RHO_TARGET,
+    max_dense_n: int = 20_000,
+    schur_cache: "Path | None" = None,
+) -> sparse.csr_matrix:
+    """Eigenvector-matched surrogate -- the DUAL of spectrum_matched_control_matrix.
+
+    spectrum_full keeps the connectome's eigenvalues and RANDOMIZES the directions (V T V^T);
+    this keeps the connectome's Schur-vector BASIS Z (the orthogonal directions spanning its
+    invariant subspaces, plus its non-normal coupling) and RANDOMIZES the eigenvalues:
+        surrogate = Z T_rand Z^T,
+    where T_rand has the connectome's strictly-upper coupling but random eigenvalues on its
+    diagonal blocks (rescaled to rho_target). Answers: does keeping the connectome's directional
+    structure -- with random eigenvalues -- recover the advantage that matching the eigenvalues
+    (with random directions) did not? Dense; requires a dense Schur (guarded by max_dense_n).
+    """
+    n = int(matrix.shape[0])
+    if n > max_dense_n:
+        raise ConnectomePreparationError(
+            f"eigenvector-matched control needs a dense Schur; N={n} exceeds max_dense_n={max_dense_n}."
+        )
+    t_mat, z_mat = _real_schur_cached(matrix, schur_cache=schur_cache, want_z=True)
+    rng = np.random.default_rng(seed)
+    t_rand = np.triu(t_mat).astype(np.float64)  # keep the strictly-upper coupling
+    # randomize the eigenvalues: 1x1 real blocks, and 2x2 blocks (complex pairs) on the diagonal.
+    # eig(Z T_rand Z^T) = eig(T_rand) = the diagonal blocks, so we track the exact spectral radius
+    # from the blocks we assign (power iteration overestimates it for this non-normal matrix).
+    scale = float(np.std(np.diag(t_mat))) or 1.0
+    max_mag, i = 1e-12, 0
+    while i < n:
+        if i + 1 < n and abs(t_mat[i + 1, i]) > 1e-12:  # 2x2 block (complex eigenvalue pair p +/- i*sqrt(qr))
+            p = rng.normal(0.0, scale)
+            q, r = rng.uniform(0.2, 1.0) * scale, rng.uniform(0.2, 1.0) * scale
+            t_rand[i, i], t_rand[i, i + 1] = p, q
+            t_rand[i + 1, i], t_rand[i + 1, i + 1] = -r, p
+            max_mag = max(max_mag, float(np.hypot(p, np.sqrt(q * r))))
+            i += 2
+        else:  # 1x1 block (real eigenvalue)
+            val = rng.normal(0.0, scale)
+            t_rand[i, i] = val
+            max_mag = max(max_mag, abs(val))
+            i += 1
+    t_rand *= rho_target / max_mag  # rescale so the surrogate's spectral radius == rho_target exactly
+    z32 = z_mat.astype(np.float32)
+    surrogate = (z32 @ t_rand.astype(np.float32)) @ z32.T
+    return sparse.csr_matrix(surrogate)
+
+
+def spectrum_matched_control_matrix(
+    matrix: sparse.csr_matrix,
+    seed: int,
+    mode: str = "full",
+    k: int = 16,
+    rho_target: float = RHO_TARGET,
+    max_dense_n: int = 20_000,
+    schur_cache: "Path | None" = None,
+) -> sparse.csr_matrix:
+    """Eigenvalue-spectrum-matched ("dynamically matched") random surrogate.
+
+    Unlike the topology nulls (random / degree_shuffle / weight_shuffle), this control
+    matches the connectome's *dynamics* (its eigenvalue spectrum) while randomizing the
+    eigenvectors (the specific wiring directions). It answers: how much of the connectome's
+    advantage is captured by matching the spectrum alone?
+
+    mode="full":  surrogate = V T V^T with V Haar-random orthogonal and T the connectome's
+                  real Schur form -> EXACTLY the same full eigenvalue spectrum, random
+                  eigenvectors. Dense.
+    mode="topk":  keep the connectome's k largest-|lambda| eigenvalues exactly (the dominant
+                  dynamical modes) and fill the remaining bulk with a Ginibre random spectrum
+                  scaled to the connectome's bulk radius, then random-rotate. Matches SOME of
+                  the eigenvalues.
+
+    Requires a dense Schur (O(N^3)); guarded by max_dense_n. The result is returned as a
+    (dense-content) CSR for API compatibility and rescaled to rho_target.
+    """
+    n = int(matrix.shape[0])
+    if n > max_dense_n:
+        raise ConnectomePreparationError(
+            f"spectrum-matched control needs a dense Schur decomposition; N={n} exceeds "
+            f"max_dense_n={max_dense_n}. Use a --max-neurons cap."
+        )
+    t_mat = _real_schur_cached(matrix, schur_cache=schur_cache)
+    rng = np.random.default_rng(seed)
+    if mode == "full":
+        t_mix = t_mat
+    elif mode == "topk":
+        t_mix = _topk_mixed_schur(t_mat, k=k, rng=rng)
+    else:
+        raise ValueError(f"Unknown spectrum mode: {mode!r} (expected 'full' or 'topk').")
+    v_mat = _random_orthogonal(n, rng).astype(np.float32)
+    surrogate = (v_mat @ t_mix.astype(np.float32)) @ v_mat.T  # float32 matmul (~2x faster)
+    # rho is preserved by construction (similarity transform); rescale defensively via a cheap
+    # dense power iteration rather than a 54M-nnz sparse eig solve.
+    rho = _dense_power_iteration_radius(surrogate, iters=80, seed=seed)
+    if rho > 0:
+        surrogate = surrogate * np.float32(rho_target / rho)
+    return sparse.csr_matrix(surrogate)
+
+
+def dense_random_control_matrix(
+    matrix: sparse.csr_matrix, seed: int, rho_target: float = RHO_TARGET
+) -> sparse.csr_matrix:
+    """Dense N x N random-init control: every entry nonzero (Gaussian ~N(0,1/N), spectral radius
+    ~1 by the circular law), rescaled to rho_target. Same DENSITY as the spectral surrogates but
+    with NO connectome structure (random eigenvectors AND random eigenvalues). Comparing it to the
+    *sparse* `random` control isolates the pure 'dense init' effect from any spectral structure,
+    and comparing the spectral surrogates to it isolates structure from density."""
+    n = int(matrix.shape[0])
+    rng = np.random.default_rng(seed)
+    surrogate = (rng.standard_normal((n, n)) / np.sqrt(n)).astype(np.float32)
+    rho = _dense_power_iteration_radius(surrogate, iters=80, seed=seed)
+    if rho > 0:
+        surrogate = surrogate * np.float32(rho_target / rho)
+    return sparse.csr_matrix(surrogate)
+
+
+def _dense_power_iteration_radius(mat: np.ndarray, iters: int = 80, seed: int = 0) -> float:
+    rng = np.random.default_rng(seed + 1)
+    x = rng.standard_normal(mat.shape[1]).astype(mat.dtype)
+    x /= np.linalg.norm(x) + 1e-12
+    last = 0.0
+    for _ in range(iters):
+        y = mat @ x
+        norm = float(np.linalg.norm(y))
+        if norm == 0:
+            return 0.0
+        x = y / norm
+        last = norm
+    return last
+
+
+def _topk_mixed_schur(t_mat: np.ndarray, k: int, rng: np.random.Generator) -> np.ndarray:
+    """Block-diagonal quasi-triangular form whose leading block holds the connectome's
+    k largest-|lambda| eigenvalues (exact) and whose trailing block is a Ginibre random
+    bulk scaled to the connectome's (k+1)-th eigenvalue magnitude."""
+    n = t_mat.shape[0]
+    eigs = scipy_linalg.eigvals(t_mat)  # cheap: T is quasi-triangular
+    order = np.argsort(-np.abs(eigs))
+    k = int(max(1, min(k, n - 1)))
+    threshold = float(np.abs(eigs[order[k - 1]]))  # magnitude of the k-th eigenvalue
+    # bulk radius = magnitude of the (k+1)-th eigenvalue, so the random bulk sits strictly
+    # below the preserved top-k (keeps the top-k as the clear leading modes).
+    bulk_radius = float(np.abs(eigs[order[min(k, n - 1)]]))
+    # reorder the real Schur form so the top-|lambda| eigenvalues occupy the leading block
+    t_sorted, _, sdim = scipy_linalg.schur(
+        t_mat, output="real", sort=lambda ev: np.abs(ev) >= threshold * (1.0 - 1e-9)
+    )
+    sdim = int(sdim)
+    if sdim <= 0 or sdim >= n:
+        return t_mat
+    t_top = t_sorted[:sdim, :sdim]
+    bulk_n = n - sdim
+    bulk_radius = max(bulk_radius, 1e-6)
+    ginibre = rng.standard_normal((bulk_n, bulk_n)) / np.sqrt(bulk_n)
+    g_rho = float(np.max(np.abs(scipy_linalg.eigvals(ginibre)))) or 1.0
+    ginibre *= bulk_radius / g_rho  # match bulk radius to the connectome's (k+1)-th |lambda|
+    t_mix = np.zeros((n, n), dtype=np.float64)
+    t_mix[:sdim, :sdim] = t_top
+    t_mix[sdim:, sdim:] = ginibre
+    return t_mix
+
+
+def spectrum_summary(matrix: sparse.csr_matrix, k: int = 32) -> dict[str, object]:
+    """Top-k eigenvalue magnitudes + simple spectral descriptors, for control validation."""
+    n = int(matrix.shape[0])
+    if n <= 2048:
+        eigs = scipy_linalg.eigvals(matrix.toarray().astype(np.float64))
+    else:
+        eigs = sparse_linalg.eigs(
+            matrix.astype(np.float64), k=min(k, n - 2), which="LM", return_eigenvectors=False
+        )
+    mags = np.sort(np.abs(eigs))[::-1]
+    return {
+        "spectral_radius": float(mags[0]) if mags.size else 0.0,
+        "top_abs_eigs": [float(x) for x in mags[:k]],
+    }
 
 
 def control_invariants(

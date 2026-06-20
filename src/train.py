@@ -32,8 +32,11 @@ from .connectome import (
     degree_preserving_shuffle_matrix,
     load_prepared_graph,
     pool_indices,
+    dense_random_control_matrix,
+    eigenvector_matched_control_matrix,
     power_iteration_radius,
     random_control_matrix,
+    spectrum_matched_control_matrix,
     weight_shuffled_control_matrix,
 )
 from .models import (
@@ -111,7 +114,47 @@ def _scale_control(matrix: sparse.csr_matrix) -> sparse.csr_matrix:
     return scaled
 
 
-def _control_matrix(primary: sparse.csr_matrix, name: str, seed: int) -> sparse.csr_matrix:
+def _control_matrix(
+    primary: sparse.csr_matrix,
+    name: str,
+    seed: int,
+    *,
+    spectrum_k: int = 16,
+    schur_cache: "Path | None" = None,
+) -> sparse.csr_matrix:
+    if name == "eigvec_matched":
+        start = time.perf_counter()
+        tqdm.write(f"control-build-start model=eigvec_matched seed={seed} N={primary.shape[0]} edges={primary.nnz}")
+        matrix = eigenvector_matched_control_matrix(
+            primary, seed=50_000 + seed, rho_target=RHO_TARGET, schur_cache=schur_cache,
+        )
+        tqdm.write(
+            f"control-build-done model=eigvec_matched edges={matrix.nnz} "
+            f"elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return matrix
+    if name == "spectrum_full" or name.startswith("spectrum_top"):
+        mode = "full" if name == "spectrum_full" else "topk"
+        k = spectrum_k
+        if name.startswith("spectrum_top") and name != "spectrum_topk":
+            try:
+                k = int(name[len("spectrum_top"):])
+            except ValueError:
+                k = spectrum_k
+        start = time.perf_counter()
+        tqdm.write(
+            f"control-build-start model={name} mode={mode} k={k} seed={seed} "
+            f"N={primary.shape[0]} edges={primary.nnz}"
+        )
+        matrix = spectrum_matched_control_matrix(
+            primary, seed=40_000 + seed, mode=mode, k=k, rho_target=RHO_TARGET,
+            schur_cache=schur_cache,
+        )
+        tqdm.write(
+            f"control-build-done model={name} edges={matrix.nnz} "
+            f"elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return matrix  # already rescaled to RHO_TARGET inside the generator
     if name in {"cx_bpu", "connectome_bpu", "no_recurrence"}:
         tqdm.write(f"control-build-reuse model={name} edges={primary.nnz}")
         return primary
@@ -125,6 +168,17 @@ def _control_matrix(primary: sparse.csr_matrix, name: str, seed: int) -> sparse.
             f"control-build-done model=random edges={matrix.nnz} elapsed={_format_duration(time.perf_counter() - start)}"
         )
         return _scale_control(matrix)
+    if name == "dense_random":
+        start = time.perf_counter()
+        tqdm.write(
+            f"control-build-start model=dense_random seed={seed} N={primary.shape[0]} (dense init)"
+        )
+        matrix = dense_random_control_matrix(primary, seed=60_000 + seed, rho_target=RHO_TARGET)
+        tqdm.write(
+            f"control-build-done model=dense_random edges={matrix.nnz} "
+            f"elapsed={_format_duration(time.perf_counter() - start)}"
+        )
+        return matrix  # already rescaled to RHO_TARGET inside the generator
     if name == "degree_shuffle":
         start = time.perf_counter()
         tqdm.write(
@@ -180,6 +234,12 @@ def _make_model(
     recurrent_runtime: str = "auto",
     train_recurrent: str = "frozen",
     include_gru_hidden: int | None = None,
+    rho_target: float | None = None,
+    k_override: int | None = None,
+    spectrum_k: int = 16,
+    schur_cache: "Path | None" = None,
+    matrix_override: "sparse.csr_matrix | None" = None,
+    state_clip: float = 0.0,
 ) -> nn.Module:
     torch.manual_seed(seed)
     if device.type == "cuda":
@@ -194,11 +254,29 @@ def _make_model(
         hidden = include_gru_hidden or min(256, int(graph.metadata["N"]))
         return GRUBaseline(hidden_size=hidden, output_dim=output_dim, input_dim=input_dim).to(device)
     indices = pool_indices(graph.pools)
-    matrix = _control_matrix(graph.matrix.astype(np.float32).tocsr(), model_name, seed)
-    K = int(graph.metadata["estimated_K"])
+    if matrix_override is not None:
+        # caller supplied a prebuilt control matrix (e.g. a cached spectrum surrogate, possibly a
+        # dense ndarray) to avoid recomputing an expensive Schur / 54M-nnz round-trip per HP cell.
+        matrix = matrix_override
+    else:
+        matrix = _control_matrix(
+            graph.matrix.astype(np.float32).tocsr(), model_name, seed,
+            spectrum_k=spectrum_k, schur_cache=schur_cache,
+        )
+    # optional spectral-radius sweep: rescale EVERY model (connectome + controls) to rho_target
+    if rho_target is not None:
+        rho = power_iteration_radius(matrix, iters=120)
+        if rho > 0:
+            matrix = matrix * np.float32(float(rho_target) / rho)
+    if sparse.issparse(matrix):
+        matrix = matrix.astype(np.float32).tocsr()
+    K = int(k_override) if k_override is not None else int(graph.metadata["estimated_K"])
     runtime = _select_recurrent_runtime(
         graph, recurrent_runtime, device, train_recurrent=train_recurrent
     )
+    if (model_name == "spectrum_full" or model_name.startswith("spectrum_top")
+            or model_name == "eigvec_matched" or model_name == "dense_random"):
+        runtime = "dense"  # spectrum / eigenvector-matched / dense-random surrogates are dense N x N
     n = int(graph.metadata["N"])
     if train_recurrent == "dense" and n > 20_000:
         raise RuntimeError(
@@ -220,6 +298,7 @@ def _make_model(
             output_dim=output_dim,
             input_dim=input_dim,
             train_recurrent=(train_recurrent == "observed"),
+            state_clip=state_clip,
         ).to(device)
     else:
         model = CXBPU(
@@ -231,6 +310,7 @@ def _make_model(
             output_dim=output_dim,
             input_dim=input_dim,
             train_recurrent=(train_recurrent == "dense"),
+            state_clip=state_clip,
         ).to(device)
     if train_recurrent == "frozen":
         assert_bpu_trainable_surface(model)
@@ -296,7 +376,9 @@ def train_one_model(
     seed: int,
     task_spec: TaskSpec,
 ) -> dict[str, object]:
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=config.lr, weight_decay=config.weight_decay
+    )
     best_state = copy.deepcopy(model.state_dict())
     best_val = float("inf")
     epochs_without_improvement = 0
@@ -694,6 +776,9 @@ def run_training(
             task_spec,
             recurrent_runtime=train_config.recurrent_runtime,
             train_recurrent=train_config.train_recurrent,
+            rho_target=train_config.rho_target,
+            k_override=train_config.k_override,
+            spectrum_k=train_config.spectrum_k,
         )
         history = train_one_model(
             model,

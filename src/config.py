@@ -198,6 +198,11 @@ class TrainConfig:
     log_every_seconds: float = 60.0
     recurrent_runtime: str = "auto"
     train_recurrent: str = "frozen"
+    # hyperparameter-sweep knobs (defaults preserve existing behavior exactly)
+    weight_decay: float = 0.0  # Adam weight decay
+    rho_target: float | None = None  # if set, rescale every model's W_rec to this spectral radius
+    k_override: int | None = None  # if set, override the connectome's estimated K microsteps
+    spectrum_k: int = 16  # k for the spectrum_topk control
 
 
 @dataclass(frozen=True)
@@ -439,10 +444,10 @@ def build_paths(output_dir: Path, cache_dir: Path | None = None) -> OutputPaths:
 
 
 def resolve_device(requested: str) -> torch.device:
-    if requested == "cuda":
+    if requested.startswith("cuda"):
         if not torch.cuda.is_available():
             raise RuntimeError("--device cuda requested, but torch.cuda.is_available() is false")
-        return torch.device("cuda")
+        return torch.device(requested)  # honors an explicit index, e.g. cuda:1
     if requested == "cpu":
         return torch.device("cpu")
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")

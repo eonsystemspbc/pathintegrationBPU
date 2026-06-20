@@ -234,9 +234,18 @@ class MatrixEpisodicRNN(nn.Module):
             )
         batch, T, _ = inputs.shape
         h = inputs.new_zeros((batch, self.N))
+        # Build the sparse recurrent operator ONCE per forward (W_rec_values is constant within a
+        # forward), instead of rebuilding+coalescing it every timestep -- a large speedup with
+        # identical results/gradients. (Dense path uses the dense W_rec directly.)
+        W_sparse = None
+        if self.runtime != "dense":
+            W_sparse = torch.sparse_coo_tensor(
+                self.edge_indices, self.W_rec_values, size=(self.N, self.N), device=inputs.device
+            ).coalesce()
         outputs: list[torch.Tensor] = []
         for t in range(T):
-            h = torch.relu(self._recurrent_step(h) + inputs[:, t, :] @ self.W_in.t() + self.b_rec)
+            rec = h @ self.W_rec.t() if self.runtime == "dense" else torch.sparse.mm(W_sparse, h.t()).t()
+            h = torch.relu(rec + inputs[:, t, :] @ self.W_in.t() + self.b_rec)
             if self.state_clip > 0:
                 h = torch.clamp(h, max=self.state_clip)
             outputs.append(self.readout(h))

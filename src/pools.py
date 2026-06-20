@@ -1,3 +1,20 @@
+"""Neuron pool assignment for the connectome I/O ports.
+
+The BPU trainer injects task input only into the ``sensory`` pool and reads only the ``output``
+pool. These pools are an **extra-regional synapse-flow heuristic**, NOT cell-type labels: a neuron
+is ``sensory`` if it receives most of its input from *outside* the region's primary ROIs, ``output``
+if it sends most of its output outside, else ``internal``. "Outside the region" can be any upstream
+area, so ``sensory`` means *input-flow-biased*, not *sensory-organ afferent*. The only cell-type
+signal is the CX ``SENSORY_FAMILIES``/``OUTPUT_FAMILIES`` tie-breaker below, and it fires only on
+near-ties (|diff| < 0.10).
+
+How biological the resulting pools are, measured against known cell types where annotations exist, is
+reported by ``scripts/connectome/report_pool_fidelity.py`` (see ``docs/results/pool_fidelity/``):
+on typed connectomes the pools line up well with the region's input/output cell classes (CX output
+~94% out-projecting types; hemibrain MB internal~Kenyon cells, output~majority MBON). Crucially, the
+connectome and every control share the *same* pools, so the connectome>random comparison is invariant
+to how biologically these pools are labeled.
+"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,6 +25,11 @@ import pandas as pd
 from .config import CX_ROI_LABELS, OutputPaths
 
 
+# CX cell-type families used ONLY as a near-tie tie-breaker (see assign_pools). These are real CX
+# input- vs output-side classes: ring/ExR/LNO/LCNO/GLNO/SpsP carry sensory-contextual input into the
+# EB/NO; PFL2/PFL3/PFR are the canonical CX premotor-output cells. Substring-matched on type+instance.
+# NOTE: ellipsoid-body ring neurons are typed "ER.." in the connectome, so they are caught here only
+# when their instance contains "ring"; most still enter the sensory pool via the ROI-flow threshold.
 SENSORY_FAMILIES = ("ring", "ExR", "LNO", "LCNO", "GLNO", "SpsP")
 OUTPUT_FAMILIES = ("PFL", "PFL2", "PFL3", "PFR")
 

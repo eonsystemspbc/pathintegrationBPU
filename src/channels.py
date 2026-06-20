@@ -249,8 +249,8 @@ def region_port_spec(connectome: str) -> RegionPortSpec:
         return RegionPortSpec(
             connectome=connectome,
             region_name="hemibrain central complex",
-            sensory_ports=("ring/ExR/LNO/LCNO/GLNO/SpsP sensory-biased pool",),
-            output_ports=("PFL/PFL2/PFL3/PFR output-biased pool",),
+            sensory_ports=("ring/ExR/LNO/LCNO/GLNO/SpsP input-flow-biased pool",),
+            output_ports=("PFL/PFL2/PFL3/PFR output-flow-biased pool",),
             supported_tags=(
                 "path_integration",
                 "heading",
@@ -265,8 +265,15 @@ def region_port_spec(connectome: str) -> RegionPortSpec:
                 "embodied_control",
             ),
             notes=(
-                "CX ports are derived from ROI flow and known type-family biases.",
-                "Adapter weights inject task channels only into sensory pool neurons and read only output pool neurons in the BPU trainer.",
+                "CX pools are assigned by extra-regional synapse flow with a type-family tie-breaker "
+                "(ring/ExR/LNO/LCNO/GLNO/SpsP vs PFL/PFL2/PFL3/PFR); see src/pools.py.",
+                "Adapter weights inject task channels only into sensory-pool neurons and read only "
+                "output-pool neurons in the BPU trainer.",
+                "On the typed hemibrain CX the output pool is ~94% genuine CX out-projecting cell types "
+                "(PFL/PFR premotor + FS/FC/FR columnar) and the sensory pool is ~41% canonical ring/noduli "
+                "input families (the rest fan-body columnar neurons that receive extra-CX input); see "
+                "docs/results/pool_fidelity/. Pools are shared by connectome and controls, so the "
+                "connectome>random comparison is invariant to pool labeling.",
             ),
         )
     if connectome in {CONNECTOME_HEMIBRAIN_MUSHROOM_BODY, CONNECTOME_FLYWIRE_MUSHROOM_BODY}:
@@ -278,8 +285,8 @@ def region_port_spec(connectome: str) -> RegionPortSpec:
         return RegionPortSpec(
             connectome=connectome,
             region_name=label,
-            sensory_ports=("olfactory/KC input-biased pool",),
-            output_ports=("MBON/output-biased pool",),
+            sensory_ports=("extra-MB-input-biased ROI-flow pool (odor/PN + dopaminergic reinforcement input side)",),
+            output_ports=("extra-MB-output-biased ROI-flow pool (MBON output side)",),
             supported_tags=(
                 "odor",
                 "olfaction",
@@ -292,15 +299,23 @@ def region_port_spec(connectome: str) -> RegionPortSpec:
                 "reversal_learning",
             ),
             notes=(
-                "MB ports are currently ROI-flow pools; future releases should add explicit PN/KC/MBON labels when available.",
+                "MB pools are assigned by extra-regional synapse flow (src/pools.py), NOT by cell-type "
+                "labels: 'sensory' = receives most input from outside the MB ROIs, 'output' = sends most "
+                "output outside.",
+                "The FlyWire MB export used for the main results carries no type annotations, so "
+                "PN/KC/MBON identity is not verified there. On the type-annotated hemibrain MB the same "
+                "heuristic recovers the expected classes (internal~Kenyon cells, output~majority MBON, "
+                "sensory~PAM dopaminergic + projection-neuron input); see docs/results/pool_fidelity/.",
+                "Pools are shared by the connectome and all controls, so the connectome>random "
+                "comparison is invariant to pool labeling.",
             ),
         )
     if connectome == CONNECTOME_FLYWIRE_OPTIC_LOBE:
         return RegionPortSpec(
             connectome=connectome,
             region_name="FlyWire optic lobe",
-            sensory_ports=("retinotopic photoreceptor/medulla input lattice",),
-            output_ports=("motion/ego-motion readout pool",),
+            sensory_ports=("optic-lobe recurrent substrate (visual input enters via a free trainable projection over all neurons, not a wired retinotopic afferent map)",),
+            output_ports=("optic-lobe recurrent substrate (ego-motion read out by a dense linear layer over all neurons)",),
             supported_tags=(
                 "vision",
                 "retinotopy",
@@ -310,7 +325,16 @@ def region_port_spec(connectome: str) -> RegionPortSpec:
                 "embodied_perception",
             ),
             notes=(
-                "Optic-lobe benchmark maps a hex-lattice visual channel into the sparse optic-lobe recurrent support.",
+                "The optic-flow benchmark injects the 61-d hex-lattice luminance channel through a free "
+                "dense W_in over ALL optic-lobe neurons and reads out a dense linear layer over all "
+                "neurons; it does NOT pool-gate I/O. The ROI-flow sensory/output pools are computed but "
+                "not used to gate the flow trainer's input/output, so the 'retinotopic input lattice' is "
+                "a stimulus-side description, not a wired afferent map.",
+                "Hex-lattice acceptance-angle sampling models ommatidial optics on the stimulus side, but "
+                "retinotopy is NOT architecturally enforced in the recurrent net (it is emergent-if-learned "
+                "through the free W_in).",
+                "This is a substrate/reservoir comparison: the connectome and its controls share the "
+                "identical free input projection, so the connectome>random comparison is unaffected.",
             ),
         )
     if connectome == CONNECTOME_FLYWIRE_WHOLE:
