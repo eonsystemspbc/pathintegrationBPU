@@ -45,12 +45,11 @@ Each model at its **own** best hyperparameters (val-MSE, **lower = better**; fro
 
 ## Training curves (frozen reservoir: only the readout trains)
 ![training curves](training_curves.png)
-*Validation MSE vs epoch, each model at its best LR (seed 0). The split is immediate and stark:
-**eigvec-matched (eigenVECTORS) drops fastest and far lowest** (→0.235), the **connectome** settles
-just under random (→0.389), and the **eigenvalue controls (spectrum-full/topk) barely move and stay
-*above* random** the whole way (→0.45) — matching the connectome's spectrum buys nothing in a frozen
-reservoir. (Seed-0 curves from the original run's logs; the headline numbers in the table above are
-the 3-seed best-HP means.)*
+*Validation MSE vs epoch, each model at its best LR (**3 seeds; shaded band = seed min–max**). The
+split is immediate and stark: **eigvec-matched (eigenVECTORS) drops fastest and far lowest** (→0.22),
+the **connectome** settles just under random (→0.39), and the **eigenvalue controls
+(spectrum-full/topk) barely move and stay *above* random** the whole way (→0.45) — matching the
+connectome's spectrum buys nothing in a frozen reservoir.*
 
 ## Interpretation
 - **Eigenvectors carry the advantage, decisively.** Density-controlled (both dense): eigenvectors
