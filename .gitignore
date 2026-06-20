@@ -22,3 +22,7 @@ datasets/
 flywire_cache/
 
 connectomes/
+
+# AWS CLI installer artifacts (accidentally unzipped into the repo)
+aws/
+awscliv2.zip

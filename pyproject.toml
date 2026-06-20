@@ -1,7 +1,40 @@
 [project]
 name = "pathintegrationbpu"
 version = "0.1.0"
-description = "Add your description here"
+description = "Connectome-derived RNNs: task-region alignment"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+# Pinned deps (numpy 1.26.4, pyarrow 16.1.0, scipy 1.13.1, ...) only ship wheels through
+# CPython 3.12; 3.13 forces source builds that fail (e.g. pyarrow needs system Arrow).
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+    "neuprint-python==0.6.1",
+    "numpy==1.26.4",
+    "pandas==2.2.2",
+    "pyarrow==16.1.0",
+    "scipy==1.13.1",
+    "matplotlib==3.9.2",
+    "seaborn>=0.13.2",
+    "IPython>=8.0.0",
+    "networkx==3.3",
+    "tqdm==4.66.5",
+    "pytest==7.4.4",
+    "Pillow>=10.4.0",
+    "openml>=0.15.1",
+    "h5py>=3.11.0",
+    "hdf5plugin>=4.4.0",
+    "imageio>=2.33.0",
+    "opencv-python>=4.11.0",
+]
+
+# torch/torchvision come from the PyTorch CUDA 13.0 index (mirrors the --extra-index-url in
+# requirements.txt). 'explicit = true' keeps this index from affecting any other package.
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
