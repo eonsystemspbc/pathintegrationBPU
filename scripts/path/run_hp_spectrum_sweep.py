@@ -219,6 +219,15 @@ def main(argv=None):
                 metric = evaluate_metrics(model, test_loader, device, spec,
                                           log_context=f"{model_name} s{seed} {cell['axis']}",
                                           log_every_seconds=120.0)
+                # persist per-epoch curves (val_mse vs epoch) for the training-curve figures
+                _curves = [{**er, "lr": cell["lr"],
+                            "K": (cell["K"] if cell["K"] is not None else int(getattr(model, "K", 0))),
+                            "axis": cell["axis"], "train_recurrent": tr_mode}
+                           for er in hist.get("epoch_rows", [])]
+                if _curves:
+                    curves_csv = out / f"curves_shard{shard_i}.csv"
+                    pd.DataFrame(_curves).to_csv(curves_csv, mode="a",
+                                                 header=not curves_csv.exists(), index=False)
                 row = {
                     "axis": cell["axis"], "model": model_name, "seed": seed,
                     "train_recurrent": tr_mode,

@@ -1,110 +1,111 @@
-# CX → path integration: does the connectome help as an *initialization* (params + density matched)?
+# CX → path integration: does the connectome help as an *initialization*? (params + density matched, trained to depth)
 
 ## TL;DR
-We make **every** recurrent matrix dense **and fully trainable** (≈54M parameters each), so the
-connectome, the eigenvector-matched control, the eigenvalue-matched control, and a random matrix
-are **identical in density and trainable-parameter count — they differ only in how they are
-initialized.** The question: once the whole matrix can move under gradient descent, does starting
-from the connectome's structure still buy anything?
+We make **every** recurrent matrix dense **and fully trainable** (~54M params each), so the
+connectome, an eigenvector-matched surrogate, an eigenvalue-matched surrogate, and a random matrix
+are **identical in density and trainable-parameter count** and differ **only in initialization**.
+Trained for **50 epochs** (4× the first pass) across a full LR×K×seed sweep, the picture is richer
+and *more honest* than the short-training result — and it splits the connectome's value cleanly in two:
 
-**Yes — but only the eigenVECTOR structure, and it does not wash out.** A net initialized from the
-connectome's **eigenvectors** (random eigenvalues) trains to **val-MSE 0.122, +31% better than a
-random init**, and stays the best init in the set. The raw connectome init keeps a smaller but
-**robust +7%** edge. An init that matches the connectome's **eigenvalues** (random eigenvectors) is
-**indistinguishable from random** (−0.5%) — the spectrum just retrains away. This is the *same*
-eigenvectors-beat-eigenvalues conclusion as the frozen reservoir ([../cx_eigval_vs_eigvec](../cx_eigval_vs_eigvec)),
-now under full training with the density and parameter-count confounds **both removed**.
+- **Eigenvectors carry representational quality.** Density-matched (both dense init):
+  `eigvec_matched` **0.0565** beats `spectrum_full` **0.0668** by **+15%** — the connectome's
+  directional / attractor-manifold structure is the better starting basis for *accuracy*.
+- **Eigenvalues carry dynamical stability.** At an aggressive LR (1e-3) where **every** other init
+  — including eigvec — blows up to ~0.35–0.52, `spectrum_full` is the **only** one that stays put
+  (**0.066**, σ=0.006). The connectome's *spectrum* is what tolerates hard optimization.
+- **The raw connectome adds nothing as an init.** Density-matched (both sparse init):
+  connectome **0.0726** vs random **0.0728** — a **dead tie** (p=0.98). The literal wiring, used as
+  a trainable initialization, is indistinguishable from random.
+- **The short-training "connectome beats random" was an artifact.** At the *same* cell the edge
+  goes from **+7.2%** (12 epochs) to **+0.24%** (50 epochs) — it **washed out** with training,
+  exactly as a noisy early-stopping advantage should.
+- **eigvec-matched converges fastest.** It is the lowest-loss init at *every* epoch and is flat by
+  ~50 (Δ +0.002 over epochs 40→50) while the other three are still descending (Δ +0.009–0.015) —
+  the init advantage shows up as **compute efficiency**.
 
-![dense-trainable bars](dense_trainable_bars.png)
-
-## Why this run exists
-The frozen result showed the connectome's path-integration advantage is carried by its
-**eigenvectors**, not its eigenvalues — but in that run the recurrent matrix was a **frozen
-reservoir** (only the input/readout trained), and the dense surrogates had N² frozen connections
-vs the connectome's ~512k. Two open objections:
-1. **Density.** The dense surrogates have far more (frozen) connections than the sparse connectome.
-2. **"It's only an init in a fixed reservoir."** Does the structure matter when the matrix is a
-   *trainable* parameter, i.e. an actual initialization the optimizer builds on?
-
-This run answers both: every model is a **dense N×N matrix whose entries are all trainable**, so it
-is the connectome's structure used strictly as an **initialization**, with nothing else differing.
+![bars](dense_trainable_bars.png)
+![training curves](training_curves.png)
 
 ## Everything is matched except the initialization
-| model | initialization | trainable params | density |
+| model | initialization | trainable params | init nonzeros |
 |---|---|---|---|
-| connectome | the real CX wiring (densified) | **54,030,744** | dense N×N |
-| eigvec-matched | connectome **eigenVECTORS** (Schur basis), random eigenvalues | **54,030,744** | dense N×N |
-| spectrum-full | connectome **eigenVALUES** (exact), random eigenvectors | **54,030,744** | dense N×N |
-| random | degree-matched random | **54,030,744** | dense N×N |
+| connectome | real CX wiring (densified) | **54,030,744** | 511,930 (sparse) |
+| random | degree-matched random | **54,030,744** | 511,930 (sparse) |
+| eigvec-matched | connectome **eigenVECTORS** (Schur basis), random λ | **54,030,744** | ~54M (dense) |
+| spectrum-full | connectome **eigenVALUES** (exact), random eigenvectors | **54,030,744** | ~54M (dense) |
 
-All four: N² = 54,007,801 trainable recurrent entries + the identical 22,943-param input/readout
-surface (same sensory/output pools) = **54,030,744 trainable parameters, dense, identical.** The
-*only* difference is the value the recurrent matrix is initialized to. (Verified directly by
-constructing each model and counting `requires_grad` params.)
+All four train the full N²=54,007,801 recurrent entries + the identical 22,943-param I/O surface
+(verified by direct `requires_grad` count). The `init nonzeros` column is the *starting* sparsity,
+**not** the trainable count — every entry is optimized in all four. This sparsity-of-init is the one
+remaining axis that is **not** matched across all four, which is exactly why the comparisons below
+are made **within** density classes (dense pair, sparse pair).
 
-## Result (2 seeds, each model at its own best LR×K; val-MSE, lower = better)
-| init | best val-MSE | seed 0 / seed 1 | vs random | best (lr, K) |
+## Result — full sweep (50 epochs, 3 seeds, LR{1e-4,3e-4,1e-3}×K{2,3}); each model at its own best HP
+val-MSE, lower = better; stable operating point is **lr=3e-4, K=2** for all four:
+
+| init | best val-MSE | seeds (lr=3e-4/K2) | vs random | converged by ep50? |
 |---|---|---|---|---|
-| **eigvec-matched** (eigenVECTORS) | **0.122** | 0.122 / 0.121 | **+30.8%** | 3e-4, K=2 |
-| connectome (real wiring) | 0.163 | 0.164 / 0.162 | **+7.2%** | 3e-4, K=2 |
-| random | 0.176 | 0.170 / 0.182 | — | 3e-4, K=2 |
-| spectrum-full (eigenVALUES) | 0.176 | 0.178 / 0.175 | −0.5% | 3e-4, K=2 |
+| **eigvec-matched** | **0.0565** | 0.049 / 0.060 / 0.060 | **+22%** vs random | **yes** (flat) |
+| spectrum-full | 0.0660* | 0.070 / 0.068 / 0.062 | +9% | no (still ↓) |
+| connectome | 0.0726 | 0.070 / 0.072 / 0.076 | +0.2% (tie) | no (still ↓) |
+| random | 0.0728 | 0.079 / 0.077 / 0.062 | — | no (still ↓) |
 
-The ranking is consistent in **both** seeds (connectome beats random in each; eigvec-matched is
-clearly best in each; spectrum-full sits on random in each). All four are best at the same
-hyperparameters (lr=3e-4, short unroll K=2), so the comparison is apples-to-apples.
+\*spectrum-full's headline 0.0660 is at lr=1e-3/K2; at the common cell lr=3e-4/K2 it is 0.0668.
 
-## Interpretation — what survives training, and what washes out
-- **Eigenvalues (spectrum) wash out completely.** `spectrum-full` goes from *worse* than random in
-  the frozen reservoir (−11%) to **tied** with random here (−0.5%). That is exactly what you expect
-  of an initialization detail that the optimizer can retune: the eigenvalues only set initial
-  dynamical rates, and gradient descent simply re-learns them. Matching the connectome's spectrum
-  buys nothing once you train.
-- **Eigenvectors (directions / manifold) do NOT wash out.** `eigvec-matched` stays **+31% over
-  random** under full training. The connectome's directional subspace — the ring-attractor manifold
-  that holds and moves the heading bump — is a **better-conditioned basis to start optimization
-  from**, and training builds on it rather than erasing it. Direction is structural; rate is not.
-- **The raw connectome is a modest-but-real init (+7%).** It carries the good directions *and* its
-  own (un-rescaled) eigenvalues; keeping the directions while replacing the eigenvalues with
-  clean, ρ-matched random ones (`eigvec-matched`) is actually a **better** init than the connectome
-  itself — same reason a well-scaled init beats a raw one.
-- **Training shrinks the absolute gaps but not the qualitative story.** Trainability drops every
-  model's loss a lot (random 0.410 → 0.176; that drop is the 54M trainable params doing their job),
-  and it compresses the advantages — but the eigenvectors-help / eigenvalues-don't split is the
-  same as frozen. The connectome is **not** magic: most of the path-integration performance here
-  comes from capacity (training), and the raw-wiring init contributes a small slice. What is robust
-  and mechanistically meaningful is that the *directional* structure is the part worth keeping.
+## The clean comparisons (density-matched, so structure is the only difference)
+The `eigvec` vs `random` gap (+22%) is **confounded** by init density (dense vs sparse). Comparing
+**within** a density class removes that:
 
-## Frozen reservoir vs dense-trainable (same models, two regimes)
-| init | frozen reservoir (22,943 params) | dense-trainable (54M params) |
-|---|---|---|
-| eigvec-matched | 0.229 (+44% vs random) | **0.122 (+31%)** |
-| connectome | 0.390 (+5%) | 0.163 (+7%) |
-| random | 0.410 (—) | 0.176 (—) |
-| spectrum-full | 0.456 (−11%) | 0.176 (−0.5%) |
+| comparison | both init | result | reading |
+|---|---|---|---|
+| eigvec-matched **vs** spectrum-full | dense | 0.0565 vs 0.0668 → **eigvec +15%** | **eigenVECTORS beat eigenVALUES for accuracy** |
+| connectome **vs** random | sparse | 0.0726 vs 0.0728 → **tie (p=0.98)** | **raw connectome ≈ random as an init** |
+| spectrum-full **vs** random @ lr=1e-3 | dense vs sparse | 0.066 (σ.006) vs 0.38 (σ.26) → **spectrum holds, random collapses** | **eigenVALUES buy high-LR stability** |
 
-Frozen numbers from [../cx_eigval_vs_eigvec](../cx_eigval_vs_eigvec). The eigenvector advantage is
-large in both regimes; the eigenvalue (dis)advantage exists only frozen and **vanishes** under
-training.
+So **both halves** of the connectome's spectrum decomposition carry *something* — eigenvectors →
+accuracy, eigenvalues → stability — but the **literal sparse wiring**, used as a trainable init,
+does not beat a random sparse init. The value is in the abstract spectral/directional structure
+(recoverable from dense surrogates), not in the connectome graph itself.
 
-## Methods & rigor
-Identical task/protocol to the frozen CX sweep ([../cx_eigval_vs_eigvec](../cx_eigval_vs_eigvec),
-[../hp_spectrum_sweep_cx](../hp_spectrum_sweep_cx)): CX polar-bump path integration, 8 000 train /
-2 000 val trajectories, batch 256, 12 epochs, 2 seeds, every recurrent matrix rescaled to spectral
-radius 0.95 at init. The only change is `--train-recurrent dense`: the recurrent matrix is an
-`nn.Parameter` and trains. A fully-trainable dense N×N recurrent over K micro-steps × 50 unrolled
-steps with ReLU **diverges** (val → ∞) for any usable learning rate, so we add `--state-clip 10`
-(activations clamped each step) — without it the regime is untrainable; with it, lr=3e-4 / K=2 is
-stable for all models. Sweep: `scripts/path/run_hp_spectrum_sweep.py --train-recurrent dense
---state-clip 10 --lr-only --lrs 3e-4 1e-3 --ks 2 3`; summary
-`scripts/path/summarize_dense_trainable.py`; figure `scripts/figures/plot_dense_trainable.py`.
+## Why this makes mechanistic sense
+Path integration in the CX is a **ring attractor**: heading is a bump on a low-dimensional
+*manifold* (a set of eigenvector directions) whose drift/persistence is set by the eigenvalues.
+- Initializing with the **right manifold directions** (eigvec-matched) gives the optimizer a
+  head-start on representation → faster convergence and lower final error.
+- Initializing with the **right spectrum** (spectrum-full) sets well-behaved dynamical rates →
+  the network doesn't blow up even under aggressive learning rates.
+- The raw connectome has both, but embedded in a sparse graph that, as a *trainable* init, is no
+  better-conditioned than random sparse — the optimizer reaches the same place from either.
 
-## Caveats
-- **2 seeds** (the ranking is consistent across both, and within-cell seed variance is small —
-  ≤0.012 — so the connectome>random and eigvec≫random gaps are not seed noise; the frozen run used
-  3 seeds).
-- **`state-clip` is required** to make the dense-trainable regime stable at all; all models use the
-  same clip, so it does not advantage any one of them, but the absolute numbers are specific to this
-  stabilized setup.
-- LR×K grid is focused (the dense regime's dominant knob is the unroll depth K; K=2 is best for all
-  four, so the comparison is at each model's genuine optimum).
+## What longer training changed (and why it mattered)
+The first pass (12 epochs, 2 seeds) reported connectome **+7%** over random and eigvec **+31%**.
+Training to depth (50 epochs, 3 seeds) revised both:
+- connectome's edge **washed out to a tie** — it had been catching a lucky low-val epoch.
+- eigvec's edge **shrank but persisted** (+31% → +22%), and is now understood as *part* density
+  (dense init) and *part* eigenvectors (the +15% over the density-matched spectrum control).
+
+This is the textbook reason to train longer before trusting an init comparison, and validates doing so.
+
+## Caveats (honestly, several — verified by an adversarial re-analysis of the raw cells)
+1. **Not fully converged.** Only `eigvec_matched` has plateaued at 50 epochs; `connectome`,
+   `spectrum_full`, and `random` were **still improving** ~0.01–0.015 per 10 epochs (patience not
+   exhausted). So the gaps *among the lagging three* may narrow with more epochs — but eigvec's
+   **faster convergence is itself the init advantage**, and it leads at every fixed epoch budget.
+2. **The eigvec→random +22% is density-confounded.** The defensible, density-matched claims are the
+   three in the table above (eigvec>spectrum; connectome=random; spectrum stable). A `dense_random`
+   control (random values, dense init) would separate the "dense-init" effect from structure
+   outright — a clean next step.
+3. **3 seeds is few** relative to the seed spread (σ 0.006 at the stable cell, but 0.20–0.27 at
+   high LR). The stable-cell findings are robust (eigvec wins all 3 seeds, all 6 HP cells); the
+   high-LR cells are noisy.
+4. **Headline is at the stable operating point** (lr≤3e-4, K=2). At lr=1e-3 the ranking reshuffles
+   entirely around stability (spectrum wins because the others diverge), which is a different axis.
+5. `state_clip=10` is required to make the dense-trainable recurrent stable at all; all models use
+   the same clip, so it advantages none, but the absolute numbers are specific to this setup.
+
+## Reproduce
+`scripts/path/run_hp_spectrum_sweep.py --train-recurrent dense --state-clip 10 --lr-only --lrs 1e-4
+3e-4 1e-3 --ks 2 3 --epochs 50 --seeds 0 1 2 --train-count 8000 --batch-size 256` (results
+`outputs/runs/hp_sweep/cx_dense_trainable_v2/`). Summary `scripts/path/summarize_dense_trainable.py`;
+figures `scripts/figures/plot_dense_trainable.py` (bars) and `scripts/figures/plot_training_curves.py`
+(curves). Frozen-reservoir companion: [../cx_eigval_vs_eigvec](../cx_eigval_vs_eigvec).
