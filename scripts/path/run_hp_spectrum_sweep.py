@@ -78,13 +78,21 @@ CENTER_RHO = 0.95
 PRIMARY_METRIC = "heading_bump_angular_error"  # lower is better
 
 
-def build_cells(models, seeds, lrs):
-    """One row per fully-specified HP cell, tagged with the sweep axis it belongs to."""
+def build_cells(models, seeds, lrs, lr_only=False, ks=(None,)):
+    """One row per fully-specified HP cell, tagged with the sweep axis it belongs to.
+
+    lr_only=True restricts to the LR axis (skips the rho/wd/K OAT axes) and crosses LR with
+    `ks` -- used for the expensive dense-TRAINABLE comparison, where the unroll depth K is the
+    dominant trainability knob (short unrolls are far more stable), so we sweep (lr x K) directly
+    instead of paying for rho/wd cells that just retrain away."""
     cells = []
     for m in models:
         for s in seeds:
             for lr in lrs:
-                cells.append(dict(axis="lr", model=m, seed=s, lr=lr, rho=CENTER_RHO, wd=0.0, K=None))
+                for k in ks:
+                    cells.append(dict(axis="lr", model=m, seed=s, lr=lr, rho=CENTER_RHO, wd=0.0, K=k))
+            if lr_only:
+                continue
             for rho in RHOS_OAT:
                 cells.append(dict(axis="rho", model=m, seed=s, lr=CENTER_LR, rho=rho, wd=0.0, K=None))
             for wd in WDS_OAT:
@@ -126,6 +134,10 @@ def main(argv=None):
     p.add_argument("--state-clip", type=float, default=0.0,
                    help="clamp hidden activations to this max each step (>0); stabilizes dense-trainable "
                         "(the deep unrolled recurrent otherwise diverges). 0 = off (the frozen default).")
+    p.add_argument("--lr-only", action="store_true",
+                   help="restrict to the LR axis crossed with --ks (skip rho/wd/K OAT); for the dense-trainable run")
+    p.add_argument("--ks", nargs="+", type=int, default=None,
+                   help="K (unroll depth) values to cross with LR in --lr-only mode; default = model's estimated K")
     p.add_argument("--prep-only", action="store_true", help="generate data splits then exit (run once before sharding)")
     a = p.parse_args(argv)
 
@@ -159,7 +171,8 @@ def main(argv=None):
     # (model, seed) groups -> shard assignment (so each expensive Schur is built once per shard)
     groups = [(m, s) for m in a.models for s in a.seeds]
     my_groups = [g for idx, g in enumerate(groups) if idx % shard_n == shard_i]
-    all_cells = build_cells(a.models, a.seeds, a.lrs)
+    all_cells = build_cells(a.models, a.seeds, a.lrs,
+                            lr_only=a.lr_only, ks=tuple(a.ks) if a.ks else (None,))
     print(f"[shard {shard_i}/{shard_n}] device={device} groups={len(my_groups)}/{len(groups)} "
           f"total_cells={len(all_cells)} train_recurrent={a.train_recurrent}", flush=True)
 
