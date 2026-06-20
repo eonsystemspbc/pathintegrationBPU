@@ -58,14 +58,16 @@ At an aggressive LR (1e-3, K=2) the picture inverts on a **different** axis — 
 |---|---|---|
 | **spectrum-full** (connectome eigenVALUES) | **0.066** | 0.006 — **stable** |
 | connectome | 0.207 | 0.27 — collapses on some seeds |
-| eigvec-matched | 0.352 | 0.26 — collapses |
+| eigvec-matched (dense) | 0.352 | 0.26 — collapses |
 | random | 0.376 | 0.26 — collapses |
+| **dense_random** (dense, no structure) | **0.514** | 0.007 — **reliably collapses** |
 
-`spectrum_full` is the **only** init that doesn't blow up. Crucially, `eigvec_matched` is *also* a
-dense init yet collapses here — so this is **not** a density effect; it is specific to the
-connectome's **eigenvalue distribution** (well-conditioned spectral radius/structure → tolerates
-hard optimization). [A `dense_random`@lr=1e-3 run is confirming that a structure-free dense init also
-collapses, pinning the stability to the eigenvalues.] So the two halves of the connectome's spectral
+`spectrum_full` is the **only** init that doesn't blow up. Crucially, both `eigvec_matched` **and**
+`dense_random` are *dense* inits yet collapse here — `dense_random` (structure-free dense) is in fact
+the *worst*, failing on all 3 seeds. So high-LR stability is **not** a density effect; it is specific
+to the connectome's **eigenvalue distribution** (well-conditioned spectral radius/structure →
+tolerates hard optimization). This is now directly confirmed by the `dense_random`@lr=1e-3 control.
+So the two halves of the connectome's spectral
 decomposition do different jobs: **eigenVECTORS → a little accuracy, eigenVALUES → stability** — but
 neither is large, and the **raw sparse wiring delivers neither.**
 
