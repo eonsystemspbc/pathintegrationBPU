@@ -51,6 +51,19 @@ Per-seed: density (dense_random < random) holds **3/3**; eigenvectors (eigvec < 
 (+4.6%); eigenvalues (dense_random < spectrum) **3/3** — spectrum is reliably *worse* than the
 structure-free dense baseline. The same ordering holds at lr=1e-4/K2.
 
+### Full LR sweep (K=2, mean over 3 seeds, val-MSE — lower = better)
+| model | lr=1e-4 | lr=3e-4 | lr=1e-3 |
+|---|---|---|---|
+| eigvec_matched | 0.0592 | **0.0565** | 0.352 (collapses) |
+| dense_random | 0.0682 | **0.0592** | 0.514 (collapses) |
+| spectrum_full | 0.0920 | 0.0668 | **0.0660** (only one stable) |
+| connectome_bpu | 0.0952 | **0.0726** | 0.207 (collapses) |
+| random | 0.0941 | **0.0728** | 0.376 (collapses) |
+
+lr=3e-4 is the joint optimum; at lr=1e-3 every model **except** spectrum-full diverges (the
+eigenvalue → stability result). Full per-(model,lr,K,seed) cells in `sweep_results.csv` (this
+directory); K=3 is uniformly dominated by K=2 and omitted here.
+
 ## Eigenvalues buy stability, not accuracy
 At an aggressive LR (1e-3, K=2) the picture inverts on a **different** axis — stability:
 

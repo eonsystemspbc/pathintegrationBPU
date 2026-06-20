@@ -29,6 +29,20 @@ synaptic weights and not its eigenvalue spectrum**:
 | spectrum-full | connectome eigenVALUES, random vectors | 0.159 | 0.157 / 0.161 | −22% |
 | spectrum-topk | connectome top-k eigenVALUES | 0.156 | 0.159 / 0.154 | −23% |
 
+### Full LR sweep (mean over 2 seeds, test accuracy — higher = better; chance 0.031)
+| model | lr=3e-4 | lr=1e-3 | lr=3e-3 | lr=1e-2 | lr=3e-2 |
+|---|---|---|---|---|---|
+| weight_shuffle | 0.195 | **0.752** | 0.457 | 0.169 | 0.029 |
+| hemibrain (connectome) | 0.199 | **0.708** | 0.616 | 0.168 | 0.037 |
+| degree_preserving_random | 0.194 | **0.313** | 0.188 | 0.125 | 0.029 |
+| random_sparse | **0.203** | 0.202 | 0.196 | 0.031 | 0.029 |
+| spectrum_full | **0.159** | 0.150 | 0.030 | 0.030 | 0.030 |
+| spectrum_topk | **0.156** | 0.154 | 0.030 | 0.030 | 0.030 |
+
+The topology models (connectome, weight-shuffle) peak at lr=1e-3; the connectome is the more
+LR-robust of the two (it holds 0.616 at lr=3e-3 where weight-shuffle drops to 0.457). Full
+per-(model,lr,seed) cells in `sweep_results.csv` (this directory).
+
 ## The clean comparisons are *within* the sparse models
 The four topology models (connectome, weight-shuffle, degree, random) are all **sparse** (~574k
 trainable recurrent params) — so comparing among them is density- and parameter-matched, and that is
