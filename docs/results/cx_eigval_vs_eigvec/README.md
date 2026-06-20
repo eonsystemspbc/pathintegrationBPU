@@ -105,11 +105,16 @@ gets richer fixed features.
 - **Density** still differs between the dense surrogates and the sparse connectome (~512k vs N²
   *frozen* connections); the *eigenvalues-vs-eigenvectors* conclusion is density-controlled (both
   surrogates dense), the "eigvec beats the sparse connectome" line is not (it's the reservoir-
-  expressiveness effect above). **This density confound is removed entirely in the follow-up
-  [../cx_dense_trainable](../cx_dense_trainable)**, where *every* model (connectome included) is a
-  dense, fully-trainable N×N matrix with identical params & density — and the same conclusion holds
-  (eigenvectors +31% over random, eigenvalues tie random) now that the connectome's init is itself
-  dense and trainable.
+  expressiveness effect above). **This density confound is removed in the follow-up
+  [../cx_dense_trainable](../cx_dense_trainable)**, which makes *every* model (connectome included) a
+  dense, fully-trainable N×N matrix and adds a `dense_random` control (dense values, no structure).
+  Trained to depth (50 epochs, 3 seeds) it **refines** this frozen picture rather than simply
+  confirming it: the *dominant* factor turns out to be **init density** — a structure-free dense
+  matrix beats the sparse connectome by ~19% — so most of what looks like a big structural effect
+  here is the dense-reservoir advantage flagged just above. Net of density (eigvec vs the
+  `dense_random` baseline) the **clean eigenVECTOR bonus is only ~+5%**; eigenVALUES add nothing for
+  accuracy (only high-LR training stability); and the **raw sparse connectome ties random**. So the
+  frozen "eigenvectors win" holds in *direction*, but its magnitude here is inflated by density.
 - For a **non-normal** matrix the eigenvectors aren't fully separable from the rates; `eigvec_matched`
   preserves the connectome's orthogonal **Schur basis + coupling** (the numerically stable analog of
   "matched eigenvectors") and randomizes only the eigenvalues.
