@@ -120,7 +120,14 @@ neither is large, and the **raw sparse wiring delivers neither.**
   density confound that hid it.
 
 ![bars](dense_trainable_bars.png)
+
 ![training curves](training_curves.png)
+*Convergence of all five inits at lr=3e-4/K2 (running-best val-MSE, 3-seed band). Left: full
+50-epoch descent — eigvec-matched is lowest throughout. Right: zoom on epochs 12–50, where the
+ranking separates — **eigvec 0.055 → dense-random 0.059 → spectrum 0.067 → connectome 0.073 ≈
+random 0.073.** The two sparse-init models (connectome, random) sit together at the top; the three
+dense-init models pull below them, with the connectome's eigenvectors (eigvec) the only structure
+that beats the structure-free dense baseline.*
 
 ## Caveats (verified by adversarial re-analysis of the raw cells)
 1. **Not fully converged.** Only `eigvec_matched` had plateaued at 50 epochs; `dense_random`,
