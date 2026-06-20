@@ -1,5 +1,28 @@
 # CX → path integration: what actually helps when the connectome is a *trainable initialization*?
 
+## Bottom line (read this first)
+A connectome gives you **three** things you could try to transfer — and on this task only one helps,
+and only a little:
+- **topology** = the wiring graph (which neurons connect) · **eigenvalues** = the dynamics (rates) ·
+  **eigenvectors** = the directional manifold (geometry).
+
+Every model below is the **same size and fully trainable** — only the matrix's *starting values*
+differ. Lower error = better:
+
+| rank | starting matrix encodes… | error | does it help? |
+|---|---|---|---|
+| 🥇 | **eigenVECTORS** (geometry) | **0.057** | **yes — best** |
+| 🥈 | *nothing* — a plain dense random matrix | 0.059 | (the honest baseline) |
+| 🥉 | **eigenVALUES** (dynamics) | 0.067 | **no** — worse than the dense baseline |
+| 4 | the real connectome wiring | 0.073 | no — ties random |
+| 5 | sparse random | 0.073 | — |
+
+**So:** the connectome's **dynamics (eigenvalues) don't transfer** — they're worse than a plain dense
+random matrix. Its **eigenvectors (the ring-attractor manifold) give a small, real benefit**. Its
+**literal wiring gives nothing** (ties random). And note #2: most of the eigenvector model's lead is
+just "it's a *dense* matrix" — the genuine eigenvector contribution over that baseline is only ~5%.
+Mechanism, controls, and all the caveats are below.
+
 ## TL;DR
 We make **every** recurrent matrix dense **and fully trainable** (~54M params each), so models are
 identical in density and trainable-parameter count and differ **only in initialization**. Trained to

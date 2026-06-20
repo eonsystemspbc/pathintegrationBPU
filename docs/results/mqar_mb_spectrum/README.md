@@ -1,5 +1,25 @@
 # MQAR (associative recall) → MB connectome: is it the topology, the weights, or the spectrum?
 
+## Bottom line (read this first)
+Same **three** things you could transfer from a connectome — **topology** (the wiring graph),
+**eigenvalues** (the dynamics/rates), **eigenvectors** (the geometry). For associative recall, the
+one that matters is **topology**. Higher accuracy = better (chance = 0.03):
+
+| rank | starting matrix encodes… | accuracy | does it help? |
+|---|---|---|---|
+| 🥇 | the wiring **graph** (weights scrambled) | 0.75 | **yes — topology is the game** |
+| 🥈 | the real connectome | 0.71 | yes |
+| 🥉 | **degree** sequence only | 0.31 | partly |
+| 4 | sparse random | 0.20 | baseline |
+| 5 | **eigenVALUES** (dynamics) | 0.16 | **no — worse than random** |
+| — | **eigenVECTORS** (geometry) | *running now* | (predict: no — it's dense, throws away the graph) |
+
+**So:** the connectome's **dynamics (eigenvalues) don't transfer** — they land *below* random. What
+associative recall needs is the **sparse wiring topology**: keep the graph and scramble the weights
+→ you still win; replace the graph with a dense surrogate → you fail. (The eigenvector control is the
+one cell still computing; it is dense, so it discards the sparse graph the MB needs — prediction is
+it won't help either.) Full breakdown below.
+
 ## TL;DR
 MQAR (multi-query associative recall) is the associative-memory task; the **mushroom body** is the
 fly's associative-learning centre, so this is the MB's region-matched task. Running the same control
