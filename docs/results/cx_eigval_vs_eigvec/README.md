@@ -73,6 +73,106 @@ connectome's spectrum buys nothing in a frozen reservoir.*
 *`spectrum_full` lands exactly on the connectome's eigenvalues (random directions); `eigvec_matched`
 keeps the directions but its eigenvalues are randomized (ρ=0.95 circle dashed).*
 
+## Model architecture (and why every choice is what it is)
+The model is deliberately **minimal**: a single recurrent layer whose recurrent weight matrix *is*
+the connectome (or a control), wrapped by a small learned input projection and a linear readout.
+The experiment isolates the recurrent substrate, so everything around it is kept as small and fixed
+as possible. The class is **`CXBPU`** (`src/models.py`); one forward pass processes a trajectory of
+`T` timesteps:
+
+**1. Recurrent substrate `W_rec` (N×N), N = 7,349 CX neurons.**
+`W_rec` is the connectome's adjacency (or a control matrix), rescaled to **spectral radius ρ = 0.95**.
+In *this* experiment it is a **frozen buffer** (`requires_grad = False`) — a fixed reservoir; only the
+I/O trains. (In the [dense-trainable follow-up](../cx_dense_trainable) it becomes an `nn.Parameter`.)
+- *Why frozen* — this asks whether the connectome's wiring, used **as-is**, hands a *linear* readout
+  better features than a random matrix. Freezing also makes every control identical in
+  trainable-parameter count (only `W_in`/`W_out` train), so the result cannot be a capacity artifact.
+- *Why ρ = 0.95* — the spectral radius sets whether recurrent activity decays (<1) or blows up (>1).
+  Pinning every matrix to the same **near-critical 0.95** removes overall gain as a confound, so a
+  difference reflects the matrix's *structure*, not how hot it runs. Every control is rescaled identically.
+
+**2. Input injection — pool-gated.**
+The 2-D self-motion input at each timestep (forward velocity + angular velocity, which the task
+integrates into an x/y/heading trajectory) is projected by a learned `W_in` (`|sensory pool| × 2`)
+and **added only to the sensory pool** of neurons (`index_add` over `sensory_indices`), not the whole
+network.
+- *Why pool-gated* — a connectome has biological *input* cells. Injecting only at the sensory pool
+  keeps the model a faithful "stimulus → region → readout" pipeline instead of a free projection over
+  all N neurons (see [../io_appropriateness](../io_appropriateness) for how biological the pool is).
+
+**3. Recurrent dynamics — K micro-steps, ReLU.**
+For each timestep the state is updated **K times** (K ≈ 3, swept): `h ← ReLU(h · W_recᵀ)`, with the
+input added only on the **first** micro-step.
+- *Why ReLU* — a positive firing-rate nonlinearity (rates can't go negative) that also keeps the
+  recurrent map nonlinear, so the reservoir generates rich features for the readout.
+- *Why micro-steps* — one matrix multiply mixes only 1-hop neighbours; **K hops** let a stimulus
+  propagate several synapses across the network within a single input frame, as a real recurrent
+  circuit does between sensory updates.
+- *`state_clip`* — optional activation clamp, **off here** (it is only needed to stabilize the
+  dense-trainable variant, where a 54M-param recurrent over many unrolled steps can diverge).
+
+**4. Readout — pool-gated and linear.**
+The output is read **only from the output pool** (`index_select` over `output_indices`) through a
+learned linear layer `W_out` (`output_dim × |output pool|`).
+- *Why pool-gated* — reads from the region's biological output cells, not all N.
+- *Why linear* — deliberately weak. A linear probe forces the **recurrent substrate (the connectome)**
+  to do the computation; any performance gap then reflects the *substrate*, not a clever decoder.
+  This is exactly the reservoir-computing test.
+
+**Target & loss.** The output target is the polar-bump path-integration code: a **32-bin von-Mises
+heading "bump"** centred on the agent's current heading, plus a **3-D home vector** (home-bearing
+cos/sin + normalized distance). Trained with **MSE**; the headline metric is the angular error of the
+decoded heading bump.
+
+**Trained parameters (frozen experiment): `W_in`, `b_in`, `W_out`, `b_out` = 22,943** — *identical*
+across all seven models; the millions of recurrent entries are frozen and train nothing. **The whole
+experiment is one controlled swap:** hold this architecture fixed and replace only `W_rec` with the
+connectome vs. its eigenvalue/eigenvector/topology surrogates. Same pools, same `W_in`/`W_out` shapes,
+same ρ, same K, same trainable count → any difference is attributable to the recurrent matrix alone.
+
+## The controls — exact construction (`src/connectome.py`)
+Everything starts from the connectome's **real Schur decomposition** `A = Z · T · Zᵀ` (computed once,
+O(N³), cached to disk; seed-independent):
+- **Z** — orthogonal **Schur basis**: orthonormal directions spanning the matrix's invariant subspaces.
+- **T** — quasi-upper-triangular: eigenvalues sit in its diagonal **blocks** (1×1 real / 2×2 complex
+  pairs); the strictly-upper part is the **coupling** that encodes non-normality.
+
+*Why Schur and not eigendecomposition:* the connectome is **highly non-normal**, so its raw
+eigenvectors are near-degenerate / ill-conditioned. Schur vectors are orthonormal — the numerically
+stable stand-in for "directions."
+
+The two headline controls are **exact duals** that swap one half of `Z · T · Zᵀ`:
+
+| control | construction | keeps | randomizes |
+|---|---|---|---|
+| **`spectrum_full`** (eigenVALUES) | `V · T · Vᵀ`, `V` = fresh **Haar-random orthogonal** | the connectome's **exact eigenvalues** (all of T) | directions → random `V` |
+| **`eigvec_matched`** (eigenVECTORS) | `Z · T_rand · Zᵀ` | the connectome's **directions Z** + non-normal coupling | eigenvalues → `T_rand` keeps T's strictly-upper coupling but writes **random** values on the diagonal blocks (1×1 ~ N(0,σ); 2×2 pairs `p ± i√(qr)`), σ = std of the connectome's eigenvalues |
+
+Both are **dense N²**, built by the same machinery, each **rescaled to ρ = 0.95** (eigvec-matched
+computes ρ exactly from its assigned blocks, since power iteration overestimates it for non-normal Z).
+Comparing them isolates **eigenvalues vs eigenvectors with density and gain controlled.**
+
+Supporting controls: **`spectrum_topk`** — keep the **k=16 largest-|λ|** eigenvalues exactly, fill the
+rest with a Ginibre random bulk scaled to the (k+1)-th magnitude, then random-rotate; **`dense_random`**
+(used in [../cx_dense_trainable](../cx_dense_trainable)) — plain dense Gaussian `N(0,1/N)`, ρ-rescaled,
+dense but *no* connectome structure; and the **sparse topology nulls** `random` (degree-matched
+rewiring), `degree_shuffle` (degree sequence only), `weight_shuffle` (exact edge set, weights permuted).
+Each control draws from a **distinct seed offset** (random +10k, degree +20k, weight +30k, spectrum
++40k, eigvec +50k, dense-random +60k) so they're reproducible and independent.
+
+## Training choices (all of them)
+**Optimizer** Adam · **loss** MSE on the polar-bump target · **gradient clipping** global-norm 1.0 ·
+**12 epochs** × 8,000 train / 2,000 val trajectories · **batch 256** · **3 seeds** · early stop on val
+(patience 4). **HP sweep** is one-axis-at-a-time around a center (★): LR ∈ {3e-4, 1e-3, 3e-3, 1e-2,
+3e-2} (fully crossed with K), ρ ∈ {0.90, **0.95★**, 0.99}, weight-decay ∈ {**0★**, 1e-5, 1e-4},
+K (micro-steps) ∈ {2, **3★** = estimated_K, 5}; **every model is scored at its own best HP cell.**
+
+*Why:* Adam is robust across the LR sweep; **MSE** suits the continuous bump/home regression (vs the
+cross-entropy used for MB's discrete recall); **grad-clip 1.0** stops the unrolled recurrence from
+exploding; **each-model-at-its-own-best-HP** kills any "the connectome just happened to like the
+default LR" objection — every control gets its best shot; **fixed ρ=0.95** removes gain as a confound;
+**3 seeds** control for the random init of `W_in`/`W_out` and the control matrices' own RNG.
+
 ## Methods & rigor
 Frozen recurrent (only input/readout train), 12 epochs × 8 000 trajectories, batch 256, 3 seeds,
 full learning-rate + ρ + weight-decay + K grid, every model rescaled to spectral radius 0.95 — the

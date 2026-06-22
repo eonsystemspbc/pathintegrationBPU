@@ -121,6 +121,86 @@ genuinely differ.**
 - **Spectrum models are dense / not param-matched** (see above) — their sub-random score is suggestive,
   not a clean density-controlled result.
 
+## Model architecture (and why every choice is what it is)
+Same philosophy as the CX sweep — a single recurrent layer whose weight matrix *is* the connectome
+(or a control), with a minimal learned input projection and a linear readout — but **adapted to the
+associative-recall task**, with two deliberate departures from the CX model. The class is
+**`MatrixEpisodicRNN`** (`scripts/associative/run_omniglot_associative_benchmark.py`).
+
+**Shared with the CX model:**
+- **Recurrent substrate `W_rec` (N×N), N = 14,025 MB neurons** — the connectome (or control), rescaled
+  to **ρ = 0.95** (same near-critical-gain control as CX). Here it is **trainable**: the *sparse*
+  runtime makes only the connectome's ~574k edges trainable (`W_rec_values` on fixed `edge_indices`);
+  the *dense* runtime (used by the spectrum/eigvec surrogates) makes all N² entries trainable. It can
+  be frozen via `freeze_recurrent`, and an optional `recurrent_prior_loss` (MSE to the initial matrix)
+  can softly pull trained weights back toward the connectome.
+- **ReLU** firing-rate nonlinearity; optional **`state_clip`** activation clamp (needed to stabilize
+  the dense ~196M-param surrogates).
+- **Linear readout** — same reasoning: a weak decoder forces the *recurrent substrate* to do the
+  computation, so a performance gap reflects the matrix, not the decoder.
+
+**Departure 1 — I/O is *not* pool-gated; it spans all N neurons.**
+`W_in` is `N × input_dim` (every neuron receives a learned projection of the token) and the readout is
+`Linear(N → vocab)` (every neuron feeds the prediction). The per-timestep update is a **single step**
+(no K micro-steps): `h ← ReLU(h · W_recᵀ + x · W_inᵀ + b)`.
+- *Why no pools* — the FlyWire MB export has **no cell-type labels**, so there is no *validated*
+  biological input/output pool to gate on (unlike the CX, whose pools are ~94% genuine output cells).
+  Rather than impose an unverified pool, MQAR treats the connectome purely as a **recurrent substrate
+  / reservoir** and lets the I/O be free over all neurons. The trade-off is documented in
+  [../io_appropriateness](../io_appropriateness): the input *site* is not biological here — but since
+  **every control uses the same free I/O**, the connectome-vs-control comparison is unaffected.
+- *Why a single step* — MQAR is a token-by-token stream (keys, values, queries arrive one per
+  timestep), so one state update per token is the natural recurrence; there is no "settle between
+  sensory frames" structure as in path integration.
+
+**Departure 2 — the task is discrete sequence recall, so the loss is classification, not MSE.**
+**MQAR (multi-query associative recall):** the model reads `num_pairs = 8` *(key, value)* token pairs,
+then `num_queries = 8` query keys, and must output the value bound to each queried key. Each input
+token is a one-hot over a `vocab_size = 32` alphabet **concatenated with 3 role bits** (is-key /
+is-value / is-query), so `input_dim = 32 + 3 = 35`; the output is a 32-way value prediction
+(`output_dim = vocab = 32`). Loss = **cross-entropy masked to the query positions**; metric = recall
+accuracy (**chance = 1/32 = 0.031**).
+
+**The control swap is identical in spirit to CX:** hold this architecture fixed and replace only
+`W_rec` (connectome vs. topology / eigenvalue / eigenvector / dense surrogates). Everything else —
+free I/O, ρ, nonlinearity, readout, task — is held constant, so any difference is the recurrent matrix.
+(Caveat repeated from above: the sparse models keep ~574k trainable recurrent params, the dense
+surrogates ~196M, so cross-density comparisons are not parameter-matched; the *within-sparse* and
+*within-dense* comparisons are.)
+
+## The controls — exact construction (`src/connectome.py`, shared with the CX sweep)
+Everything starts from the connectome's **real Schur decomposition** `A = Z · T · Zᵀ` (computed once,
+O(N³), cached; seed-independent): **Z** = orthogonal Schur basis (the directions), **T** =
+quasi-upper-triangular with the eigenvalues on its diagonal blocks and the non-normal coupling above.
+(Schur, not eigendecomposition, because the connectome is **highly non-normal** — its raw eigenvectors
+are ill-conditioned; Schur vectors are orthonormal.)
+
+| control | construction | keeps | randomizes |
+|---|---|---|---|
+| **`spectrum_full`** (eigenVALUES) | `V · T · Vᵀ`, `V` Haar-random orthogonal | exact eigenvalues | directions |
+| **`spectrum_topk`** | top-**k=16** \|λ\| exact + Ginibre bulk, random-rotated | dominant eigenvalues | the rest |
+| **`eigvec_matched`** (eigenVECTORS) | `Z · T_rand · Zᵀ` | directions `Z` + coupling | eigenvalues (random diagonal blocks) |
+
+All three are **dense N²** and rescaled to **ρ = 0.95**. The **topology nulls are sparse**:
+`hemibrain_seeded` (the real connectome), `weight_shuffle` (exact edge set, weights permuted),
+`degree_preserving_random` (degree sequence only), `random_sparse` (degree-matched rewiring) — each at
+ρ = 0.95, each with a distinct seed offset (random +10k, degree +20k, weight +30k, spectrum +40k,
+eigvec +50k). This is *exactly the same control machinery as CX* — only the recurrent matrix swapped in
+differs, which is what makes the CX-vs-MB dissociation a clean apples-to-apples comparison.
+
+## Training choices (all of them)
+**Optimizer** Adam · **loss** masked cross-entropy (only the query positions are scored) · **gradient
+clipping** global-norm 1.0 · **200 epochs** × 100 freshly-sampled batches/epoch · **batch 64** ·
+**2 seeds** · early stop patience 40 · **LR-only sweep** {3e-4, 1e-3, 3e-3, 1e-2, 3e-2}, each model
+scored at its own best LR. The recurrent matrix is **trainable** (sparse `W_rec_values` on fixed edges,
+or dense `W_rec`); an optional `recurrent_prior_loss` (MSE to the initial matrix) can softly anchor the
+trained weights to the connectome.
+
+*Why:* **cross-entropy** (not MSE) because MQAR is discrete token classification; **masking to the
+query positions** so the loss only rewards recalling the right value, not copying keys; **200 epochs**
+because MQAR has a long "grokking" plateau before it generalizes (short runs read as chance); **each
+model at its own best LR** so the comparison is HP-fair; **ρ=0.95 fixed** removes gain as a confound.
+
 ## Reproduce
 `scripts/mqar/run_hp_spectrum_sweep_mqar.py --matrix connectomes/flywire_mushroom_body/adjacency_unsigned.npz
 --lr-only --seeds 0 1 --epochs 200 --patience 40` (sharded 3-way; results
