@@ -168,6 +168,39 @@ free I/O, ρ, nonlinearity, readout, task — is held constant, so any differenc
 surrogates ~196M, so cross-density comparisons are not parameter-matched; the *within-sparse* and
 *within-dense* comparisons are.)
 
+## The controls — exact construction (`src/connectome.py`, shared with the CX sweep)
+Everything starts from the connectome's **real Schur decomposition** `A = Z · T · Zᵀ` (computed once,
+O(N³), cached; seed-independent): **Z** = orthogonal Schur basis (the directions), **T** =
+quasi-upper-triangular with the eigenvalues on its diagonal blocks and the non-normal coupling above.
+(Schur, not eigendecomposition, because the connectome is **highly non-normal** — its raw eigenvectors
+are ill-conditioned; Schur vectors are orthonormal.)
+
+| control | construction | keeps | randomizes |
+|---|---|---|---|
+| **`spectrum_full`** (eigenVALUES) | `V · T · Vᵀ`, `V` Haar-random orthogonal | exact eigenvalues | directions |
+| **`spectrum_topk`** | top-**k=16** \|λ\| exact + Ginibre bulk, random-rotated | dominant eigenvalues | the rest |
+| **`eigvec_matched`** (eigenVECTORS) | `Z · T_rand · Zᵀ` | directions `Z` + coupling | eigenvalues (random diagonal blocks) |
+
+All three are **dense N²** and rescaled to **ρ = 0.95**. The **topology nulls are sparse**:
+`hemibrain_seeded` (the real connectome), `weight_shuffle` (exact edge set, weights permuted),
+`degree_preserving_random` (degree sequence only), `random_sparse` (degree-matched rewiring) — each at
+ρ = 0.95, each with a distinct seed offset (random +10k, degree +20k, weight +30k, spectrum +40k,
+eigvec +50k). This is *exactly the same control machinery as CX* — only the recurrent matrix swapped in
+differs, which is what makes the CX-vs-MB dissociation a clean apples-to-apples comparison.
+
+## Training choices (all of them)
+**Optimizer** Adam · **loss** masked cross-entropy (only the query positions are scored) · **gradient
+clipping** global-norm 1.0 · **200 epochs** × 100 freshly-sampled batches/epoch · **batch 64** ·
+**2 seeds** · early stop patience 40 · **LR-only sweep** {3e-4, 1e-3, 3e-3, 1e-2, 3e-2}, each model
+scored at its own best LR. The recurrent matrix is **trainable** (sparse `W_rec_values` on fixed edges,
+or dense `W_rec`); an optional `recurrent_prior_loss` (MSE to the initial matrix) can softly anchor the
+trained weights to the connectome.
+
+*Why:* **cross-entropy** (not MSE) because MQAR is discrete token classification; **masking to the
+query positions** so the loss only rewards recalling the right value, not copying keys; **200 epochs**
+because MQAR has a long "grokking" plateau before it generalizes (short runs read as chance); **each
+model at its own best LR** so the comparison is HP-fair; **ρ=0.95 fixed** removes gain as a confound.
+
 ## Reproduce
 `scripts/mqar/run_hp_spectrum_sweep_mqar.py --matrix connectomes/flywire_mushroom_body/adjacency_unsigned.npz
 --lr-only --seeds 0 1 --epochs 200 --patience 40` (sharded 3-way; results

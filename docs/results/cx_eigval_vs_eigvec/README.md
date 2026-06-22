@@ -130,6 +130,49 @@ experiment is one controlled swap:** hold this architecture fixed and replace on
 connectome vs. its eigenvalue/eigenvector/topology surrogates. Same pools, same `W_in`/`W_out` shapes,
 same ρ, same K, same trainable count → any difference is attributable to the recurrent matrix alone.
 
+## The controls — exact construction (`src/connectome.py`)
+Everything starts from the connectome's **real Schur decomposition** `A = Z · T · Zᵀ` (computed once,
+O(N³), cached to disk; seed-independent):
+- **Z** — orthogonal **Schur basis**: orthonormal directions spanning the matrix's invariant subspaces.
+- **T** — quasi-upper-triangular: eigenvalues sit in its diagonal **blocks** (1×1 real / 2×2 complex
+  pairs); the strictly-upper part is the **coupling** that encodes non-normality.
+
+*Why Schur and not eigendecomposition:* the connectome is **highly non-normal**, so its raw
+eigenvectors are near-degenerate / ill-conditioned. Schur vectors are orthonormal — the numerically
+stable stand-in for "directions."
+
+The two headline controls are **exact duals** that swap one half of `Z · T · Zᵀ`:
+
+| control | construction | keeps | randomizes |
+|---|---|---|---|
+| **`spectrum_full`** (eigenVALUES) | `V · T · Vᵀ`, `V` = fresh **Haar-random orthogonal** | the connectome's **exact eigenvalues** (all of T) | directions → random `V` |
+| **`eigvec_matched`** (eigenVECTORS) | `Z · T_rand · Zᵀ` | the connectome's **directions Z** + non-normal coupling | eigenvalues → `T_rand` keeps T's strictly-upper coupling but writes **random** values on the diagonal blocks (1×1 ~ N(0,σ); 2×2 pairs `p ± i√(qr)`), σ = std of the connectome's eigenvalues |
+
+Both are **dense N²**, built by the same machinery, each **rescaled to ρ = 0.95** (eigvec-matched
+computes ρ exactly from its assigned blocks, since power iteration overestimates it for non-normal Z).
+Comparing them isolates **eigenvalues vs eigenvectors with density and gain controlled.**
+
+Supporting controls: **`spectrum_topk`** — keep the **k=16 largest-|λ|** eigenvalues exactly, fill the
+rest with a Ginibre random bulk scaled to the (k+1)-th magnitude, then random-rotate; **`dense_random`**
+(used in [../cx_dense_trainable](../cx_dense_trainable)) — plain dense Gaussian `N(0,1/N)`, ρ-rescaled,
+dense but *no* connectome structure; and the **sparse topology nulls** `random` (degree-matched
+rewiring), `degree_shuffle` (degree sequence only), `weight_shuffle` (exact edge set, weights permuted).
+Each control draws from a **distinct seed offset** (random +10k, degree +20k, weight +30k, spectrum
++40k, eigvec +50k, dense-random +60k) so they're reproducible and independent.
+
+## Training choices (all of them)
+**Optimizer** Adam · **loss** MSE on the polar-bump target · **gradient clipping** global-norm 1.0 ·
+**12 epochs** × 8,000 train / 2,000 val trajectories · **batch 256** · **3 seeds** · early stop on val
+(patience 4). **HP sweep** is one-axis-at-a-time around a center (★): LR ∈ {3e-4, 1e-3, 3e-3, 1e-2,
+3e-2} (fully crossed with K), ρ ∈ {0.90, **0.95★**, 0.99}, weight-decay ∈ {**0★**, 1e-5, 1e-4},
+K (micro-steps) ∈ {2, **3★** = estimated_K, 5}; **every model is scored at its own best HP cell.**
+
+*Why:* Adam is robust across the LR sweep; **MSE** suits the continuous bump/home regression (vs the
+cross-entropy used for MB's discrete recall); **grad-clip 1.0** stops the unrolled recurrence from
+exploding; **each-model-at-its-own-best-HP** kills any "the connectome just happened to like the
+default LR" objection — every control gets its best shot; **fixed ρ=0.95** removes gain as a confound;
+**3 seeds** control for the random init of `W_in`/`W_out` and the control matrices' own RNG.
+
 ## Methods & rigor
 Frozen recurrent (only input/readout train), 12 epochs × 8 000 trajectories, batch 256, 3 seeds,
 full learning-rate + ρ + weight-decay + K grid, every model rescaled to spectral radius 0.95 — the
