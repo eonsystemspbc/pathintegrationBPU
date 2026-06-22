@@ -1,6 +1,6 @@
 ---
 name: labnotebook
-description: Document the results of an experimental run in the project's lab notebook. Use at the end of an experiment or run — after results are in, code has been validated, or a scientific question has been resolved or advanced. Writes a dated, structured entry (purpose, methods, results) in clear, concise, human scientific prose.
+description: Document an experiment in the project's lab notebook. Use at experiment kickoff to record purpose and planned methods (and seed the index), along the way as work progresses, and at the end to add results once they're in and sanity-checked. Writes dated, structured entries (purpose, methods, results) in clear, concise, human scientific prose, biasing toward one file per experiment plus an index.
 ---
 
 # Lab notebook
@@ -10,8 +10,14 @@ notebook. The notebook is the durable, chronological record of what was done,
 why, and what was found. Write it for a future reader (a collaborator, a PI, or
 yourself in six months) who needs to reconstruct the work without rerunning it.
 
-Do this **at the end of an experimental run** — once results exist and have been
-sanity-checked. Not before the run, not mid-debugging.
+An entry does **not** have to be written all at once at the end. Only the
+**Results** depend on the run finishing. Everything else — date, title, purpose,
+and methods/implementation — can and often should be filled in **when the
+experiment starts**, or built up along the way as the user requests. A natural
+workflow is: create the entry (and its index row + one-line description) at
+kickoff with purpose and planned methods, then come back and add results once
+the run is in and sanity-checked. Don't pre-fill or guess the results — leave
+that section as a placeholder until real numbers exist.
 
 ## 1. Find or set up the notebook
 
@@ -24,15 +30,32 @@ The notebook's form depends on the project. Look before you write:
   and level of detail.
 - If a notebook exists as a **single `.md`**, append a new entry at the
   bottom (or wherever the chronology runs).
-- If it exists as a **folder**, follow its convention — typically one `.md` per
-  experiment plus an index/table-of-contents or a summary file. Add your entry
-  as a new file and update the index/summary so it stays discoverable.
-- If **none exists**, choose the form that fits the work and confirm with the
-  user if ambiguous:
-  - *Single file* for a project with one running thread of experiments.
-  - *Folder* (entry-per-experiment + an `INDEX.md`/`README.md` directory, or a
-    summary file plus detailed per-experiment files) when experiments are
-    numerous or self-contained enough to warrant standalone stories.
+- If it exists as a **folder**, follow its convention — one `.md` per
+  experiment plus an index. Add your entry as a new file and update the index
+  (see "The index" below) so it stays discoverable.
+- If **none exists**, **default to a folder with an index**: one
+  `experiment_NN_<slug>.md` per experiment plus a `README.md`/`INDEX.md`. The
+  detail lives in the per-experiment file; the index is the at-a-glance summary
+  and the map for deciding which experiment to revisit later. Only use a
+  **single combined notebook file** when the user explicitly asks for one, or
+  when the project clearly has just one running thread that won't split into
+  separate experiments.
+
+### The index
+
+When the notebook is a folder, the index has **two parts**, both kept current:
+
+1. A **summary table** — one row per experiment, with at least: number, date
+   started, title, status (and the headline finding once concluded), and a link
+   to the entry file.
+2. A **one-sentence (short-paragraph) description per experiment**, below the
+   table — the experiment's question and, once known, its answer, in plain
+   language. This is what lets a future reader scan the index and decide which
+   entries to open. **Always add this** when you add an experiment; fill in the
+   "answer" half when results land.
+
+See `scott/labnotebook/README.md` in this repo for a worked example of both
+parts.
 
 Some projects keep both a chronological notebook *and* a thematic
 "what-we-currently-believe" summary (e.g. `PROGRESS.md`) and per-experiment
@@ -64,6 +87,13 @@ Every entry has, in order:
    are results. Note caveats, artifacts, and threats to the conclusion
    honestly. Point to the data files (`outputs/.../metrics.csv`, plots, run
    dirs) rather than pasting bulk data into the notebook.
+   - **Embed the key figures and headline stats** so the entry stands on its own
+     without opening the run folder. Pull a small results table and the one or
+     two plots that carry the finding *into* the entry (reference figures by
+     relative path, e.g. `![…](../experiment_NN_<slug>/figures/fig1.png)`), and
+     keep them where they live on disk — the figure folder is the source of
+     truth, the notebook embeds the essential subset. Don't inline the full
+     figure set or bulk tables; link to those.
 
 Interpretation is usually **not** a separate section — let the results speak.
 Add a brief interpretation only when the raw results are too jargon-heavy or
@@ -91,9 +121,12 @@ follows directly from the finding (a short "what's next" is fine when it does).
 
 ## 4. Before you finish
 
-- Confirm the entry has date, title, purpose, methods, and results.
-- Update any index / table-of-contents / summary file the notebook convention
-  requires.
+- Confirm the entry has date, title, purpose, and methods. Results too if the
+  run is finished; if you're setting up at kickoff, leave a clear Results
+  placeholder rather than inventing numbers.
+- Update the index — **both** the summary-table row **and** the one-sentence
+  description below it (add them at kickoff; fill in the finding/answer when
+  results land).
 - Make sure pointers to data files and run directories are correct paths.
 - Do not invent numbers. If a result is missing, say what's missing and what
   run would produce it — don't fill the gap with a plausible-looking figure.

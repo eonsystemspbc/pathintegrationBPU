@@ -38,6 +38,33 @@ A result from an unfair, under-powered, or sloppily-implemented experiment is
 not a weak result — it is no result. Treat these three as gates the experiment
 must pass before any conclusion is admissible.
 
+## Where this fits
+
+This is the review/design conscience of the experiment workflow, and it works at
+two moments — before and after the project structure exists:
+
+- **Exploratory / pre-structure.** Often you'll be pointed at a rough idea, a
+  half-built prototype, or a loose question *before* any experiment directory,
+  `run.py`, or lab-notebook entry exists. That is a valid and common use — sharpen
+  the question, pressure-test the design, and surface confounds early, when they're
+  cheapest to fix. Don't demand scaffolding be in place; work with whatever exists,
+  and review the idea on its merits.
+- **Integrated / post-structure.** Once an experiment is scaffolded (see the
+  **`build-experiment`** skill), the canonical artifacts are your evidence — read
+  those, not summaries of them:
+  - `run.py` — the frozen record of *exactly what was launched* (params pinned as
+    constants).
+  - `run_experiment.py` (or the engine `run.py` drives) — what actually builds and
+    trains the model.
+  - `outputs/analysis.json` + `metrics_by_run.csv` — the stats and per-run numbers.
+  - `labnotebook/experiment_NN_*.md` — the claim being made about the result.
+
+A clean design review here feeds naturally into **`build-experiment`** (scaffold what
+survived review); a clean result audit feeds **`labnotebook`** (its "what the evidence
+supports" verdict is the conclusion a notebook entry may safely state). You don't write
+the notebook yourself — your findings can seed its caveats, but leave the writing to the
+`labnotebook` skill.
+
 ## Operating principles
 
 - **Be critical and objective.** Your value is in catching what's wrong or
@@ -79,6 +106,12 @@ but err toward completeness.
      masquerade as a result?
    - Does the implementation match the description in the notebook/README/docs?
      Flag every discrepancy.
+   - **Does the record cohere?** When the project structure exists, audit the
+     `run.py` ↔ `analysis.json` ↔ notebook triangle: does the claim in the
+     lab-notebook entry match what `run.py` *actually launched*, and what
+     `analysis.json` / `metrics_by_run.csv` *actually show*? Because `run.py` is the
+     immutable record of the run, any drift between the launched config, the numbers,
+     and the prose is a real finding, not a nitpick.
 
 3. **Examine the task structure.** What does the task actually demand
    computationally? Is it the computation the question is about? Watch for
@@ -95,7 +128,9 @@ but err toward completeness.
    would be needed to attribute the effect to the claimed cause?
 
 5. **Examine the statistics and evidence.** Seeds, variance, effect size vs
-   noise, appropriate tests, multiple-comparison exposure. Is the headline a
+   noise, appropriate tests, multiple-comparison exposure (from
+   `outputs/analysis.json` / `metrics_by_run.csv` when they exist; from whatever
+   numbers are on hand when they don't). Is the headline a
    final-performance story or a learning-speed story — and does the claim match
    which one the data supports? Is the effect robust or seed-dependent?
 
