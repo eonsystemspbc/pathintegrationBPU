@@ -66,9 +66,13 @@ synthetic_matrix = exp1.synthetic_matrix
 GROK_THRESHOLDS = exp1.GROK_THRESHOLDS
 _empirical_null = exp1._empirical_null
 
-CONDITIONS = ("core", "full", "core_degree", "random_subset")
+# core/full/core_degree/random_subset are TRAINED by this engine. full_degree is an
+# ANALYSIS-ONLY condition: the 14k degree-matched control, ported from Experiment 1 subrun 03
+# (identical task/loop/rho-target=0.95), brought in by port_14k_controls.py. It is never in the
+# training plan; it only appears in the analysis when its result.json files are present.
+CONDITIONS = ("core", "full", "core_degree", "random_subset", "full_degree")
 CONNECTOME_LIKE = ("core", "full")        # one real graph, many training seeds
-CONTROL_LIKE = ("core_degree", "random_subset")  # independent graphs forming a null
+CONTROL_LIKE = ("core_degree", "random_subset", "full_degree")  # independent graphs forming a null
 RANDOM_SUBSET_SEED_BASE = 100_000         # keep random-subset node draws disjoint from other rngs
 
 
@@ -218,6 +222,12 @@ def write_outputs(out_dir: Path, results: list[dict], target_rho: float):
         # (3) pruning: accuracy + learning speed + wall-clock vs the full substrate -> descriptive
         "core_vs_full": _describe_pair(by_cond["core"], by_cond["full"], "core", "full"),
     }
+    # ported 14k degree-matched control (Exp 1 subrun 03), only if present:
+    #  - core_vs_full_degree: is the 5.6k pruned MB better than the 14k degree-matched null?
+    #  - full_vs_full_degree: reproduces Exp 1's headline inside Exp 2 (sanity check)
+    if by_cond["full_degree"]:
+        analysis["core_vs_full_degree"] = _null_compare(by_cond["core"], by_cond["full_degree"])
+        analysis["full_vs_full_degree"] = _null_compare(by_cond["full"], by_cond["full_degree"])
     if multi_lr:
         def lrdist(rs):
             return dict(Counter(f"{r['lr']:.1e}" for r in rs if r.get("lr") is not None))
@@ -232,10 +242,14 @@ def write_outputs(out_dir: Path, results: list[dict], target_rho: float):
         if ta.size:
             print(f"  {c:14s} n={ta.size:2d}  test_acc={ta.mean():.3f}±{ta.std():.3f}  "
                   f"wall_s={np.nanmean(wl):7.0f}", flush=True)
-    for cmp in ("core_vs_core_degree", "core_vs_random_subset"):
+    null_cmps = ["core_vs_core_degree", "core_vs_random_subset"]
+    if "core_vs_full_degree" in analysis:
+        null_cmps += ["core_vs_full_degree", "full_vs_full_degree"]
+    for cmp in null_cmps:
         a = analysis[cmp]["test_acc"]
         if a:
-            print(f"  [{cmp}] test_acc core={a['connectome_mean']}±{a['connectome_std']} "
+            test = cmp.split("_vs_")[0]  # "connectome_mean" position = core, or full for full_vs_*
+            print(f"  [{cmp}] test_acc {test}={a['connectome_mean']}±{a['connectome_std']} "
                   f"ctrl={a['control_mean']}±{a['control_std']} perm_p={a['permutation_p_one_sided']} "
                   f"ranksum_p={a.get('ranksum_p','na')}", flush=True)
     cf = analysis["core_vs_full"].get("test_acc")

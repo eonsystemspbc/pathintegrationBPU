@@ -38,10 +38,12 @@ plt.rcParams.update({
     "legend.frameon": False, "legend.fontsize": 8.5,
 })
 
-CONDS = ["core", "full", "core_degree", "random_subset"]
-COLOR = {"core": "#1f77b4", "full": "#111111", "core_degree": "#7f7f7f", "random_subset": "#ff7f0e"}
+CONDS = ["core", "full", "full_degree", "core_degree", "random_subset"]
+COLOR = {"core": "#1f77b4", "full": "#111111", "full_degree": "#9467bd",
+         "core_degree": "#7f7f7f", "random_subset": "#ff7f0e"}
 LABEL = {"core": "MB core (5.6k)", "full": "full (14k)",
-         "core_degree": "degree-matched core", "random_subset": "random 5.6k subset"}
+         "full_degree": "degree-matched 14k", "core_degree": "degree-matched core",
+         "random_subset": "random 5.6k subset"}
 CHANCE = 1 / 32
 
 HERE = Path(__file__).resolve().parent
@@ -159,7 +161,9 @@ def fig2_final_acc(rows, lrs, figdir):
     # permutation p annotations: core vs each control
     core = cell(rows, "core", best_lr(rows, "core", lrs))
     notes = []
-    for ctrl in ("core_degree", "random_subset"):
+    for ctrl in ("core_degree", "random_subset", "full_degree"):
+        if ctrl not in CONDS:
+            continue
         p = perm_p(core, cell(rows, ctrl, best_lr(rows, ctrl, lrs)))
         notes.append(f"core vs {ctrl.replace('_',' ')}: perm p={p:.3f} ({stars(p)})")
     ax.set_title("Final accuracy by condition\n" + "   |   ".join(notes), fontsize=9)
@@ -218,8 +222,11 @@ def fig4_wallclock(rows, lrs, figdir):
 
 
 def fig5_acc_by_lr(rows, lrs, figdir):
-    # core vs core_degree (Exp 1 replication) and core vs full, grouped bars per lr
+    # core vs core_degree (Exp 1 replication at core scale), core vs full, and (if ported)
+    # core vs the 14k degree-matched control, grouped bars per lr
     pairs = [("core", "core_degree"), ("core", "full")]
+    if "full_degree" in CONDS:
+        pairs.append(("core", "full_degree"))
     fig, axes = plt.subplots(1, 2, figsize=(2.0 * len(lrs) + 4.0, 4.2), sharey=True)
     x = np.arange(len(lrs))
     w = 0.38
@@ -252,6 +259,9 @@ def main():
     figdir = outdir.parent / "figures"
     rows = load(outdir)
     lrs = sorted(set(r["lr"] for r in rows))
+    # only plot conditions that actually have runs (e.g. full_degree only after porting)
+    global CONDS
+    CONDS = [c for c in CONDS if any(r["condition"] == c for r in rows)]
     print(f"figures for {outdir.relative_to(REPO_ROOT)}  (lrs={[fmt_lr(l) for l in lrs]}, "
           f"{len(rows)} runs)")
     fig1_curves(rows, lrs, figdir)

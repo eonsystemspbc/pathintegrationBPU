@@ -48,9 +48,10 @@ fully connected (largest weakly-connected component 5,606/5,608). The core-node 
 adjacency are precomputed once by `build_mb_core.py` → `substrate/core_indices.npy` (staged with
 the code so the fleet never needs the 32 MB annotation table).
 
-**Conditions (4), all ρ-rescaled to the full substrate's measured ρ = 0.95.** Spectral radius is
+**Conditions, all ρ-rescaled to the full substrate's measured ρ = 0.95.** Spectral radius is
 matched across every condition exactly as in Exp 1, so recurrent gain is held fixed and is not a
-confound for any of the three comparisons.
+confound for any comparison. Four conditions are trained here; a fifth (`full_degree`) is **ported
+from Exp 1 subrun 03** rather than re-trained (see below).
 
 | condition | construction | replication | raw ρ before rescale |
 |---|---|---|---|
@@ -58,6 +59,18 @@ confound for any of the three comparisons.
 | `full` | full 14,025-node substrate | 1 graph × 20 training seeds | 0.950 |
 | `core_degree` | degree-preserving rewiring of the core (`degree_preserving_random_like`) | 20 graphs | ~0.18 |
 | `random_subset` | random 5,608-node induced subgraph of the 14k | 20 graphs | ~0.44 |
+| `full_degree` | degree-matched rewiring of the **full 14k** — Exp 1 subrun 03's `control` arm, **ported** | 20 graphs | ~0.20 |
+
+**Ported 14k degree-matched control (`full_degree`).** Exp 1 subrun 03 already trained 20
+degree-matched controls of the *full* 14k substrate (300 ep, 5 lr, ρ=0.95) — the same arm that gave
+Exp 1's headline. Rather than re-run it, `port_14k_controls.py` copies those finished `control_g*`
+runs into Exp 2's outputs as `full_degree_g*` (patching `condition`/`run_id`). Because Exp 2 reuses
+Exp 1's exact `train_one_run`, task, lr grid, and ρ-target, the ported runs are equivalent to
+re-generating them. Accuracy and epochs/steps-to-grok are hardware-independent and fully comparable;
+wall-clock is comparable in kind (same g6.xlarge/L4 fleet, one run per GPU) but from a separate run,
+so treat the core-vs-`full_degree` wall-clock delta as indicative. This adds two analyses: **(4)
+`core` vs `full_degree`** — is the 5.6k pruned MB better than the 14k degree-matched control? — and
+`full` vs `full_degree`, which reproduces Exp 1's headline inside Exp 2 as a consistency check.
 
 `core`/`full` are connectome-like (one real graph; the 20 seeds vary training noise, not the graph
 — pseudo-replication, so the permutation test against a graph-null is primary). `core_degree`/
@@ -99,31 +112,85 @@ total cost is ~1.2–1.6× Exp 1.
 training-seed replicates of one graph — pseudo-replication); rank-sum secondary with that caveat;
 ρ matched everywhere; per-graph lr tuned so a single shared lr cannot handicap an arm.
 
-## Status — launched on the AWS fleet 2026-06-20; running
+## Run log
 
-Built and validated locally (2026-06-19): all 4 conditions build and ρ-match to 0.95 (`core` ×1.03,
-`full` ×1.00, `core_degree` ×5.23, `random_subset` ×2.18); idempotent skip, resume, sharding (400
-runs → 134/133/133 over 3 shards), `--analyze-only`, and figures all confirmed.
+Built and validated locally 2026-06-19; launched on the AWS spot-GPU fleet 2026-06-20 (`run.py`; 400
+runs = 80 units × 5 lr, 300-epoch cap; isolated S3 area `s3://…/pathint-exp02-core/`). 4 of the 64
+spot instances were preempted mid-shard, leaving 26 runs incomplete (374/400); the logs showed no
+errors (only the benign sparse-invariant warning), and the gap was the expected preemption pattern
+(4 resumable partials with checkpoints + 22 never-started shard tails). A top-up re-run resumed the 4
+partials from their S3 checkpoints and ran the 22 remaining to reach 400/400. The 14k degree-matched
+control (`full_degree`, 100 runs) was then ported in from Exp 1 subrun 03 (`port_14k_controls.py`)
+and the full set re-analyzed (`run.py --collect`) — 500 runs aggregated.
 
-**Launched on the AWS spot-GPU fleet 2026-06-20** via `run.py` (400 runs = 80 units × 5 lr, 300-epoch
-cap; 64-GPU fleet, spot + on-demand spill; isolated S3 area `s3://…/pathint-exp02-core/`). Each
-worker runs `run_experiment.py --shard k --num-shards 64`, idempotent and per-epoch checkpointed to
-S3, then self-terminates — so spot preemptions only cost a resume. Monitor with `run.py --status`
-(progress vs the 400-run plan, per condition) and `run.py --log`; collect with `run.py --collect`
-(pulls results, runs `--analyze-only`, regenerates figures). Results below are pending run completion.
+## Results (concluded 2026-06-21; 400 trained + 100 ported = 500 runs)
 
-## Results
+**Pruning the 14,025-neuron FlyWire "mushroom body" substrate to the ~5.6k canonical MB core keeps
+essentially all of the connectome's MQAR advantage. The MB core beats every control — a
+degree-matched core, a random same-size subgraph, and the full 14k's degree-matched control — and
+trains ~2.5× faster in wall-clock than the full substrate, for ~0.04 less final accuracy.**
 
-_Pending — run launched 2026-06-20; fill in from `run.py --collect` when the fleet finishes._
+All five conditions ρ-matched to 0.95; best lr chosen per unit on validation (every condition's
+optimum is 1e-3 — shared across arms, as in Exp 1). 20 units per condition.
 
-Expected outputs: `outputs/{analysis.json, metrics_by_run.csv, lr_selection.csv}`, per-run curves
-under `outputs/runs/*/`, and figures `fig1_curves_best_lr` (headline), `fig2_final_acc` (+ the two
-permutation p's), `fig3_grok_epochs`, `fig4_wallclock`, `fig5_acc_by_lr`. To be reported per
-question: (1) `core` vs `core_degree` permutation p — does Exp 1 hold at core scale; (2) `core` vs
-`random_subset` permutation p — right subset vs just smaller; (3) `core` vs `full` — final test
-accuracy, epochs/steps/wall-clock to grok, and total wall-clock.
+| condition | final test acc | total wall-clock |
+|---|---|---|
+| `full` (14k) | 0.919 ± 0.010 | 10,238 s |
+| **`core` (5.6k MB)** | **0.881 ± 0.012** | 4,128 s |
+| `random_subset` (random 5.6k) | 0.838 ± 0.020 | 2,704 s |
+| `full_degree` (14k degree-matched, ported) | 0.769 ± 0.140 | 10,042 s |
+| `core_degree` (5.6k degree-matched) | 0.701 ± 0.171 | 4,113 s |
+
+Permutation tests (one-sided, the real graph as the test arm against each 20-graph control null;
+all land at the 1/(20+1) ≈ 0.048 floor — complete separation, 0/20 controls reach the test mean;
+rank-sum p ≈ 0, secondary, with the pseudo-replication caveat):
+
+- **Q1 — Exp 1 holds at core scale.** `core` 0.881 vs `core_degree` 0.701, p = 0.048. The wiring
+  advantage over degree-matched random survives pruning, so it is intrinsic to the ~5.6k MB core,
+  not carried by the ~8.4k weakly-attached halo (the central-complex + unlabeled neurons the build
+  rule swept in). This is the clean same-size / same-degree test.
+- **Q2 — the right subset, not just smaller.** `core` 0.881 vs `random_subset` 0.838, p = 0.048. A
+  random same-size chunk of the 14k is a surprisingly strong substrate (0.838, despite being far
+  sparser — ~94k vs ~440k edges), but the MB core still beats it.
+- **Q4 — the pruned core beats the 14k degree-matched control.** `core` 0.881 vs `full_degree`
+  0.769, p = 0.048. The 5.6k biological core outperforms a degree-matched random network with 2.5×
+  the neurons.
+- **Reproduction check.** `full` 0.919 vs `full_degree` 0.769, p = 0.048 — matches Exp 1's headline
+  (0.918 vs 0.769) almost exactly, confirming the ported control is apples-to-apples.
+
+**Q3 — what pruning buys (`core` vs `full`; descriptive, both one graph × 20 seeds).** The speed
+story depends on the metric:
+- Final accuracy: 0.881 vs 0.919 — pruning costs ~0.04.
+- Learning speed in *epochs*: core is **slower** — ~183 vs ~127 epochs to 80% (the smaller network
+  needs more passes to grok).
+- Learning speed in *wall-clock*: core is **~2.5× faster** — 4,128 vs 10,238 s — because each epoch
+  on 5.6k neurons / 440k edges is far cheaper than on 14k / 575k, more than offsetting the extra
+  epochs. So pruning is a clear practical win on wall-clock and a near-wash on accuracy.
+
+**Secondary observation.** The two degree-matched controls invert relative to their parent graphs:
+`core_degree` (0.701) is the *worst* condition — below the 14k `full_degree` (0.769) and even the
+random brain chunk `random_subset` (0.838). Degree-preserving rewiring of the compact MB core is
+more destructive than rewiring the full 14k, consistent with the core's structure being more
+load-bearing, though we have not isolated the mechanism.
+
+**Honest limits.**
+- *Cross-size comparisons.* `core` vs `full` and `core` vs `full_degree` change N (5.6k vs 14k)
+  alongside topology, so they answer "is the pruned biological core better than a larger net"
+  rather than isolating one variable. Q1 is the clean same-size/same-degree test, and it is positive.
+- *Pseudo-replication.* `core`/`full` are 20 training-seed replicates of one graph each; the
+  permutation test against the 20-graph null is the valid statistic, sitting at the 0.048 floor —
+  growing the control nulls would tighten it.
+- *Generic all-neuron I/O.* Input/readout still touch all neurons, so a trainable readout can route
+  around the wiring (as in Exp 1). Biological PN/KC→MBON I/O is Experiment 3.
+- *Ported wall-clock.* `full_degree` came from a separate (same-hardware, one-run-per-GPU) fleet run,
+  so its wall-clock is indicative, not measured in this run.
+
+Figures (`figures/`): `fig1_curves_best_lr` (headline curves, all 5 conditions), `fig2_final_acc`
+(box + the three core-vs-control permutation p's), `fig3_grok_epochs`, `fig4_wallclock`,
+`fig5_acc_by_lr`. Data: `outputs/{analysis.json, metrics_by_run.csv, lr_selection.csv}`, per-run
+curves under `outputs/runs/*/`.
 
 ### Next steps
-1. Launch on the fleet; collect; fill in results above.
-2. **Experiment 3:** biologically-correct I/O (PN/KC input → MBON output) on the MB core, using the
-   cell-type labels from the annotation join built here.
+**Experiment 3:** biologically-correct I/O (PN/KC input → MBON output) on the MB core, using the
+cell-type labels from the annotation join built here — the last Exp-1 confound (generic all-neuron
+I/O lets a trainable readout bypass the wiring).

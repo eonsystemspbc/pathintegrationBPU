@@ -16,6 +16,10 @@ This experiment prunes to the canonical MB core and asks three questions on MQAR
    14k (`random_subset`).
 3. **What does pruning buy?** — `core` vs `full` 14k: final test accuracy **and** learning speed
    (epochs / gradient-steps / wall-clock to grok, plus total wall-clock).
+4. **Is the pruned core better than the 14k degree-matched control?** — `core` vs `full_degree`,
+   the 14k degree-matched arm **ported from Experiment 1 subrun 03** (not re-trained — same task,
+   training loop, lr grid, and ρ-target). `full` vs `full_degree` also reproduces Exp 1's headline
+   as an internal consistency check. Brought in by `port_14k_controls.py`.
 
 Full rationale, methods, and results live in the lab notebook:
 [`../labnotebook/experiment_02_mb_core_pruning.md`](../labnotebook/experiment_02_mb_core_pruning.md).
@@ -28,6 +32,7 @@ Full rationale, methods, and results live in the lab notebook:
 | `full` | full 14,025-node substrate | 1 graph × `FULL_SEEDS` training seeds | the pruning reference (Exp 1's substrate) |
 | `core_degree` | degree-preserving random rewirings of the core | `CONTROL_GRAPHS` graphs | null for Q1 (Exp 1's control, at core scale) |
 | `random_subset` | random `\|core\|`-node induced subgraphs of the 14k | `CONTROL_GRAPHS` graphs | null for Q2 (same size, arbitrary cells) |
+| `full_degree` | degree-matched random rewirings of the full 14k — **ported from Exp 1 subrun 03, not trained here** | 20 graphs | null for Q4 (does the pruned core beat the 14k degree-matched control?) |
 
 `core`/`full` are *connectome-like* (one real graph, many training seeds → pseudo-replication;
 the permutation test against a graph-null is primary). `core_degree`/`random_subset` are
@@ -42,6 +47,7 @@ question is deferred to Experiment 3).
 experiment_02_mb_core_pruning/
 ├── README.md            ← this index
 ├── build_mb_core.py     ← one-time prep: joins FlyWire annotations → substrate/core_indices.npy
+├── port_14k_controls.py ← copies Exp 1's 14k degree-matched controls in as the `full_degree` condition
 ├── run_experiment.py    ← engine: builds the 4 conditions (ρ-matched), trains, analyzes
 │                          (reuses Exp 1's training loop + analysis primitives verbatim)
 ├── run.py               ← AWS-fleet launcher; all run parameters pinned as constants
