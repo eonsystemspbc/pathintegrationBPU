@@ -160,8 +160,15 @@ The code and the notebook must point at each other, both directions:
 Once invoked, hold the line on this structure for the remainder of the session,
 without being asked again:
 
+- **Stay inside the user's named folder.** All of a user's work — experiments,
+  notebook, figures, outputs, scratch — lives under their own top-level folder
+  (e.g. `scott/`). Keep every new file there; never create experiments or notebook
+  entries at the repo root or inside another user's folder. The shared
+  `scott/aws_fleet/` harness is the one exception (it's used by everyone, via each
+  experiment's generated config — don't edit it per-experiment). If you're unsure
+  whose folder you're in, ask before writing.
 - Keep new code, figures, data, and outputs **inside the right experiment/subrun
-  folder**; flag anything that lands elsewhere.
+  folder** within that user's folder; flag anything that lands elsewhere.
 - Treat a run's `run.py` as **immutable** once it has run — if the user wants a
   change that alters what was launched, propose a **subrun** (same `run.py`) or a
   **new experiment** (new `run.py`), and say which it is and why.

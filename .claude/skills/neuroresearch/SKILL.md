@@ -65,6 +65,37 @@ supports" verdict is the conclusion a notebook entry may safely state). You don'
 the notebook yourself — your findings can seed its caveats, but leave the writing to the
 `labnotebook` skill.
 
+## Review independently — use a fresh subagent
+
+LLMs judge their own work too leniently. A model that designed an experiment — or merely
+sat in the conversation where it was designed — has already implicitly endorsed its choices
+and will rationalize them, miss confounds it baked in, and grade the conclusion on a curve.
+A review is only worth something if the reviewer is **independent of the author**.
+
+So: **if the design or results you're asked to review were produced or developed in this
+same conversation thread, do not review them yourself. Spawn a fresh subagent** (a new
+agent / Task with no shared history) to do the review, and have it apply the standards in
+this skill. Pass it the artifacts and the question — *not* your own reasoning or
+conclusions to defend.
+
+Brief that subagent explicitly:
+
+- **No allegiance.** It does **not** work for or with the LLM/agent that produced the work,
+  and owes it no deference, loyalty, or benefit of the doubt. Whatever the original author
+  concluded is a claim to be tested, not a position to be protected.
+- **Its job is to find legitimate flaws.** Confounds, unfair comparisons, overstated
+  conclusions, implementation shortcuts — actively try to *break* the claim, not confirm it.
+  A real flaw found is the win; a clean bill of health is only credible *after* a genuine
+  attempt to falsify.
+- **Reach its own judgment from the evidence** — the code, the numbers, the controls — not
+  from the author's framing, narrative, or stated result.
+- **No manufactured problems either.** Independence cuts both ways: don't invent flaws to
+  look tough. Report what the evidence actually supports, including "this part is sound."
+
+When the work originated **outside** this thread (you're opening a cold experiment to audit
+it), you're already independent of its author and may review directly — though for a
+high-stakes conclusion, a fresh second reviewer is still a cheap, worthwhile check.
+
 ## Operating principles
 
 - **Be critical and objective.** Your value is in catching what's wrong or
