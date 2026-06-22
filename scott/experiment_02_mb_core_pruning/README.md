@@ -24,6 +24,37 @@ This experiment prunes to the canonical MB core and asks three questions on MQAR
 Full rationale, methods, and results live in the lab notebook:
 [`../labnotebook/experiment_02_mb_core_pruning.md`](../labnotebook/experiment_02_mb_core_pruning.md).
 
+## Result (concluded 2026-06-21)
+
+**Pruning to the ~5.6k MB core keeps the connectome's MQAR advantage and trains ~2.5× faster in
+wall-clock than the full 14k, for ~0.04 less accuracy.** Final test accuracy at the shared optimum
+**lr = 1e-3, completed runs only** (patience-cut runs excluded — see the lab notebook's
+"Why the controls look bimodal"; ρ=0.95). Primary statistic is the **rank**: **0 of N control graphs
+reach the MB core's mean** in every comparison (the connectome is one graph, so it is tested against
+the control-graph distribution); the permutation p equals the floor 1/(n+1) and is resolution-limited
+by how many controls survive the cut, so we do not gate on 0.05.
+
+| condition | test acc (lr 1e-3, completed) | n | wall-clock |
+|---|---|---|---|
+| `full` (14k) | 0.919 ± 0.010 | 20 | 10,238 s |
+| **`core` (5.6k MB)** | **0.881 ± 0.012** | 20 | 4,128 s |
+| `random_subset` (random 5.6k) | 0.838 ± 0.020 | 20 | 2,704 s |
+| `full_degree` (14k degree-matched) | 0.827 ± 0.013 | 17 | 10,056 s |
+| `core_degree` (5.6k degree-matched) | 0.811 ± 0.019 | 14 | 4,154 s |
+
+- **Q1** `core` > `core_degree` (0.881 vs 0.811; 0/14 reach core, perm p=0.067) — Exp 1 holds at core
+  scale; the wiring effect is intrinsic to the core, not the ~8.4k halo. The clean same-size test.
+- **Q2** `core` > `random_subset` (0.881 vs 0.838; 0/20, perm p=0.048) — the right subset, not just smaller.
+- **Q3** `core` vs `full` (0.881 vs 0.919): ~0.04 less accuracy and slower in epochs (~183 vs ~127
+  to 80%), but ~2.5× faster in wall-clock.
+- **Q4** `core` > `full_degree` (0.881 vs 0.827; 0/17, perm p=0.056) — the pruned MB beats the 14k
+  degree-matched control; `full` vs `full_degree` (0.919 vs 0.827) is the Exp-1 reproduction.
+
+All-graphs alternative (best-lr-per-unit, n=20, perm p=0.048; controls 0.701/0.769) gives the same
+conclusion — both in `analysis.json`. Caveats, figures, and the bimodality investigation: the lab
+notebook entry. Future: more control graphs to push the permutation floor < 0.05. Next → Exp 3
+(biological PN/KC→MBON I/O).
+
 ## Conditions
 
 | condition | what it is | replication | role |

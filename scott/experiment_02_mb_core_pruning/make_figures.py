@@ -89,6 +89,30 @@ def grok_epochs(rows, cond, lrs, thr="0.80"):
     return np.array([r["grok"][thr]["epoch"] for r in rs if r["grok"][thr]["epoch"] is not None], float), len(rs)
 
 
+# Comparison cohort for fig1-4: the shared optimum lr, COMPLETED runs only. Patience-cut
+# (plateau-stopped) runs are excluded — they were stopped before the budget and so are not a fair
+# measurement at this lr. This keeps a single, fixed lr across conditions (unlike best-lr-per-unit),
+# at the cost of reduced control n (the cut graphs drop out). NOTE: excluding the cut runs may
+# OVERESTIMATE the controls (the dropped runs might have ended lower if allowed to finish), so the
+# connectome edge shown here is conservative. fig5 keeps ALL runs per lr (the raw diagnostic).
+COMP_LR = 1e-3
+
+
+def _comp(rows, cond):
+    return [r for r in rows if r["condition"] == cond and abs(r["lr"] - COMP_LR) < 1e-12
+            and r.get("stopped_reason") != "plateau"]
+
+
+def compcell(rows, cond, key="test_acc"):
+    return np.array([r[key] for r in _comp(rows, cond)], float)
+
+
+def compgrok(rows, cond, thr="0.80"):
+    rs = _comp(rows, cond)
+    ep = np.array([r["grok"][thr]["epoch"] for r in rs if r["grok"][thr]["epoch"] is not None], float)
+    return ep, len(rs)
+
+
 def perm_p(conn, ctrl):
     if not len(conn) or not len(ctrl):
         return float("nan")
@@ -118,31 +142,32 @@ def _save(fig, figdir, name):
     print(f"  wrote {out.relative_to(REPO_ROOT)}")
 
 
-def fig1_curves(rows, lrs, figdir):
-    L = min(300, max(r["epochs_ran"] for r in rows))
+def fig1_curves(rows, figdir):
+    # lr=1e-3 cohort, completed runs only (patience-cut curves excluded)
+    comp = [r for c in CONDS for r in _comp(rows, c)]
+    L = min(300, max(r["epochs_ran"] for r in comp))
     fig, ax = plt.subplots(figsize=(5.8, 4.3))
     for cond in CONDS:
-        rs, blr = best_rows(rows, cond, lrs)
-        cl = [r["curve"] for r in rs if r["curve"]]
+        cl = [r["curve"] for r in _comp(rows, cond) if r["curve"]]
         if not cl:
             continue
         m, sd = mean_band(cl, L)
         x = np.arange(1, L + 1)
-        ax.plot(x, m, color=COLOR[cond], lw=2.2, label=f"{LABEL[cond]} (lr {fmt_lr(blr)})")
+        ax.plot(x, m, color=COLOR[cond], lw=2.2, label=LABEL[cond])
         ax.fill_between(x, m - sd, m + sd, color=COLOR[cond], alpha=0.12, lw=0)
     ax.axhline(CHANCE, color="k", ls=":", lw=1)
     ax.text(L, CHANCE + 0.01, "chance", ha="right", va="bottom", fontsize=7)
     ax.set_xlabel("epoch")
     ax.set_ylabel("recall accuracy")
     ax.set_ylim(0, 1)
-    ax.set_title("MQAR learning curves at best learning rate")
+    ax.set_title(f"MQAR learning curves (lr {fmt_lr(COMP_LR)}, completed runs)")
     ax.legend(loc="upper left")
     fig.tight_layout()
     _save(fig, figdir, "fig1_curves_best_lr")
 
 
-def fig2_final_acc(rows, lrs, figdir):
-    data = [cell(rows, c, best_lr(rows, c, lrs)) for c in CONDS]
+def fig2_final_acc(rows, figdir):
+    data = [compcell(rows, c) for c in CONDS]
     fig, ax = plt.subplots(figsize=(6.2, 4.4))
     bp = ax.boxplot(data, widths=0.6, patch_artist=True, showfliers=False,
                     medianprops=dict(color="k", lw=1.4))
@@ -159,22 +184,23 @@ def fig2_final_acc(rows, lrs, figdir):
     ax.set_ylabel("final recall accuracy")
     ax.set_ylim(0, 1)
     # permutation p annotations: core vs each control
-    core = cell(rows, "core", best_lr(rows, "core", lrs))
+    core = compcell(rows, "core")
     notes = []
     for ctrl in ("core_degree", "random_subset", "full_degree"):
         if ctrl not in CONDS:
             continue
-        p = perm_p(core, cell(rows, ctrl, best_lr(rows, ctrl, lrs)))
+        p = perm_p(core, compcell(rows, ctrl))
         notes.append(f"core vs {ctrl.replace('_',' ')}: perm p={p:.3f} ({stars(p)})")
-    ax.set_title("Final accuracy by condition\n" + "   |   ".join(notes), fontsize=9)
+    ax.set_title(f"Final accuracy by condition (lr {fmt_lr(COMP_LR)}, completed runs)\n"
+                 + "   |   ".join(notes), fontsize=9)
     fig.tight_layout()
     _save(fig, figdir, "fig2_final_acc")
 
 
-def fig3_grok(rows, lrs, figdir, thr="0.80"):
+def fig3_grok(rows, figdir, thr="0.80"):
     data, reached = [], []
     for c in CONDS:
-        ep, tot = grok_epochs(rows, c, lrs, thr)
+        ep, tot = compgrok(rows, c, thr)
         data.append(ep)
         reached.append((len(ep), tot))
     if not any(len(d) for d in data):
@@ -194,13 +220,13 @@ def fig3_grok(rows, lrs, figdir, thr="0.80"):
     ax.set_xticks(range(1, len(CONDS) + 1))
     ax.set_xticklabels([f"{LABEL[c]}\n({r}/{t})" for c, (r, t) in zip(CONDS, reached)], fontsize=8)
     ax.set_ylabel(f"epochs to {int(float(thr)*100)}% accuracy")
-    ax.set_title("Learning speed (epochs to grok) at best learning rate")
+    ax.set_title(f"Learning speed (epochs to grok, lr {fmt_lr(COMP_LR)}, completed runs)")
     fig.tight_layout()
     _save(fig, figdir, "fig3_grok_epochs")
 
 
-def fig4_wallclock(rows, lrs, figdir):
-    data = [cell(rows, c, best_lr(rows, c, lrs), "total_wall_s") for c in CONDS]
+def fig4_wallclock(rows, figdir):
+    data = [compcell(rows, c, "total_wall_s") for c in CONDS]
     if not any(len(d) for d in data):
         return
     fig, ax = plt.subplots(figsize=(6.2, 4.4))
@@ -214,9 +240,9 @@ def fig4_wallclock(rows, lrs, figdir):
             ax.scatter(i + (rng.random(len(vals)) - 0.5) * 0.22, vals, s=26, color=COLOR[c],
                        edgecolor="white", linewidth=0.5, zorder=3)
     ax.set_xticks(range(1, len(CONDS) + 1))
-    ax.set_xticklabels([LABEL[c] for c in CONDS], fontsize=8)
+    ax.set_xticklabels([f"{LABEL[c]}\n(n={len(d)})" for c, d in zip(CONDS, data)], fontsize=8)
     ax.set_ylabel("total training wall-clock (s)")
-    ax.set_title("Training wall-clock by condition (one run per GPU)")
+    ax.set_title(f"Training wall-clock (lr {fmt_lr(COMP_LR)}, completed runs, one run per GPU)")
     fig.tight_layout()
     _save(fig, figdir, "fig4_wallclock")
 
@@ -263,16 +289,16 @@ def main():
     global CONDS
     CONDS = [c for c in CONDS if any(r["condition"] == c for r in rows)]
     print(f"figures for {outdir.relative_to(REPO_ROOT)}  (lrs={[fmt_lr(l) for l in lrs]}, "
-          f"{len(rows)} runs)")
-    fig1_curves(rows, lrs, figdir)
-    fig2_final_acc(rows, lrs, figdir)
-    fig3_grok(rows, lrs, figdir)
-    fig4_wallclock(rows, lrs, figdir)
+          f"{len(rows)} runs; fig1-4 use lr={fmt_lr(COMP_LR)} completed runs)")
+    fig1_curves(rows, figdir)
+    fig2_final_acc(rows, figdir)
+    fig3_grok(rows, figdir)
+    fig4_wallclock(rows, figdir)
     fig5_acc_by_lr(rows, lrs, figdir)
     for c in CONDS:
-        d = cell(rows, c, best_lr(rows, c, lrs))
+        d = compcell(rows, c)
         if d.size:
-            print(f"  {c:14s} best-lr final acc {d.mean():.3f}±{d.std():.3f}")
+            print(f"  {c:14s} lr{fmt_lr(COMP_LR)} completed: final acc {d.mean():.3f}±{d.std():.3f} (n={d.size})")
 
 
 if __name__ == "__main__":

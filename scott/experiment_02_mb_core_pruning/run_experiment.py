@@ -228,6 +228,29 @@ def write_outputs(out_dir: Path, results: list[dict], target_rho: float):
     if by_cond["full_degree"]:
         analysis["core_vs_full_degree"] = _null_compare(by_cond["core"], by_cond["full_degree"])
         analysis["full_vs_full_degree"] = _null_compare(by_cond["full"], by_cond["full_degree"])
+
+    # Robustness check: recompute excluding any best-lr-per-unit rep that was patience-cut
+    # (stopped_reason == 'plateau'). In this run 0 reps are dropped -- the slow ("failed")
+    # degree-matched control graphs select lr=3e-3 by validation, an epoch_cap run where they
+    # reach ~0.45 by 300 ep, NOT the 0.19 the patience=40 stop leaves at lr=1e-3. So the headline
+    # means are NOT a stopping artifact. The bimodal low mode in fig2/fig4 is the single-lr (1e-3)
+    # cohort those figures plot, where patience cuts the slow graphs to ~0.19; the underlying
+    # graph-to-graph learnability variance is genuine (~0.45 uncut at best lr, still climbing at
+    # the cap). If a future run shows dropped>0 here, the headline IS stopping-sensitive.
+    # See labnotebook 2026-06-21 (cont.).
+    keep = lambda rs: [r for r in rs if r.get("stopped_reason") != "plateau"]
+    bcf = {c: keep(by_cond[c]) for c in CONDITIONS}
+    sens = {"note": "patience-cut (plateau-stopped) units excluded; conservative lower bound on the connectome edge",
+            "dropped_patience_cut": {c: len(by_cond[c]) - len(bcf[c]) for c in CONDITIONS},
+            "n_by_condition": {c: len(bcf[c]) for c in CONDITIONS},
+            "core_vs_core_degree": _null_compare(bcf["core"], bcf["core_degree"]),
+            "core_vs_random_subset": _null_compare(bcf["core"], bcf["random_subset"]),
+            "core_vs_full": _describe_pair(bcf["core"], bcf["full"], "core", "full")}
+    if bcf["full_degree"]:
+        sens["core_vs_full_degree"] = _null_compare(bcf["core"], bcf["full_degree"])
+        sens["full_vs_full_degree"] = _null_compare(bcf["full"], bcf["full_degree"])
+    analysis["sensitivity_excl_patience_cut"] = sens
+
     if multi_lr:
         def lrdist(rs):
             return dict(Counter(f"{r['lr']:.1e}" for r in rs if r.get("lr") is not None))
@@ -264,6 +287,13 @@ def write_outputs(out_dir: Path, results: list[dict], target_rho: float):
     if w:
         print(f"  [core_vs_full] total wall_s core={w['core_mean']} full={w['full_mean']} "
               f"(delta {w['delta_a_minus_b']})", flush=True)
+    s = analysis["sensitivity_excl_patience_cut"]
+    print(f"  [sensitivity: excl patience-cut units, dropped {s['dropped_patience_cut']}]", flush=True)
+    for cmp in ("core_vs_core_degree", "core_vs_full_degree", "full_vs_full_degree"):
+        a = (s.get(cmp) or {}).get("test_acc")
+        if a:
+            print(f"    {cmp}: test={a['connectome_mean']} ctrl={a['control_mean']} "
+                  f"perm_p={a['permutation_p_one_sided']} (n_ctrl={a['n_control']})", flush=True)
     if multi_lr:
         print(f"  chosen lr by condition: {analysis['chosen_lr_by_condition']}", flush=True)
 
