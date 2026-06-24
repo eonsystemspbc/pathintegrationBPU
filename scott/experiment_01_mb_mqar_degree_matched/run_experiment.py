@@ -127,21 +127,29 @@ def _eval_acc(model, rng, n_batches, args, device):
     return c / max(t, 1.0)
 
 
-def train_one_run(run_dir: Path, matrix, args, train_seed: int, device, meta: dict, lr: float) -> dict:
+def train_one_run(run_dir: Path, matrix, args, train_seed: int, device, meta: dict, lr: float,
+                  model=None) -> dict:
     run_dir.mkdir(parents=True, exist_ok=True)
     ckpt_path = run_dir / "checkpoint.pt"
     epochs_csv = run_dir / "metrics_epochs.csv"
 
     torch.manual_seed(args.init_seed + train_seed)
-    model = MatrixEpisodicRNN(
-        recurrent=matrix,
-        input_dim=args.vocab_size + ROLE_DIMS,
-        output_dim=args.vocab_size,
-        runtime="sparse",
-        state_clip=args.state_clip,
-        seed=args.init_seed + train_seed,
-        freeze_recurrent=False,
-    ).to(device)
+    # default: build the standard sparse-trainable model (Exp 1 behavior, unchanged). A caller may
+    # instead pass a prebuilt model (e.g. Exp 2's dense-scaffold eigvec control) -- everything else
+    # (loop, checkpoint/resume, wall-clock, metrics) is identical, so cross-condition numbers stay
+    # comparable.
+    if model is None:
+        model = MatrixEpisodicRNN(
+            recurrent=matrix,
+            input_dim=args.vocab_size + ROLE_DIMS,
+            output_dim=args.vocab_size,
+            runtime="sparse",
+            state_clip=args.state_clip,
+            seed=args.init_seed + train_seed,
+            freeze_recurrent=False,
+        ).to(device)
+    else:
+        model = model.to(device)
     opt = torch.optim.Adam((p for p in model.parameters() if p.requires_grad), lr=lr)
     sched = None
     if args.lr_schedule == "cosine":

@@ -352,3 +352,218 @@ reliable ceiling, not just the controls' occasional catastrophic failures.
 - *Future improvement:* re-run with **more degree-matched control graphs** (e.g. 40–60 draws) to push
   the permutation floor below 0.05 — the rank is already maximal (0 / N); this only restores formal
   significance after dropping the cut runs.
+
+---
+
+## 2026-06-22 (cont.) — Dense eigenvector-structure controls (`eigvec_matched` / `eigvec_shuffle`)
+
+**Purpose.** The degree/subset controls test *sparse* topology. This adds a sharper question: is the
+connectome's advantage in its specific **sparse wiring**, or would **any dense substrate that shares
+the connectome's eigen-*directions*** — given the same trainable-parameter budget — do just as well?
+If a dense surrogate built on the connectome's directional structure matches it, the win is "modal";
+if the real sparse connectome still wins (especially in learning speed / wall-clock), the win is the
+wiring itself. Mirrors a colleague's central-complex result (`docs/results/cx_eigval_vs_eigvec`) but
+in **this experiment's trainable regime**, not a frozen reservoir.
+
+**Four new conditions** (same engine/outputs; `run_experiment.py --eigvec-graphs N`), built on each
+substrate so the question is asked at both scales:
+
+| condition | substrate | construction | trainable edges E |
+|---|---|---|---|
+| `eigvec_matched_core` / `_full` | 5.6k core / 14k full | `Z·T_rand·Zᵀ` — keep Schur basis Z + coupling, **randomize eigenvalues** | 439,603 / 574,660 |
+| `eigvec_shuffle_core` / `_full` | 5.6k core / 14k full | `Z·T_perm·Zᵀ` — keep Z + coupling **and exact spectrum**, only **permute** which eigenvalue block sits where | 439,603 / 574,660 |
+
+**Why Schur, not eigenvectors.** Both MB substrates are strongly non-normal — the eigenvector matrix
+is numerically degenerate (cond ~10¹⁷⁸, near-defective), so `V·diag(λ')·V⁻¹` overflows. We use the
+orthogonal **real Schur** factorization `A = Z·T·Zᵀ` (Z orthonormal "directions"; T quasi-upper-
+triangular, eigenvalues in its diagonal blocks, strictly-upper part = the non-normal coupling). See
+`eigvec_control.py`.
+
+**Trainable-parameter match.** Each control is a **dense frozen scaffold + E = nnz(connectome) random
+exposed trainable edges** (sparse delta), so the trainable recurrent-param count equals the
+connectome's *exactly*; W_in/readout are identical to the connectome conditions. This isolates "same
+number of knobs, dense eigen-matched substrate" vs "the real sparse graph."
+
+**Gain control — activation-RMS, not ρ (the key methodological point).** ρ-matching (Exp 1/2's gain
+fix) does **not** control gain for these dense non-normal matrices: ρ and the spectral norm σ_max are
+**decoupled ~8×**, and no scalar matches both. At ρ=0.95 the surrogates' σ_max ranges 0.95→7.9 vs the
+core's 1.09 — i.e. wildly different transient amplification, which is what a finite ~16-step ReLU
+unroll actually sees. Two fixes (vetted by an independent neuroscience review):
+- *Construction:* rescale **only the eigenvalue blocks** of T to ρ_target, leaving the coupling at
+  the connectome's scale. (The CX generator rescaled the whole T, silently inflating the coupling
+  ~15× → σ_max 7.9 — a normalization artifact, not wiring. Fixing it drops σ_max 7.9 → ~1.0.)
+- *Gain match:* rescale each surrogate so its **empirical init activation-RMS** — mean hidden-state
+  RMS when representative tokens are driven through the frozen recurrence — equals the connectome's.
+  The connectome itself stays at ρ=0.95 (consistent with the other conditions); only the surrogates
+  are rescaled, to the connectome's regime. Residual σ_max (~2–2.5) is reported transparently; no
+  single scalar can match both σ_max and RMS for a non-normal matrix.
+
+**Stability validated (real substrate).** ρ-matching alone left one surrogate exploding (σ_max 7.9)
+and one near-dead; a random synthetic matrix diverged to loss ~10¹⁵. After the fixes, real-substrate
+training is **stable on both core and full** — short runs give normal cross-entropy in [2.5, 3.85],
+descending, no divergence (e.g. `eigvec_matched_full` loss 3.37→2.49 over 4 epochs). Stability checks
+in `_stability/` (git-ignored).
+
+**Metrics.** Test accuracy and learning curves as before, plus **training wall-clock and
+epochs/steps-to-grok**. Wall-clock here is a **practical/commercial value metric** — faster/cheaper
+training to a given accuracy is a real deployment advantage of the sparse connectome — reported
+*alongside* epochs-to-grok so a wiring effect ("fewer epochs") is separable from a sparsity/deployment
+effect ("cheaper per step"). Both are legitimate wins; this is not a confound to control away. Local
+timing (RTX 5060 Ti proxy): dense core-eigvec ~1.4× the sparse core per step, dense full-eigvec ~4×
+(GPU dense GEMM — far milder than the 342× raw-MAC ratio).
+
+**Scale / status.** Starting point **10 graphs × 5 lr per eigvec condition = 200 new runs**, appended
+to the existing Exp 2 (idempotent skip of the 400 done runs) on the AWS spot-GPU fleet (~$250). Scales
+seamlessly to 20 graphs later (re-run appends graphs 10–19, reuses 0–9); the permutation floor is
+1/(10+1) ≈ 0.091 at 10 graphs, 0.048 at 20, so at 10 we again **lead with the rank** (how many control
+graphs reach the connectome mean). The seed-independent Schur is recomputed per fleet instance on
+demand (~2.6 min for the 14k, cached). Comparisons added to `analysis.json`: `core_vs_eigvec_*_core`,
+`full_vs_eigvec_*_full` (null + descriptive grok/wall).
+
+**Early-stop policy.** The eigvec arm runs with **plateau-patience disabled** (the converged-at-0.995
+stop is kept) — unlike the original 400 runs, which used patience = 40. The full rationale and the
+stop/relaunch that established this are in the 2026-06-23 entry below.
+
+**Results (landed 2026-06-23; 200 eigvec runs, patience-off; best-lr-per-unit by validation,
+completed runs — every eigvec run hit the 300-epoch cap, none cut).** Numbers from
+`outputs/analysis.json` (`*_vs_eigvec_*` keys) and `make_figures_eigvec.py`.
+
+**Headline — the answer splits by scale. On the 5.6k core the win is the *sparse wiring*: both dense
+eigen-direction surrogates fall short of the connectome. On the 14k full substrate it is *not* — a
+dense surrogate that shares the Schur directions and matches trainable params (`eigvec_matched_full`)
+actually *beats* the full connectome on accuracy. But the connectome keeps the practical edge
+everywhere: the dense surrogates cost ~2.4–2.7× its wall-clock (dense GEMM vs sparse), so even where
+the dense net wins on final accuracy it is *slower and dearer to reach a given accuracy*.**
+
+| arm | condition | substrate | final test acc | n | epochs→80% | total wall-clock |
+|---|---|---|---|---|---|---|
+| **core** | **`core`** (sparse) | 5.6k | **0.881 ± 0.012** | 20 | 183 | **4,128 s** |
+| | `eigvec_matched_core` (dense) | 5.6k | 0.471 ± 0.068 | 10 | never (0/10) | 9,821 s |
+| | `eigvec_shuffle_core` (dense) | 5.6k | 0.829 ± 0.016 | 10 | 247 | 9,871 s |
+| **full** | `full` (sparse) | 14k | 0.919 ± 0.010 | 20 | 127 | **10,238 s** |
+| | **`eigvec_matched_full`** (dense) | 14k | **0.964 ± 0.009** | 10 | 61 | 27,887 s |
+| | `eigvec_shuffle_full` (dense) | 14k | 0.828 ± 0.020 | 10 | 241 | 27,853 s |
+
+*(matched-core peaks at lr 3e-3, every other condition at lr 1e-3; all are each condition's
+best-validation lr. matched-core never reaches 80% accuracy at any seed.)*
+
+**Rank (primary, as elsewhere in Exp 2) — fraction of the 10 surrogate graphs reaching the connectome
+mean (+1-smoothed perm p, floor 1/11 ≈ 0.091):**
+- **Core, `core` vs `eigvec_matched_core`:** **0/10** reach the core mean (perm p = 0.091); total
+  separation — the surrogate's best (0.560) sits far below the core's worst (0.850). Random eigenvalues
+  on the core produce a poor learner that never groks.
+- **Core, `core` vs `eigvec_shuffle_core`:** **0/10** reach the core mean (perm p = 0.091). The
+  true-spectrum surrogate gets close (0.829) but the sparse connectome still wins on accuracy **and**
+  learning speed — 183 vs 247 epochs to 80% and ~2.4× less wall-clock. This is the clean directional
+  test (real spectrum, only the eigenvalue↔direction pairing broken), and the wiring still wins.
+- **Full, `full` vs `eigvec_matched_full`:** **10/10** surrogate graphs *exceed* the connectome mean
+  (perm p = 1.0) — the dense matched surrogate beats the full connectome (0.964 vs 0.919) and groks in
+  *fewer epochs* (61 vs 127). At 14k scale the accuracy advantage is no longer the sparse wiring.
+- **Full, `full` vs `eigvec_shuffle_full`:** **0/10** reach the connectome mean (perm p = 0.091); the
+  full connectome wins outright on accuracy and is ~5× faster to grok.
+
+**The matched-vs-shuffle ordering inverts across scale — an open puzzle.** On the core, randomizing the
+eigenvalues (`matched`) is catastrophic (0.471) while keeping the true spectrum and only mis-pairing it
+(`shuffle`) recovers most of the performance (0.829) — so the *spectrum* carries most of the core's
+learnability. On the full substrate the ordering flips: `matched` (random eigenvalues) is the best
+condition of all (0.964) and `shuffle` is mediocre (0.828). We do not have a mechanism for the flip.
+Part of it may be conditioning rather than directions: matched-core selects a different lr (3e-3) and
+never groks, hinting its random-eigenvalue scaffold is a harder optimization landscape on the small
+core, not a clean "directions don't help" readout — so `shuffle_core` (real spectrum) is the more
+trustworthy directional test on the core, and the connectome beats it. Flagged for follow-up, not
+over-interpreted.
+
+**Wall-clock as the practical/commercial readout (the standing frame — a value outcome, not a
+confound).** The dense surrogates carry the *same trainable-parameter budget* as the connectome
+(439,603 core / 574,660 full recurrent edges, by construction) yet cost **~2.4× (core) to ~2.7×
+(full)** the wall-clock, because a dense N×N GEMM replaces the sparse connectome's matmul. The
+consequence is sharpest in the one case the dense net "wins": `eigvec_matched_full` reaches higher
+*final* accuracy but the sparse `full` connectome reaches **80% in less wall-clock** (4,355 s vs
+5,710 s) despite needing *more* epochs (127 vs 61) — fewer-but-dearer epochs lose to more-but-cheaper
+ones. So separating the two readouts pays off exactly as intended: in *epochs* the dense matched-full
+substrate learns faster (a modal/directional effect), but in *wall-clock-to-accuracy* — the deployment
+metric — the sparse connectome is ahead everywhere.
+
+![Final accuracy: connectome vs dense eigen-direction surrogates, core and full arms](../experiment_02_mb_core_pruning/figures/eigvec_fig2_final_acc.png)
+
+*eigvec_fig2 — final accuracy at each condition's best lr (box + per-run dots), core arm vs full arm.
+Core: the sparse connectome (blue) clears both dense surrogates. Full: dense `eigvec-matched` (red)
+edges above the sparse connectome, `eigvec-shuffle` (green) below. Companion figures —
+`eigvec_fig1_acc_by_lr` (full lr sweep behind the best-lr choice), `eigvec_fig3_curves` (learning
+curves; the late-grok check the patience-off run was built for), `eigvec_fig4_wallclock` (the ~2.4–2.7×
+dense-substrate cost) — in `figures/`.*
+
+**Honest limits.**
+- *Surrogate n = 10* → permutation floor 0.091, so we lead with the rank (0/10 or 10/10, both maximal),
+  not a 0.05 threshold; a 20-graph top-up would push the floor to 0.048 (the harness appends graphs
+  10–19, reusing 0–9).
+- *Cross-scale inconsistency unexplained.* The matched/shuffle flip between core and full is a genuine
+  open question; the matched-core conditioning caveat above is a hypothesis, not a settled cause.
+- *The full-arm result is real but narrow.* `eigvec_matched_full` beats the connectome on *accuracy at
+  matched param count* — it does not beat it on wall-clock-to-accuracy, and it is one dense surrogate
+  family on one substrate. It says the 14k connectome's *accuracy* ceiling is reachable by a dense
+  eigen-matched net, not that sparsity is worthless (the wall-clock win stands).
+- *Generic all-neuron I/O* still applies (as in the main Exp 2) — a trainable readout can route around
+  wiring; biological I/O is Exp 3.
+- *gain-match residual.* Surrogates are matched on activation-RMS, not σ_max (no scalar matches both for
+  these non-normal matrices); residual σ_max ~2–2.5 is reported in the methods above.
+
+**Takeaway for the program.** On the canonical MB core — the biologically meaningful object — the
+sparse connectome's advantage is the *wiring*, not merely its eigen-directions: neither dense surrogate
+matches it, and it learns faster and cheaper. The full-14k substrate is the weaker claim — there a
+dense param-matched surrogate can exceed its accuracy — which is consistent with the main Exp 2 finding
+that the halo dilutes the core: the diluted 14k object is the one whose advantage a dense net can
+reproduce. Open limit → Exp 3 (biological PN/KC→MBON I/O), unchanged.
+
+## 2026-06-23 — Early-stop / patience policy across the two runs (eigvec relaunch, patience OFF)
+
+Recording the early-stop settings explicitly, since they **differ between the original Exp 2 run and
+the eigvec follow-up**, and the difference is deliberate.
+
+**Two independent early-stop rules** (`run_experiment.py`):
+- *converged* — stop when best val-acc ≥ 0.995 (`--converge-acc`, default 0.995).
+- *plateau (patience)* — stop when val-acc hasn't improved for `--patience` consecutive epochs.
+
+**Original Exp 2 main run** (400 runs: core / full / core_degree / random_subset). patience = **40**,
+converge = 0.995, 300-epoch cap. This is the setting that produced the degree-matched control
+**bimodality** (2026-06-21 (cont.)): patience cut genuinely-slow control graphs mid-plateau at
+lr=1e-3, leaving a spurious ~0.19 low mode. Handled in analysis by (a) reporting the lr=1e-3 cohort
+**completed-runs-only** and (b) `sensitivity_excl_patience_cut`, which re-runs every comparison
+dropping any patience-cut best-lr representative (drops **0** for the connectome — it converges and is
+never cut — so the headline is unaffected). That entry's explicit recommendation: *future runs should
+disable patience.*
+
+**Eigvec follow-up — first launch (aborted).** The four eigvec conditions inherited the engine
+**default patience = 40** — the relaunch `exp_args` didn't override it. Wrong setting, for exactly the
+reason above: the dense eigvec surrogates plausibly grok *late*, so patience would truncate them and
+**under-credit the controls** — the same artifact, now biased *in the connectome's favor*, which we do
+not want. Caught after **27 `eigvec_matched_core` runs** (the fastest dense arm) had completed; the
+~4×-slower `*_full` arms and the `*_shuffle` arms had none finished. Fleet stopped; the 27 completed +
+partial eigvec runs (**190 S3 objects**) deleted; the **400 original runs left untouched** (verified:
+400 `result.json` intact, 0 eigvec objects remaining).
+
+**Eigvec follow-up — relaunch (current).** patience set to **300 = the epoch cap** (`run.py`
+`PATIENCE = EPOCHS` → `--patience 300`), so the plateau-stop can never fire before the cap —
+**patience effectively OFF**. The *converged* stop (val ≥ 0.995) is **kept**, so fast-grokkers still
+stop early and the wall-clock comparison stays fair. Only the eigvec runs re-run (the 400 originals
+are done → idempotent skip), so the originals retain their patience=40 results and only the eigvec arm
+trains to the full budget.
+
+**Summary of the mixed policy:**
+
+| run | conditions | patience | converge stop | cap |
+|---|---|---|---|---|
+| Exp 2 main (400) | core / full / core_degree / random_subset | **40** | 0.995 | 300 ep |
+| eigvec, 1st launch (aborted) | eigvec_* (27 done, deleted) | 40 (inherited; wrong) | 0.995 | 300 ep |
+| eigvec, relaunch (current) | eigvec_matched/shuffle × core/full | **OFF (=300)** | 0.995 | 300 ep |
+
+**Is the mixed policy fair?** Yes — arguably *more* fair for the headline. At the reporting lr (1e-3)
+the connectome conditions converge (hit 0.995) and were never patience-cut, so they already trained to
+completion; the only runs patience truncated were slow *control* graphs. Letting the dense eigvec
+controls run to the full cap removes any chance of truncating *them* too — so the comparison is
+connectome-trained-to-convergence vs control-trained-to-full-budget, which cannot understate the
+controls. The `sensitivity_excl_patience_cut` guard still covers the originals. **Cost:** patience-off
+lets slow eigvec runs use the full 300 epochs, so eigvec wall-clock/spend runs somewhat above the
+earlier ~$250 estimate — the extra spend buys exactly the late-grok tail we wanted to stop discarding.
+First check when results land: the eigvec learning curves, for late-grok behaviour that would
+retroactively justify this change.

@@ -64,13 +64,26 @@ notebook entry. Future: more control graphs to push the permutation floor < 0.05
 | `core_degree` | degree-preserving random rewirings of the core | `CONTROL_GRAPHS` graphs | null for Q1 (Exp 1's control, at core scale) |
 | `random_subset` | random `\|core\|`-node induced subgraphs of the 14k | `CONTROL_GRAPHS` graphs | null for Q2 (same size, arbitrary cells) |
 | `full_degree` | degree-matched random rewirings of the full 14k — **ported from Exp 1 subrun 03, not trained here** | 20 graphs | null for Q4 (does the pruned core beat the 14k degree-matched control?) |
+| `eigvec_matched_core` / `_full` | **dense** Schur-basis surrogate: keep the connectome's eigen-*directions* + coupling, **randomize eigenvalues**; gain-matched on activation-RMS; E=nnz(connectome) random *trainable* edges | `--eigvec-graphs` graphs, per substrate | null for Q5 (is the win the sparse wiring, or just the eigen-directions?) |
+| `eigvec_shuffle_core` / `_full` | as above but keep the **exact spectrum**, only permute the eigenvalue↔direction pairing | `--eigvec-graphs` graphs, per substrate | tighter Q5 null (same directions *and* spectrum) |
 
 `core`/`full` are *connectome-like* (one real graph, many training seeds → pseudo-replication;
-the permutation test against a graph-null is primary). `core_degree`/`random_subset` are
-*control-like* (independent graphs → the null distributions). All four are ρ-rescaled to 0.95.
-Task, model, optimizer, and budget are identical to Exp 1 (faithful MQAR D=8/Q=8/vocab=32,
-sparse-trainable recurrence on a fixed support, **generic all-neuron I/O** — the biological-I/O
-question is deferred to Experiment 3).
+the permutation test against a graph-null is primary). `core_degree`/`random_subset`/`eigvec_*` are
+*control-like* (independent graphs → the null distributions). The sparse conditions are ρ-rescaled to
+0.95; the dense `eigvec_*` controls are instead **gain-matched on empirical init activation-RMS** (ρ
+fails to control gain for these strongly non-normal matrices — ρ and σ_max are decoupled ~8×). Task,
+model, optimizer, and budget are identical to Exp 1 (faithful MQAR D=8/Q=8/vocab=32, generic all-neuron
+I/O — the biological-I/O question is deferred to Experiment 3). The connectome conditions use
+sparse-trainable recurrence on a fixed support; the `eigvec_*` controls use a dense frozen scaffold +
+E trainable edges (so trainable params still match). **Q5 follow-up concluded 2026-06-23** (200
+patience-off runs): the answer splits by scale. On the **5.6k core** the win is the *sparse wiring* —
+both dense surrogates fall short (matched 0.471, shuffle 0.829 vs core **0.881**; 0/10 surrogate graphs
+reach the core mean) and the core groks faster/cheaper. On the **14k full** it is *not* — the dense
+param-matched `eigvec_matched_full` (**0.964**) beats the full connectome (0.919; 10/10 graphs exceed
+it) on accuracy, though the sparse connectome still reaches any given accuracy in ~2.7× less wall-clock.
+Matched-vs-shuffle ordering inverts across scale (open puzzle). Full numbers, figures, and caveats in
+the lab notebook's "2026-06-22 (cont.)" Results; focused figures via `make_figures_eigvec.py`
+(`figures/eigvec_fig*.png`).
 
 ## Files
 
@@ -79,13 +92,18 @@ experiment_02_mb_core_pruning/
 ├── README.md            ← this index
 ├── build_mb_core.py     ← one-time prep: joins FlyWire annotations → substrate/core_indices.npy
 ├── port_14k_controls.py ← copies Exp 1's 14k degree-matched controls in as the `full_degree` condition
-├── run_experiment.py    ← engine: builds the 4 conditions (ρ-matched), trains, analyzes
+├── run_experiment.py    ← engine: builds the conditions, trains, analyzes
 │                          (reuses Exp 1's training loop + analysis primitives verbatim)
+├── eigvec_control.py    ← dense eigvec controls: Schur-basis surrogates, activation-RMS gain match,
+│                          and the dense-scaffold + E-trainable-edge model
+├── stage_full_schur.py  ← one-time: compute & cache the 14k Schur (also recomputed on the fleet)
+├── eigvec_*_check.py    ← validation/probes (non-normality, build, ρ, gain fix) — diagnostics
 ├── run.py               ← AWS-fleet launcher; all run parameters pinned as constants
 ├── make_figures.py      ← figures (point it at outputs/)
 ├── substrate/
 │   ├── core_indices.npy   ← MB-core row indices into the 14k adjacency (staged with the code)
-│   └── core_manifest.json ← core definition + composition + provenance
+│   ├── core_manifest.json ← core definition + composition + provenance
+│   └── schur_cache/       ← Z,T per substrate (git-ignored; recomputed on the fleet on demand)
 ├── outputs/             ← results (git-ignored)
 └── figures/
 ```

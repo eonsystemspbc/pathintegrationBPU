@@ -26,3 +26,9 @@ connectomes/
 # AWS CLI installer artifacts (accidentally unzipped into the repo)
 aws/
 awscliv2.zip
+
+# Exp 2 eigvec controls: large seed-independent Schur cache (recomputed on the fleet on demand),
+# and local stability/smoke scratch dirs. Never commit / never ship in the code tarball.
+**/substrate/schur_cache/
+**/_stability/
+**/_smoke/

@@ -53,10 +53,22 @@ from pathlib import Path
 
 # ----------------------------------------------------------------------------- run knobs
 EPOCHS = 300
+PATIENCE = EPOCHS       # plateau early-stop OFF for this (eigvec) relaunch: set = epoch cap so the
+                        # "wait >= patience" plateau-stop can never fire before the cap. The patience=40
+                        # plateau-stop is what cut late-grokking control graphs in the main Exp 2 run
+                        # (the "bimodality" artifact); the dense eigvec surrogates plausibly grok late,
+                        # so we train them to the full 300-epoch cap. The converged-stop (val_acc>=0.995)
+                        # still fires, so fast-grokkers stop early -> wall-clock comparison stays fair.
+                        # Only the eigvec runs re-run here (originals are done -> idempotent skip), so
+                        # the 400 prior runs keep their patience=40 results; only eigvec gets patience-off.
 LR_GRID = ["1e-4", "3e-4", "1e-3", "3e-3", "1e-2"]   # all 5; best-lr per unit chosen on val acc
 CORE_SEEDS = 20         # training-seed replicates of the one real MB-core graph
 FULL_SEEDS = 20         # training-seed replicates of the one real full-14k graph
 CONTROL_GRAPHS = 20     # independent graphs for EACH control (core_degree and random_subset)
+EIGVEC_GRAPHS = 10      # independent graphs for EACH dense eigvec control (matched/shuffle x core/full).
+                        # Starting point; scales seamlessly to 20 (re-run appends graphs 10-19, reuses
+                        # 0-9). Each instance recomputes the seed-independent Schur on demand (~2.6 min
+                        # for the 14k, cached locally) -- not staged, to avoid shipping 3.4 GB x fleet.
 FLEET_SIZE = 64         # instances = total shards. ~16 land on cheap spot (64-vCPU spot quota =
                         # 16 g6.xlarge); the rest spill to on-demand (768-vCPU quota = up to 192),
                         # so this finishes in hours, not a day. Total compute cost is ~flat in
@@ -77,15 +89,16 @@ CORE_INDICES = HERE / "substrate" / "core_indices.npy"
 EXP_RUN_SCRIPT = "scott/experiment_02_mb_core_pruning/run_experiment.py"
 EXP_OUTPUT_DIR = "scott/experiment_02_mb_core_pruning/outputs"
 
-N_UNITS = CORE_SEEDS + FULL_SEEDS + 2 * CONTROL_GRAPHS   # core + full + core_degree + random_subset
+N_UNITS = CORE_SEEDS + FULL_SEEDS + 2 * CONTROL_GRAPHS + 4 * EIGVEC_GRAPHS  # +4 dense eigvec controls
 N_RUNS = N_UNITS * len(LR_GRID)
+N_EIGVEC_RUNS = 4 * EIGVEC_GRAPHS * len(LR_GRID)  # the NEW runs (the rest already ran; idempotent skip)
 
 
 def exp_args() -> str:
     return (
         f"--matrix {MATRIX} --device cuda --epochs {EPOCHS} "
         f"--core-seeds {CORE_SEEDS} --full-seeds {FULL_SEEDS} --control-graphs {CONTROL_GRAPHS} "
-        f"--lr-grid {' '.join(LR_GRID)}"
+        f"--eigvec-graphs {EIGVEC_GRAPHS} --patience {PATIENCE} --lr-grid {' '.join(LR_GRID)}"
     )
 
 
@@ -141,17 +154,18 @@ def plan_banner() -> str:
         "============================================================\n"
         " Experiment 2 - MB-core pruning vs full 14k (+controls) on MQAR\n"
         "============================================================\n"
-        f"  epochs (cap)      : {EPOCHS}  (early-stop on convergence/patience)\n"
+        f"  epochs (cap)      : {EPOCHS}  (early-stop on convergence only; plateau patience OFF, ={PATIENCE})\n"
         f"  learning rates    : {', '.join(LR_GRID)}\n"
-        f"  conditions        : core / full / core_degree / random_subset (all rho-matched to full)\n"
-        f"  core seeds        : {CORE_SEEDS}   full seeds: {FULL_SEEDS}   control graphs: {CONTROL_GRAPHS} (x2 controls)\n"
-        f"  total runs        : {N_UNITS} units x {len(LR_GRID)} lr = {N_RUNS} runs\n"
-        f"  fleet             : {FLEET_SIZE} GPUs (~{spot} spot + ~{od} on-demand) -> ~{per} runs/instance\n"
-        f"  S3 area           : s3://<bucket>/{S3_PREFIX}/  (isolated)\n"
+        f"  conditions        : core / full / core_degree / random_subset (rho-matched)\n"
+        f"                      + eigvec_matched/shuffle x core/full (dense, gain-matched, E trainable edges)\n"
+        f"  core seeds        : {CORE_SEEDS}   full seeds: {FULL_SEEDS}   control graphs: {CONTROL_GRAPHS} (x2)   eigvec graphs: {EIGVEC_GRAPHS} (x4)\n"
+        f"  total plan        : {N_UNITS} units x {len(LR_GRID)} lr = {N_RUNS} runs\n"
+        f"  NEW this run      : {N_EIGVEC_RUNS} dense eigvec runs (the other {N_RUNS - N_EIGVEC_RUNS} already ran -> idempotent skip)\n"
+        f"  fleet             : {FLEET_SIZE} GPUs (~{spot} spot + ~{od} on-demand) -> ~{-(-N_EIGVEC_RUNS//max(FLEET_SIZE,1))} new runs/instance\n"
+        f"  S3 area           : s3://<bucket>/{S3_PREFIX}/  (isolated; resumes the prior run)\n"
         f"  local results dir : {EXP_OUTPUT_DIR}/\n"
-        "  est. cost         : ~$0.4/hr spot, ~$0.8/hr on-demand; self-terminating.\n"
-        "                      ~1.2-1.6x Exp 1 (more runs, but 3/4 of them on the cheaper 5.6k\n"
-        "                      core) -> roughly $350-650; bigger fleet = same cost, less wall-clock.\n"
+        "  est. cost         : ~$0.4/hr spot, ~$0.8/hr on-demand; self-terminating. The 200 new\n"
+        "                      eigvec runs (half on the ~4x-slower dense 14k) -> roughly $250.\n"
         "============================================================"
     )
 
@@ -208,7 +222,13 @@ def status() -> int:
     conds = [("core", "/core_s", CORE_SEEDS),
              ("full", "/full_s", FULL_SEEDS),
              ("core_degree", "/core_degree_g", CONTROL_GRAPHS),
-             ("random_subset", "/random_subset_g", CONTROL_GRAPHS)]
+             ("random_subset", "/random_subset_g", CONTROL_GRAPHS),
+             # the NEW dense eigvec controls (control-like -> _g suffix); listed so the
+             # breakdown isn't blind to the 200 eigvec runs that make up the 400->600 gap.
+             ("eigvec_matched_core", "/eigvec_matched_core_g", EIGVEC_GRAPHS),
+             ("eigvec_shuffle_core", "/eigvec_shuffle_core_g", EIGVEC_GRAPHS),
+             ("eigvec_matched_full", "/eigvec_matched_full_g", EIGVEC_GRAPHS),
+             ("eigvec_shuffle_full", "/eigvec_shuffle_full_g", EIGVEC_GRAPHS)]
     snippet = ('source "$FLEET_CONFIG"; '
                'aws s3 ls "$S3_URI/outputs/runs/" --region "$AWS_REGION" --recursive 2>/dev/null '
                '| grep "result.json" || true')

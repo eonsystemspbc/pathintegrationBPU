@@ -65,15 +65,27 @@ train_one_run = exp1.train_one_run
 synthetic_matrix = exp1.synthetic_matrix
 GROK_THRESHOLDS = exp1.GROK_THRESHOLDS
 _empirical_null = exp1._empirical_null
+ROLE_DIMS = exp1.ROLE_DIMS
 
 # core/full/core_degree/random_subset are TRAINED by this engine. full_degree is an
 # ANALYSIS-ONLY condition: the 14k degree-matched control, ported from Experiment 1 subrun 03
 # (identical task/loop/rho-target=0.95), brought in by port_14k_controls.py. It is never in the
 # training plan; it only appears in the analysis when its result.json files are present.
-CONDITIONS = ("core", "full", "core_degree", "random_subset", "full_degree")
+#
+# eigvec_* are DENSE eigenvector-structure controls (see eigvec_control.py): a gain-matched dense
+# scaffold built on the connectome's Schur basis + E=nnz(connectome) random trainable edges, so the
+# trainable-param count matches the connectome exactly. Built per substrate (core / full) and per
+# kind (matched = random eigenvalues; shuffle = same spectrum, permuted pairing). Trained only when
+# --eigvec-graphs > 0; compared to their substrate's connectome (core_vs_eigvec_*_core, etc.).
+EIGVEC_SPEC = {  # condition -> (substrate, kind)
+    "eigvec_matched_core": ("core", "matched"), "eigvec_shuffle_core": ("core", "shuffle"),
+    "eigvec_matched_full": ("full", "matched"), "eigvec_shuffle_full": ("full", "shuffle"),
+}
+CONDITIONS = ("core", "full", "core_degree", "random_subset", "full_degree", *EIGVEC_SPEC)
 CONNECTOME_LIKE = ("core", "full")        # one real graph, many training seeds
-CONTROL_LIKE = ("core_degree", "random_subset", "full_degree")  # independent graphs forming a null
+CONTROL_LIKE = ("core_degree", "random_subset", "full_degree", *EIGVEC_SPEC)  # independent null graphs
 RANDOM_SUBSET_SEED_BASE = 100_000         # keep random-subset node draws disjoint from other rngs
+SCHUR_CACHE = HERE / "substrate" / "schur_cache"  # staged Z,T per substrate (seed-independent)
 
 
 # --------------------------------------------------------------------------------------
@@ -99,6 +111,34 @@ def build_run_matrix(base, base_csr, core_idx, condition, graph_seed, target_rho
         ridx = np.sort(rng.choice(N, size=ncore, replace=False).astype(np.int64))
         return rescale_to_rho(_induced(base_csr, ridx), target_rho)
     raise ValueError(f"unknown condition: {condition}")
+
+
+def _connectome_substrate(base, base_csr, core_idx, substrate, target_rho):
+    """The rho-matched connectome an eigvec control is built on / gain-matched to (CSR)."""
+    if substrate == "full":
+        return base.copy().astype(np.float32).tocsr()
+    return rescale_to_rho(_induced(base_csr, core_idx), target_rho)[0].tocsr()
+
+
+def build_eigvec(base, base_csr, core_idx, condition, graph_seed, target_rho):
+    """Build one dense eigenvector-structure control graph: Schur-based surrogate of the substrate
+    connectome, GAIN-MATCHED to that connectome's empirical init activation-RMS (rho is the wrong
+    invariant for these non-normal matrices), plus E=nnz(connectome) random exposed trainable edges.
+    Returns (scaffold_csr, exposed_rc, info). Cached per (condition, graph_seed) by the caller."""
+    import eigvec_control as ev  # local: pulls torch via build_model elsewhere
+    substrate, kind = EIGVEC_SPEC[condition]
+    conn = _connectome_substrate(base, base_csr, core_idx, substrate, target_rho)
+    gen = ev.eigvec_matched_matrix if kind == "matched" else ev.eigvec_shuffle_matrix
+    surrogate = gen(conn, graph_seed, rho_target=target_rho, schur_cache=SCHUR_CACHE)
+    target_rms = float(ev.activation_rms(conn)["mean_rms"])
+    gain_s = float(ev.match_gain_to_activation_rms(surrogate, target_rms))
+    scaffold = (surrogate * gain_s).tocsr()
+    N, E = int(conn.shape[0]), int(conn.nnz)
+    exposed_rc = ev.exposed_edges(N, E, graph_seed)
+    info = {"N": N, "edges": E, "substrate": substrate, "kind": kind,
+            "rho_target": round(float(target_rho), 4), "gain_s": round(gain_s, 4),
+            "target_rms": round(target_rms, 4)}
+    return scaffold, exposed_rc, info
 
 
 # --------------------------------------------------------------------------------------
@@ -229,6 +269,14 @@ def write_outputs(out_dir: Path, results: list[dict], target_rho: float):
         analysis["core_vs_full_degree"] = _null_compare(by_cond["core"], by_cond["full_degree"])
         analysis["full_vs_full_degree"] = _null_compare(by_cond["full"], by_cond["full_degree"])
 
+    # dense eigenvector-structure controls (only when trained): each compared to its substrate's
+    # connectome -- is the connectome's sparse wiring better than a gain-matched dense surrogate that
+    # shares its eigen-directions but with the same trainable budget? (null + descriptive grok/wall)
+    for c, (substrate, _kind) in EIGVEC_SPEC.items():
+        if by_cond[c]:
+            analysis[f"{substrate}_vs_{c}"] = _null_compare(by_cond[substrate], by_cond[c])
+            analysis[f"{substrate}_vs_{c}_desc"] = _describe_pair(by_cond[substrate], by_cond[c], substrate, c)
+
     # Robustness check: recompute excluding any best-lr-per-unit rep that was patience-cut
     # (stopped_reason == 'plateau'). In this run 0 reps are dropped -- the slow ("failed")
     # degree-matched control graphs select lr=3e-3 by validation, an epoch_cap run where they
@@ -310,6 +358,10 @@ def parse_args(argv=None):
     p.add_argument("--full-seeds", type=int, default=20, help="training-seed replicates of the full 14k.")
     p.add_argument("--control-graphs", type=int, default=20,
                    help="independent graphs for EACH control (core_degree and random_subset).")
+    p.add_argument("--eigvec-graphs", type=int, default=0,
+                   help="independent graphs for EACH dense eigvec control (matched/shuffle x core/full). "
+                        "0 = off (eigvec conditions not trained). Scales seamlessly: rerun with a larger "
+                        "value to append new graphs and reuse existing ones.")
     # task (identical to Exp 1)
     p.add_argument("--vocab-size", type=int, default=32)
     p.add_argument("--num-pairs", type=int, default=8)
@@ -377,6 +429,8 @@ def main(argv=None):
         args.core_seeds = min(args.core_seeds, 2)
         args.full_seeds = min(args.full_seeds, 2)
         args.control_graphs = min(args.control_graphs, 2)
+        if args.eigvec_graphs:
+            args.eigvec_graphs = min(args.eigvec_graphs, 2)
         args.train_batches = min(args.train_batches, 20)
 
     if args.device == "cpu":
@@ -413,6 +467,7 @@ def main(argv=None):
         + [("full", s, s) for s in range(args.full_seeds)]
         + [("core_degree", g, g) for g in range(args.control_graphs)]
         + [("random_subset", g, g) for g in range(args.control_graphs)]
+        + [(c, g, g) for c in EIGVEC_SPEC for g in range(args.eigvec_graphs)]
     )
     plan = [(cond, gseed, tseed, lr) for (cond, gseed, tseed) in units for lr in lr_grid]
     print(f"plan: {len(units)} units x {len(lr_grid)} lr = {len(plan)} runs; lr_grid={lr_grid}", flush=True)
@@ -450,6 +505,25 @@ def main(argv=None):
                 print(f"[skip] {run_id} complete ({prev.get('epochs_ran')} ep, {prev.get('stopped_reason')})", flush=True)
                 continue
             print(f"[extend] {run_id} {prev.get('epochs_ran')} -> up to {args.epochs} ep", flush=True)
+        if cond in EIGVEC_SPEC:
+            # dense gain-matched scaffold + E trainable edges -> a custom model into the verbatim loop
+            import torch as _torch
+            import eigvec_control as ev
+            cache_key = (cond, gseed)
+            if cache_key not in matrix_cache:
+                matrix_cache[cache_key] = build_eigvec(base, base_csr, core_idx, cond, gseed, target_rho)
+            scaffold, exposed_rc, info = matrix_cache[cache_key]
+            _torch.manual_seed(args.init_seed + tseed)  # reproducible readout init (matches train_one_run)
+            model = ev.build_model(scaffold, exposed_rc, args.vocab_size + ROLE_DIMS, args.vocab_size,
+                                   args.state_clip, args.init_seed + tseed)
+            meta = {
+                "condition": cond, "arm": cond, "run_id": run_id, "graph_seed": gseed,
+                "train_seed": tseed, "lr": lr, "N": info["N"], "edges": info["edges"],
+                "rho_raw": info["rho_target"], "rho_target": info["rho_target"], "rho_scale": 1.0,
+                "gain_s": info["gain_s"], "target_rms": info["target_rms"], "substrate": info["substrate"],
+            }
+            results.append(train_one_run(run_dir, None, args, tseed, device, meta, lr, model=model))
+            continue
         # matrix depends on (condition, graph_seed) only; for core/full it is a single graph
         cache_key = (cond, 0 if cond in CONNECTOME_LIKE else gseed)
         if cache_key not in matrix_cache:
