@@ -60,8 +60,17 @@ COLOR = {
 }
 LABEL = {
     "core": "MB core (sparse)", "full": "full 14k (sparse)",
-    "eigvec_matched_core": "eigvec-matched (dense)", "eigvec_matched_full": "eigvec-matched (dense)",
-    "eigvec_shuffle_core": "eigvec-shuffle (dense)", "eigvec_shuffle_full": "eigvec-shuffle (dense)",
+    "eigvec_matched_core": "eigvec-matched\n(directions only)",
+    "eigvec_matched_full": "eigvec-matched\n(directions only)",
+    "eigvec_shuffle_core": "eigvec-shuffle\n(+ real spectrum)",
+    "eigvec_shuffle_full": "eigvec-shuffle\n(+ real spectrum)",
+}
+# Short tags for inline stat notes (full meaning is on the x-axis labels + caption: both dense
+# surrogates keep the connectome's directions; matched gives them random eigenvalues, shuffle keeps
+# the real eigenvalue spectrum but mis-pairs which direction gets which).
+SHORT = {
+    "eigvec_matched_core": "matched", "eigvec_matched_full": "matched",
+    "eigvec_shuffle_core": "shuffle", "eigvec_shuffle_full": "shuffle",
 }
 CHANCE = 1 / 32
 
@@ -224,8 +233,7 @@ def eigvec_fig2_final_acc(rows, lrs, figdir):
             p = mwu(conn_v, v)
             d = (np.mean(v) - np.mean(conn_v)) if len(v) and len(conn_v) else float("nan")
             arrow = "↑" if d > 0 else "↓"  # surrogate above / below the connectome
-            short = LABEL[c].split("-")[1].split(" ")[0]  # "matched" / "shuffle"
-            notes.append(f"vs {short}: {arrow}{abs(d):.3f} ({stars(p)})")
+            notes.append(f"vs {SHORT[c]}: {arrow}{abs(d):.3f} ({stars(p)})")
         ax.set_title(f"{title}\nconnectome " + ",  ".join(notes), fontsize=8.6)
         ax.set_ylim(0, 1)
     axes[0].set_ylabel("final recall accuracy")
