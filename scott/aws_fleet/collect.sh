@@ -8,7 +8,12 @@ cd "$REPO_ROOT"
 
 echo "Syncing $S3_URI/outputs/ -> $EXP_OUTPUT_DIR/"
 mkdir -p "$EXP_OUTPUT_DIR"
-aws s3 sync "$S3_URI/outputs/" "$EXP_OUTPUT_DIR/" --region "$AWS_REGION" --only-show-errors
+# Checkpoints are often many GB each (dense controls: up to ~4.7 GB) and *.tmp are interrupted
+# atomic-write leftovers; neither is needed for the aggregate analysis, and pulling them drags the
+# whole >150 GB tree down. Skip both by default; set COLLECT_CHECKPOINTS=1 to pull checkpoints too.
+SYNC_EXCLUDES=(--exclude "*.tmp")
+[ "${COLLECT_CHECKPOINTS:-0}" = "1" ] || SYNC_EXCLUDES+=(--exclude "*checkpoint.pt")
+aws s3 sync "$S3_URI/outputs/" "$EXP_OUTPUT_DIR/" --region "$AWS_REGION" "${SYNC_EXCLUDES[@]}" --only-show-errors
 
 DONE=$(find "$EXP_OUTPUT_DIR/runs" -name result.json 2>/dev/null | wc -l)
 echo "completed runs (result.json): $DONE"

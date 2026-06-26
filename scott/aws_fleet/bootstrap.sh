@@ -57,11 +57,29 @@ for f in $SUBSTRATE_FILES; do
   aws s3 cp "$S3_URI/substrates/$f" "$f"
 done
 
-# --- 5. pull any prior outputs (resume), then start background outputs->S3 sync -------
-mkdir -p "$EXP_OUTPUT_DIR"
-aws s3 sync "$S3_URI/outputs/" "$EXP_OUTPUT_DIR/" --only-show-errors || true
+# --- 5. pull THIS shard's prior run dirs (resume), then start background outputs->S3 sync -
+# Pull ONLY the run dirs this shard will touch, not the whole outputs tree: for dense controls
+# that tree is >100GB of checkpoints and overran the root volume when synced whole (filling the
+# disk mid-run). The experiment script is the single source of truth for the plan, so ask it
+# (--print-shard-run-ids) which run_ids this shard owns and sync just those. ".tmp" files are
+# interrupted atomic-checkpoint writes (renamed to checkpoint.pt on success) -- never pull/push.
+mkdir -p "$EXP_OUTPUT_DIR/runs"
+NUM_SHARDS=$(( FLEET_SIZE * WORKERS_PER_INSTANCE ))
+for w in $(seq 0 $((WORKERS_PER_INSTANCE - 1))); do
+  SHARD=$(( FLEET_INDEX * WORKERS_PER_INSTANCE + w ))
+  echo "[bootstrap] pulling shard $SHARD prior run dirs from S3 ..."
+  uv run python "$EXP_RUN_SCRIPT" $EXP_ARGS \
+        --shard "$SHARD" --num-shards "$NUM_SHARDS" --print-shard-run-ids 2>/dev/null \
+    | while read -r rid; do
+        case "$rid" in
+          dense_*) aws s3 sync "$S3_URI/outputs/runs/$rid/" "$EXP_OUTPUT_DIR/runs/$rid/" \
+                       --exclude "*.tmp" --only-show-errors || true ;;
+        esac
+      done
+done
+
 ( while true; do
-    aws s3 sync "$EXP_OUTPUT_DIR/" "$S3_URI/outputs/" --only-show-errors || true
+    aws s3 sync "$EXP_OUTPUT_DIR/" "$S3_URI/outputs/" --exclude "*.tmp" --only-show-errors || true
     for wl in /tmp/worker_*.log; do
       [ -f "$wl" ] && aws s3 cp "$wl" "$LOG_PREFIX/$(basename "$wl")" --only-show-errors 2>/dev/null || true
     done
