@@ -1,0 +1,29 @@
+{
+  "description": "MB-core node indices into connectomes/flywire_mushroom_body adjacency (row order = graph_metadata body_ids).",
+  "built_utc": "2026-06-19T21:35:08+00:00",
+  "annotation_source": "https://raw.githubusercontent.com/flyconnectome/flywire_annotations/main/supplemental_files/Supplemental_file1_neuron_annotations.tsv",
+  "annotation_release": "FlyWire 783 / Schlegel et al. 2024 (flywire_annotations v2.1.0)",
+  "join_key": "annotation root_id == substrate bodyId",
+  "core_cell_classes": [
+    "Kenyon_Cell",
+    "MBON",
+    "DAN",
+    "MBIN"
+  ],
+  "alpn_excluded": true,
+  "n_full": 14025,
+  "n_core": 5608,
+  "core_composition": {
+    "Kenyon_Cell": 5177,
+    "DAN": 331,
+    "MBON": 96,
+    "MBIN": 4
+  },
+  "edges_full": 574660,
+  "edges_core": 439603,
+  "edge_retention": 0.765,
+  "core_components": 3,
+  "core_largest_wcc": 5606,
+  "rho_core_raw": 0.9227,
+  "rho_full_raw": 0.95
+}

@@ -169,27 +169,39 @@ def train_one_run(run_dir: Path, matrix, args, train_seed: int, device, meta: di
     grad_steps_cum: list[int] = []
 
     if ckpt_path.exists():
-        ck = torch.load(ckpt_path, map_location=device)
-        model.load_state_dict(ck["model"])
-        opt.load_state_dict(ck["opt"])
-        if sched is not None and ck.get("sched") is not None:
-            sched.load_state_dict(ck["sched"])
-        start_epoch = ck["epoch"] + 1
-        best_val = ck["best_val"]
-        best_epoch = ck["best_epoch"]
-        wait = ck["wait"]
-        best_state = ck["best_state"]
-        curve = ck["curve"]
-        wall_per_epoch = ck["wall_per_epoch"]
-        grad_steps_cum = ck["grad_steps_cum"]
-        train_rng.bit_generator.state = ck["train_rng"]
-        val_rng.bit_generator.state = ck["val_rng"]
-        test_rng.bit_generator.state = ck["test_rng"]
-        # RNG states must be CPU ByteTensors; map_location=device moved them to the GPU, so .cpu()
-        torch.set_rng_state(ck["torch_rng"].cpu())
-        if device.type == "cuda" and ck.get("cuda_rng") is not None:
-            torch.cuda.set_rng_state(ck["cuda_rng"].cpu(), device)
-        print(f"  [resume] {meta['run_id']} from epoch {start_epoch}", flush=True)
+        try:
+            ck = torch.load(ckpt_path, map_location=device)
+            model.load_state_dict(ck["model"])
+            opt.load_state_dict(ck["opt"])
+            if sched is not None and ck.get("sched") is not None:
+                sched.load_state_dict(ck["sched"])
+            start_epoch = ck["epoch"] + 1
+            best_val = ck["best_val"]
+            best_epoch = ck["best_epoch"]
+            wait = ck["wait"]
+            best_state = ck["best_state"]
+            curve = ck["curve"]
+            wall_per_epoch = ck["wall_per_epoch"]
+            grad_steps_cum = ck["grad_steps_cum"]
+            train_rng.bit_generator.state = ck["train_rng"]
+            val_rng.bit_generator.state = ck["val_rng"]
+            test_rng.bit_generator.state = ck["test_rng"]
+            # RNG states must be CPU ByteTensors; map_location=device moved them to the GPU, so .cpu()
+            torch.set_rng_state(ck["torch_rng"].cpu())
+            if device.type == "cuda" and ck.get("cuda_rng") is not None:
+                torch.cuda.set_rng_state(ck["cuda_rng"].cpu(), device)
+            print(f"  [resume] {meta['run_id']} from epoch {start_epoch}", flush=True)
+        except Exception as e:
+            # A checkpoint can be corrupt if the instance died mid-write (the disk-fill crash) or an
+            # S3 transfer was truncated. An unguarded load crash-loops the run forever: every worker
+            # that picks it up throws here and self-terminates, so it never completes (this is exactly
+            # what stranded c3_full_s12/s13). Discard the bad checkpoint and start fresh; the first
+            # epoch's atomic save overwrites it. torch.load throws before any state is mutated, so the
+            # freshly-initialized model/opt above are clean; re-assert the scalar accumulators for safety.
+            print(f"  [resume] {meta['run_id']} checkpoint unreadable "
+                  f"({type(e).__name__}: {e}); discarding and starting fresh", flush=True)
+            start_epoch, best_val, best_epoch, best_state, wait = 1, -1.0, 0, None, 0
+            curve, wall_per_epoch, grad_steps_cum = [], [], []
 
     if not epochs_csv.exists():
         with epochs_csv.open("w", newline="") as f:
