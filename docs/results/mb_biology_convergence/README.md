@@ -79,6 +79,23 @@ reaches 0.9 in 30 epochs (final ~0.84–0.88). The connectome breaks from the pl
 **Timing:** the input→PN alignment (hemibrain) stays flat until ~epoch 18, then **rises sharply exactly
 as accuracy crosses 0.9** — convergence is *driven by* learning the task, not a static init artifact.
 
+**Robustness (n=20 seeds).** Not seed-luck — 20 seeds per condition, paired (connectome vs random on
+the *same* seeds), final input-layer AUC:
+
+| condition | final AUC (mean ± std, n=20) | seeds > chance | connectome vs random (paired) |
+|---|---|---|---|
+| **hemibrain connectome** (PNs) | **0.599 ± 0.066** | **18/20** | Δ +0.100, conn>rand **18/20**, t **p=1.1e-5**, Wilcoxon p=3.6e-5 |
+| hemibrain random | 0.499 ± 0.026 | 7/20 | — |
+| **FlyWire connectome** | **0.631 ± 0.016** | **20/20** | Δ +0.133, conn>rand **20/20**, t **p=2.3e-18** |
+| FlyWire random | 0.498 ± 0.010 | 8/20 | — |
+
+The connectome converges above chance in essentially every seed (20/20 FlyWire, 18/20 hemibrain) and
+beats its paired random control in 18–20 of 20 seeds — **highly significant even on the strict
+cell-type-grounded hemibrain test (p≈3×10⁻⁵)**. Random sits at chance (0.498–0.499) throughout, and
+the connectome reaches 0.9 reversal accuracy in a median ~20 epochs while random never does.
+
+![20-seed robustness](biology_20seed.png)
+
 ## What did *not* converge (honest scope)
 - **Recurrent weights**: scrambled on both tasks — `corr(|final|,|init|) ≈ 0`. The biological *wiring*
   is not preserved; only the **input layer** (plus weak functional activity: FlyWire act↔hub ρ=0.24 vs
@@ -90,8 +107,9 @@ as accuracy crosses 0.9** — convergence is *driven by* learning the task, not 
 ## Caveats
 - The effect is **modest** (AUC ≈ 0.6, not 0.9) and at the **input layer only**; the recurrent wiring
   does not converge.
-- **2 seeds** on the native task (the trajectories are clean and the random control is flat, but more
-  seeds would firm it up).
+- **n=20 seeds** on the native task — the effect is robust (connectome beats its paired random control
+  in 18–20 of 20 seeds; see *Robustness* above). The hemibrain distribution is wider (2 of 20 seeds sit
+  near chance, hence std 0.066), but the paired test is highly significant (p≈3×10⁻⁵).
 - The control is **ER-random, not degree-matched** — so "is the convergence driven by the connectome's
   *hub structure* or its *specific wiring*?" is **open**. The clean next control is a **degree-matched**
   random init: if it also converges, it's hubs; if only the full connectome does, it's the wiring.
