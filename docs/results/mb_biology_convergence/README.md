@@ -96,6 +96,35 @@ the connectome reaches 0.9 reversal accuracy in a median ~20 epochs while random
 
 ![20-seed robustness](biology_20seed.png)
 
+### Underlying distributions (what the AUC is summarizing)
+The AUC just compresses a distribution shift. Below: per-neuron input drive `‖W_in[i]‖` (z-scored
+within seed), split into **biological input cells** (colored) vs **all other neurons** (grey),
+**init** (dashed) → **final** (filled), pooled over 20 seeds; bottom row = each seed's AUC init→final.
+In the connectome conditions the **biological cells' distribution shifts right** after training (they
+end up receiving more input drive); in the random controls init and final overlap — no shift.
+
+![input-drive distributions](biology_distributions.png)
+
+**Why some AUC curves sit slightly below 0.5 (it's the baseline, and it's benign).** Per-seed AUC
+tested against 0.5 (n=20):
+
+| condition | init AUC (mean±SE) | final AUC | init vs 0.5 |
+|---|---|---|---|
+| flywire connectome | 0.4987 ± 0.0026 | **0.6308** | p=0.62 (= chance) |
+| flywire random | 0.4987 ± 0.0026 | 0.4980 | p=0.62 (= chance) |
+| hemibrain connectome | 0.4866 ± 0.0045 | **0.5990** | p=0.008 |
+| hemibrain random | 0.4866 ± 0.0045 | 0.4986 | p=0.008 |
+
+Sub-0.5 only ever appears at the **init baseline** and in the **random control** (which never leaves
+it) — never in the connectome's trained value (0.60–0.63). FlyWire's baseline is *exactly* chance
+(p=0.62). hemibrain's baseline is ~0.013 below chance (p=0.008), but that is a **fixed-positive-class
+artifact measured before any training**: AUC averages to exactly 0.5 only when the positive class is a
+*random* sample, and the ~168 PNs are a fixed structured subset, so random-init row-norms carry a tiny
+deterministic offset (more seeds shrink the SE around it, which is why p<0.05 at n=20). It is **identical
+in the connectome and random arms at init, so it cancels in the paired test** (we report connectome −
+paired random, Δ≈+0.10), and it is ≈8× smaller than the +0.11 training signal. Not anti-biological —
+just the null sitting a hair under chance.
+
 ## What did *not* converge (honest scope)
 - **Recurrent weights**: scrambled on both tasks — `corr(|final|,|init|) ≈ 0`. The biological *wiring*
   is not preserved; only the **input layer** (plus weak functional activity: FlyWire act↔hub ρ=0.24 vs
