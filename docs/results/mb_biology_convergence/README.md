@@ -96,6 +96,41 @@ the connectome reaches 0.9 reversal accuracy in a median ~20 epochs while random
 
 ![20-seed robustness](biology_20seed.png)
 
+### Underlying distributions (what the AUC is summarizing)
+The AUC just compresses a distribution shift. Below: per-neuron input drive `‖W_in[i]‖` (z-scored
+within seed), split into **biological input cells** (colored) vs **all other neurons** (grey),
+**init** (dashed) → **final** (filled), pooled over 20 seeds; bottom row = each seed's AUC init→final.
+In the connectome conditions the **biological cells' distribution shifts right** after training (they
+end up receiving more input drive); in the random controls init and final overlap — no shift.
+
+![input-drive distributions](biology_distributions.png)
+
+**Why some AUC curves sit slightly below 0.5 (it's the baseline, and it's benign).** Per-seed AUC
+tested against 0.5 (n=20):
+
+| condition | init AUC (mean±SE) | final AUC | init vs 0.5 |
+|---|---|---|---|
+| flywire connectome | 0.4987 ± 0.0026 | **0.6308** | p=0.62 (= chance) |
+| flywire random | 0.4987 ± 0.0026 | 0.4980 | p=0.62 (= chance) |
+| hemibrain connectome | 0.4866 ± 0.0045 | **0.5990** | p=0.008 |
+| hemibrain random | 0.4866 ± 0.0045 | 0.4986 | p=0.008 |
+
+Sub-0.5 only ever appears at the **init baseline** and in the **random control** (which never leaves
+it) — never in the connectome's trained value (0.60–0.63). The init `W_in` is drawn
+`uniform(-1/√input_dim, +1/√input_dim)` **identically for every neuron**, with no dependence on cell
+identity, so **E[init AUC] = 0.5 exactly** — there is no mechanism for a per-neuron bias (confirmed:
+the across-neuron spread of the 20-seed-mean init norm, 0.00710, matches the iid prediction
+`std/√20 = 0.00708`).
+
+The hemibrain init lands at 0.4866 (p=0.008) only because that is a **finite-sample fluctuation of the
+20 specific seeds**: the positive class is small (168 PNs) so per-seed AUC has a wide SE, and that batch
+happened to fall ~3σ low. Re-instantiating the *identical* init over more seeds regresses it straight to
+chance — 20→0.487, 50→0.497, 100→0.498, **500→0.4996 (95% CI 0.498–0.502)**. FlyWire's larger positive
+set already sits at 0.4987 at n=20. Either way it is **identical in the connectome and random arms at
+init, so it cancels in the paired test** (we report connectome − paired random, Δ≈+0.10) and is ≈8×
+smaller than the +0.11 training signal. Not anti-biological — just an under-sampled baseline that is
+exactly 0.5 in expectation.
+
 ## What did *not* converge (honest scope)
 - **Recurrent weights**: scrambled on both tasks — `corr(|final|,|init|) ≈ 0`. The biological *wiring*
   is not preserved; only the **input layer** (plus weak functional activity: FlyWire act↔hub ρ=0.24 vs
