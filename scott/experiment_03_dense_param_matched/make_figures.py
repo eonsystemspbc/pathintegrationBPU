@@ -10,6 +10,8 @@ Reads <output_dir>/metrics_by_run.csv (+ analysis.json) and writes figures/ :
   fig6_control_legend.png  standalone key: color + one-line definition of each condition
   fig4_lr_sweep.png        dense_c3_core test accuracy vs learning rate (subrun 01), with the
                            connectome reference -- is the dense result an lr artifact or real?
+  fig7_directions_contrast.png  Exp 2 -> 3: a dense reservoir with the connectome's eigen-directions
+                           (Exp 2 eigvec) vs random directions (Exp 3 C2), same matched architecture.
 
 Curves are read from each run's result.json ("curve" = per-epoch val acc, present for every run,
 incl. the ported connectome refs). The lr sweep reads subruns/01_dense_c3_lr_sweep/outputs/.
@@ -291,6 +293,78 @@ def fig_final_acc(by_cond, out_dir: Path):
     plt.close(fig)
 
 
+# Exp-2 eigvec reference means (the dense reservoir carrying the CONNECTOME's eigen-directions),
+# from the concluded Exp-2 follow-up. Read live from Exp 2's analysis.json when present; these are
+# the documented fallback so the figure builds even without Exp 2's (git-ignored) outputs on disk.
+EXP2_EIGVEC_FALLBACK = {
+    "eigvec_matched": {"core": (0.4705, 0.0677), "full": (0.9637, 0.0)},
+    "eigvec_shuffle": {"core": (0.8291, 0.0), "full": (0.8280, 0.0)},
+}
+
+
+def _exp2_eigvec(out_dir: Path):
+    """(name -> {sub -> (mean, std)}) for eigvec_matched / eigvec_shuffle, read from Exp 2's
+    analysis.json if available, else the documented fallback means above."""
+    exp2 = HERE.parent / "experiment_02_mb_core_pruning" / "outputs" / "analysis.json"
+    vals = {k: dict(v) for k, v in EXP2_EIGVEC_FALLBACK.items()}
+    try:
+        a = json.loads(exp2.read_text())
+        for name in ("eigvec_matched", "eigvec_shuffle"):
+            for sub in ("core", "full"):
+                ta = a.get(f"{sub}_vs_{name}_{sub}", {}).get("test_acc")
+                if isinstance(ta, dict) and ta.get("control_mean") is not None:
+                    vals[name][sub] = (float(ta["control_mean"]), float(ta.get("control_std") or 0.0))
+    except (OSError, json.JSONDecodeError, KeyError):
+        pass
+    return vals
+
+
+def fig_directions_contrast(by_cond, out_dir: Path):
+    """The Exp 2 -> Exp 3 headline: at a MATCHED trainable-param budget, a dense reservoir carrying the
+    connectome's eigen-directions (Exp 2 eigvec) trains well, but the SAME architecture with random
+    directions (Exp 3 C2) collapses. Connectome shown as the reference. core arm | full arm."""
+    eig = _exp2_eigvec(out_dir)
+
+    def mean_std(cond):
+        accs = [_fl(r["test_acc"]) for r in by_cond.get(cond, [])]
+        accs = [a for a in accs if a is not None]
+        return (float(np.mean(accs)), float(np.std(accs)), len(accs)) if accs else None
+
+    # bars per arm: connectome | dense+connectome dirs (matched) | dense+connectome spectrum (shuffle) | dense+random dirs (C2)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.2), sharey=True)
+    for ax, sub in zip(axes, ("core", "full")):
+        conn = mean_std(sub)
+        c2 = mean_std(f"dense_c2_{sub}")
+        em, es = eig["eigvec_matched"][sub], eig["eigvec_shuffle"][sub]
+        bars = [
+            ("connectome\n(sparse)", conn[0] if conn else None, conn[1] if conn else 0, COLORS["connectome"]),
+            ("dense +\nconnectome dirs\n(Exp 2)", em[0], em[1], "#ff7f0e"),
+            ("dense +\nconn. spectrum\n(Exp 2 shuffle)", es[0], es[1], "#8c564b"),
+            ("dense +\nrandom dirs\n(Exp 3 · C2)", c2[0] if c2 else None, c2[1] if c2 else 0, COLORS["C2"]),
+        ]
+        x = np.arange(len(bars))
+        ax.bar(x, [b[1] or 0 for b in bars], yerr=[b[2] for b in bars], width=0.62,
+               color=[b[3] for b in bars], alpha=0.45, edgecolor="k", capsize=4, zorder=2)
+        for xi, b in zip(x, bars):
+            if b[1] is not None:
+                ax.annotate(f"{b[1]:.2f}", (xi, b[1]), textcoords="offset points", xytext=(0, 5),
+                            ha="center", fontsize=9, fontweight="bold")
+        if conn:
+            ax.axhline(conn[0], ls="--", color=COLORS["connectome"], lw=1.4, alpha=0.7, zorder=1)
+        ax.axhline(1 / 32, ls=":", color="grey", lw=1, zorder=1)
+        ax.set_xticks(x)
+        ax.set_xticklabels([b[0] for b in bars], fontsize=8.5)
+        ax.set_title(f"{sub} arm")
+        ax.set_ylabel("final test accuracy" if sub == "core" else "")
+        ax.grid(axis="y", ls=":", alpha=0.4)
+    fig.suptitle("Experiment 2 → 3 — dense reservoir at matched params: connectome eigen-directions "
+                 "rescue it, random directions collapse it\n(same frozen-scaffold + nnz-trainable-delta "
+                 "architecture; only the scaffold's directions differ)")
+    fig.tight_layout(rect=(0, 0, 1, 0.98))
+    fig.savefig(out_dir.parent / "figures" / "fig7_directions_contrast.png", dpi=130, bbox_inches="tight")
+    plt.close(fig)
+
+
 def fig_param_budget(by_cond, out_dir: Path):
     fig, ax = plt.subplots(figsize=(8, 5.5))
     for sub, marker in (("core", "o"), ("full", "s")):
@@ -327,6 +401,7 @@ def main(argv=None) -> int:
         return 1
     fig_final_acc(by_cond, out_dir)
     fig_param_budget(by_cond, out_dir)
+    fig_directions_contrast(by_cond, out_dir)
     curves_by_cond = load_curves(out_dir)
     if curves_by_cond:
         fig_training_curves(curves_by_cond, out_dir)

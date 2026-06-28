@@ -33,8 +33,18 @@ Full rationale, methods, and results live in the lab notebook:
 
 ## Status
 
-**Scaffolded 2026-06-24; pipeline smoke-tested (CPU, synthetic substrate rescaled to ρ=0.95).**
-Seed/graph counts in `run.py` are **provisional pending the post-smoke decision**. Not yet launched.
+**Concluded 2026-06-28.** Full run complete (120 control runs + 40 ported connectome refs, lr=1e-3,
+patience off) plus the `dense_c3_core` lr-sweep subrun (80 runs). Headline: **every dense control trains
+far worse than the sparse connectome** — C1 ceiling 0.15, C2 reservoir 0.20/0.35 (core/full), C3 0.16–0.17
+vs connectome 0.88/0.92 (C2 permutation p=0.048; 0/20 reach the connectome mean), and the lr sweep
+(best 3e-4 → 0.199) rules out an lr artifact. The contrast with Exp 2's eigvec surrogate (which kept the
+connectome's eigen-directions and reached 0.96 on full) shows the dense-reservoir win there was the
+connectome's *structure*, not generic dense capacity — C2's random directions collapse to 0.348. Caveat:
+the dense arms were also worse-conditioned at init (σ_max ≈ 2.5 vs 1.08), so the clean reading is
+structure-as-conditioner; the cheapest open follow-up is a σ_max ≈ 1 (orthogonal) init re-run of
+`dense_c3_core` at lr 3e-4. Full results, figures, and caveats:
+[`../labnotebook/experiment_03_dense_param_matched.md`](../labnotebook/experiment_03_dense_param_matched.md).
+Two `dense_c3_full` seeds (s12, s13) were lost to the disk-fill checkpoint crash (n=18 for that arm).
 
 ## Files
 

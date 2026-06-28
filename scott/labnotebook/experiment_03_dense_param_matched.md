@@ -97,26 +97,125 @@ arm before re-sweeping everything: sweep `dense_c3_core` over `{1e-4, 3e-4, 1e-3
 (best-lr-per-unit), reusing the main run's 1e-3 (20 seeds) and training the four new lrs × 20 = 80
 runs. The engine gained `--lr-grid` + `--kinds` (backward-compatible) for this. If a different lr lifts
 `dense_c3_core` well above 0.17 → the single-lr design is unfair to the dense controls and we re-sweep
-all of them (subrun 02); if 0.17 holds across lrs → it is a genuine result. Pending.
+all of them (subrun 02); if 0.17 holds across lrs → it is a genuine result.
+
+**Subrun 01 verdict — 0.17 held; not an lr artifact.** Across `{1e-4, 3e-4, 1e-3, 3e-3, 1e-2}` the best
+lr for `dense_c3_core` (3e-4) reached only **0.199** vs 0.169 at 1e-3 — a +0.03 gain that closes ~4 % of
+the 0.71 gap to the connectome. The single-lr design is therefore not the cause of the dense failure, so
+the main run was resumed and completed at lr=1e-3 rather than re-sweeping every arm (subrun 02 not run).
+
+**Main run completed 2026-06-27.** All 120 control runs finished (`--collect`: connectome refs ported,
+analysis + figures regenerated). Two `dense_c3_full` seeds (s12, s13) were lost to the disk-fill
+checkpoint-corruption crash and excluded → n=18 for that one arm; all other arms n=20.
 
 ## Results
 
-*Pending — not yet run.* Will report, per substrate (core / full):
-- final test accuracy of `core`/`full` vs C1/C2/C3 (means ± SD; C2 vs the connectome as a permutation
-  null with the rank as primary; C1/C3 descriptive);
-- the parameter-budget view (accuracy vs trainable params), since C1 carries far more and C2/C3 match;
-- learning speed (epochs / grad-steps / wall-clock to grok) and total wall-clock, separating a wiring
-  effect (epochs) from a sparsity/deployment effect (wall-clock per step), as in Exp 2.
+![Condition key — connectome (sparse) vs C1 ceiling / C2 reservoir / C3 param-matched](../experiment_03_dense_param_matched/figures/fig6_control_legend.png)
 
-Data will live in `outputs/{analysis.json, metrics_by_run.csv}` and `outputs/runs/*/`; figures via
-`make_figures.py` (`figures/fig1_final_acc.png`, `figures/fig2_param_budget.png`).
+**Every dense control trains far worse than the sparse connectome — including the dense *ceiling* with
+39–129× more parameters.** (final test accuracy, mean ± SD, n=20 unless noted; chance ≈ 0.031; data in
+`outputs/{analysis.json, metrics_by_run.csv}`, `outputs/runs/*/`)
 
-### Key question this resolves
-Whether the connectome's advantage is its *specific sparse wiring* or merely *P trainable parameters
-arranged over many neurons*: if `core`/`full` beat **C2** (same N, same trainable count, random
-directions) and hold up against **C3** (same total budget, fewer dense neurons), the wiring pays off
-beyond parameter count; if C2/C3 match or beat them, the Exp-2 advantage is largely a
-capacity/architecture effect. C1 bounds how much headroom a fully-free dense net of the same size has.
-Motivated by Exp 2's 2026-06-23 eigvec follow-up (`experiment_02_mb_core_pruning.md`).
+| arm | core (5.6k) | full (14k) | trainable params (core / full) |
+|---|---|---|---|
+| **connectome** (sparse, ported from Exp 2) | **0.881 ± 0.012** | **0.919 ± 0.010** | 820,979 / 1,528,392 |
+| C1 — dense ceiling (far more params) | 0.151 ± 0.003 | 0.152 ± 0.003 | 31.8M / 197.7M |
+| C2 — dense reservoir (matched, primary) | 0.199 ± 0.003 | 0.348 ± 0.067 | 820,979 / 1,528,392 |
+| C3 — smaller dense (matched) | 0.169 ± 0.005 | 0.162 ± 0.007 (n=18) | 821,525 / 1,529,045 |
+
+- **C2 (primary matched-param test, permutation null):** 0/20 random-directions dense reservoirs reach
+  the connectome mean on either substrate → permutation p = 0.048 (the +1-smoothed floor, 1/21). The
+  connectome beats every matched-budget dense reservoir outright.
+- **C1 is a ceiling that fails.** A fully-trainable dense net of the same neuron count, with 39× (core) /
+  129× (full) more parameters, reaches only ~0.15 — *below* the constrained sparse connectome. The extra
+  capacity is unusable here; since a dense matrix is a strict superset of the sparse connectome's
+  solution, this is an optimization failure, not a capacity limit.
+
+![Final test accuracy — connectome vs C1/C2/C3, core and full arms](../experiment_03_dense_param_matched/figures/fig1_final_acc.png)
+![Accuracy vs trainable-parameter budget — C1 carries far more params yet loses](../experiment_03_dense_param_matched/figures/fig2_param_budget.png)
+
+Learning curves show the dense controls plateau early and never approach the connectome (the connectome
+groks within ~100–250 epochs; the dense arms flatten near ~0.15–0.35 and stay there):
+
+![Training curves — val accuracy vs epoch and vs wall-clock, median ± IQR over seeds](../experiment_03_dense_param_matched/figures/fig3_training_curves.png)
+
+**Not a learning-rate artifact (verified for `dense_c3_core`).** Sweeping `{1e-4, 3e-4, 1e-3, 3e-3, 1e-2}`,
+best-lr-per-unit by validation (subrun 01):
+
+| lr | 1e-4 | 3e-4 | 1e-3 | 3e-3 | 1e-2 |
+|---|---|---|---|---|---|
+| `dense_c3_core` test_acc | 0.198 | **0.199** | 0.169 | 0.147 | 0.080 |
+
+The validation-selected lr is 3e-4 (14/20 units) or 1e-4 (6/20) — never the production 1e-3 — but the
+best lr buys only **+0.03** (0.169 → 0.199), ~4 % of the 0.71 gap to the connectome. The dense failure
+survives lr tuning. **Caveat:** only `dense_c3_core` was swept; C1, C2, and *all* full-substrate dense
+controls ran at the single lr=1e-3 (the sparse connectome's optimum, and a known-suboptimal lr for
+dense), so their numbers above modestly understate those arms — the qualitative conclusion is robust, the
+exact values are not optimized.
+
+![dense_c3_core accuracy vs learning rate (subrun 01)](../experiment_03_dense_param_matched/figures/fig4_lr_sweep.png)
+
+**This resolves Exp 2's confound — in the connectome's favour.** Exp 2's alarm was that a dense
+param-matched surrogate *beat* the full connectome (`eigvec_matched_full` 0.964 vs 0.919). C2 is the
+*same architecture* (frozen dense scaffold + E=nnz trainable deltas, gain-matched, patience off); the
+only difference is the scaffold's directions — the connectome's eigen-directions (Exp 2) vs random (C2):
+
+| dense reservoir, matched params | core | full |
+|---|---|---|
+| with **connectome** directions (Exp 2 `eigvec_matched`) | 0.471 | **0.964** |
+| with **random** directions (Exp 3 **C2**) | 0.199 | 0.348 |
+| connectome itself (sparse) | 0.881 | 0.919 |
+
+Strip the connectome's directions out of the dense reservoir and it collapses (0.964 → 0.348 on full;
+0.471 → 0.199 on core). The Exp-2 surrogate's win was the connectome's *structure*, not generic
+dense-reservoir capacity at a matched budget. (`eigvec_shuffle`, carrying the connectome's spectrum with
+permuted eigenvector pairing, scored ~0.83 on both substrates — also far above random C2, so *any*
+connectome-derived structure helps a dense net; on the core the matched-vs-shuffle ordering inverts,
+the open puzzle Exp 2 flagged.)
+
+![Exp 2 → 3: dense reservoir at matched params — connectome eigen-directions rescue it (0.47/0.96), random directions collapse it (0.20/0.35)](../experiment_03_dense_param_matched/figures/fig7_directions_contrast.png)
+
+**Caveat — the dense arms also carried an init-conditioning handicap, so the causal reading is
+"structure-as-conditioner", not "sparse beats dense" in the abstract.** Gain-matching equalizes the mean
+hidden-state activation-RMS at init but *not* the operator norm: the connectome sits at σ_max ≈ 1.08
+(near-normal, ρ ≈ 0.95) while the random dense inits sit at σ_max ≈ 2.0–2.5. Through 16 ReLU-BPTT steps
+that is a backward-gain blow-up — C1-core's epoch-1 train_loss ≈ 358 vs the frozen scaffold's 3.5 on the
+same matrix family — which grad-clip = 1.0 then throttles into a shallow ~0.15–0.20 basin (C1 peaks by
+epoch ~11–25, then flat for ~280 epochs; no late grok). A dense-RNN practitioner would init orthogonally
+(σ_max ≈ 1); that regime is untested. Two consequences for interpretation:
+- The connectome's *structure* trains well whether deployed as sparse wiring (0.88/0.92) or as
+  eigen-directions in a dense net (Exp 2, 0.96); *random* connectivity at matched budget does not —
+  sparse-random nulls reached 0.70–0.84 in Exp 1–2, random dense reaches 0.15–0.35 here.
+- The dominant axis separating 0.88 from 0.15 is therefore **structured/sparse-vs-random-dense (a
+  trainability/conditioning effect)**, not connectome-vs-random specificity — that latter, smaller margin
+  is the separately-established Exp 1–2 result. Exp 3 cleanly kills "any dense param-matched net explains
+  the connectome's score," but does not by itself prove sparse wiring is computationally superior to a
+  well-conditioned dense net.
+
+**Wall-clock (cost view, total training seconds; the practical/commercial metric).** The sparse connectome
+is also the cheapest of the matched/ceiling arms: core 4,128 s vs C2 9,915 s (2.4×) and C1 5,945 s (1.4×);
+full 10,238 s vs C2 28,537 s (2.8×) and C1 37,664 s (3.7×). C3 is fastest (~850 s, a tiny net) but fails.
+
+![Total training wall-clock per condition (hours), core and full arms](../experiment_03_dense_param_matched/figures/fig5_total_wallclock.png)
+
+**Cheapest follow-up to close the remaining gap.** Re-run `dense_c3_core` (~850 s/run, ~5–10 seeds) from a
+**well-conditioned init** (orthogonal / σ_max ≈ 1, i.e. operator-norm-matched rather than
+activation-RMS-matched) at the validation-selected lr (3e-4). If it still tops out ~0.20, "random dense
+can't learn MQAR at this budget" becomes robust to conditioning and the headline strengthens; if it jumps
+toward 0.7–0.9, the reported gap was substantially an init artifact and the sparse-vs-dense framing must be
+downgraded to an optimization story. (Exp 2's `eigvec_matched_full` = 0.96 already shows the
+scaffold-delta *architecture* is not the bottleneck — so the one open question is fully-trainable dense
+from a sane init.)
+
+### Bottom line
+At a matched trainable-parameter budget *and the connectome's training regime*, the connectome's sparse
+wiring trains dramatically better than every dense alternative — random-directions reservoir (C2), smaller
+dense net (C3), and even a dense ceiling with 39–129× more parameters (C1) — and this is not a
+learning-rate artifact. Combined with Exp 2, the picture is **connectome ≳ sparse-random (0.70–0.84) ≫
+random-dense (0.15–0.35)**, with the connectome's *structure* (as sparse wiring or as dense
+eigen-directions) the thing that trains, and generic dense capacity at matched budget the thing that does
+not. The open caveat is that the dense arms were also worse-conditioned at init (σ_max ≈ 2.5 vs 1.08), so
+"sparse-vs-dense" here is best read as a structure/trainability effect pending the one cheap init-matched
+re-run above.
 
 Code: [`scott/experiment_03_dense_param_matched/`](../experiment_03_dense_param_matched/).
