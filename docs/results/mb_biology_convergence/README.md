@@ -116,14 +116,20 @@ tested against 0.5 (n=20):
 | hemibrain random | 0.4866 ± 0.0045 | 0.4986 | p=0.008 |
 
 Sub-0.5 only ever appears at the **init baseline** and in the **random control** (which never leaves
-it) — never in the connectome's trained value (0.60–0.63). FlyWire's baseline is *exactly* chance
-(p=0.62). hemibrain's baseline is ~0.013 below chance (p=0.008), but that is a **fixed-positive-class
-artifact measured before any training**: AUC averages to exactly 0.5 only when the positive class is a
-*random* sample, and the ~168 PNs are a fixed structured subset, so random-init row-norms carry a tiny
-deterministic offset (more seeds shrink the SE around it, which is why p<0.05 at n=20). It is **identical
-in the connectome and random arms at init, so it cancels in the paired test** (we report connectome −
-paired random, Δ≈+0.10), and it is ≈8× smaller than the +0.11 training signal. Not anti-biological —
-just the null sitting a hair under chance.
+it) — never in the connectome's trained value (0.60–0.63). The init `W_in` is drawn
+`uniform(-1/√input_dim, +1/√input_dim)` **identically for every neuron**, with no dependence on cell
+identity, so **E[init AUC] = 0.5 exactly** — there is no mechanism for a per-neuron bias (confirmed:
+the across-neuron spread of the 20-seed-mean init norm, 0.00710, matches the iid prediction
+`std/√20 = 0.00708`).
+
+The hemibrain init lands at 0.4866 (p=0.008) only because that is a **finite-sample fluctuation of the
+20 specific seeds**: the positive class is small (168 PNs) so per-seed AUC has a wide SE, and that batch
+happened to fall ~3σ low. Re-instantiating the *identical* init over more seeds regresses it straight to
+chance — 20→0.487, 50→0.497, 100→0.498, **500→0.4996 (95% CI 0.498–0.502)**. FlyWire's larger positive
+set already sits at 0.4987 at n=20. Either way it is **identical in the connectome and random arms at
+init, so it cancels in the paired test** (we report connectome − paired random, Δ≈+0.10) and is ≈8×
+smaller than the +0.11 training signal. Not anti-biological — just an under-sampled baseline that is
+exactly 0.5 in expectation.
 
 ## What did *not* converge (honest scope)
 - **Recurrent weights**: scrambled on both tasks — `corr(|final|,|init|) ≈ 0`. The biological *wiring*
