@@ -6,7 +6,7 @@ give it a **free** input projection `W_in` (every neuron gets a *random* input w
 built-in link to which neurons are the biological input cells), and train it. **On the MB's *native*
 task (odor→reward with reversals), the network spontaneously rotates its initially-random input
 projection onto the connectome's real biological input neurons — the projection neurons (PNs) — *as it
-learns the task*.** The input layer's alignment to PNs rises from chance (AUC 0.46) to **0.59**, the
+learns the task*.** The input layer's alignment to PNs rises from chance (AUC ≈0.49 at n=20; 0.50 in expectation) to **0.60**, the
 connectome learns the task **~2× faster** than a random-wired control, and the alignment **tracks the
 learning curve** (it rises exactly when the task is being mastered).
 
@@ -18,6 +18,12 @@ descent, but only when the task actually needs that pathway.
 
 ![task dependence](task_dependence.png)
 ![native-task convergence](assoc_biology_convergence.png)
+
+*Native-task convergence, n=20 with 95% CI bands. Note the hemibrain (green) CI band is ~2.5× wider
+than FlyWire (blue) at init: that is the small 168-PN positive class, not a bias — E[init AUC]=0.5
+(FlyWire's larger class sits exactly there; hemibrain's 20-seed batch rolled to 0.487 and regresses to
+0.4996 by 500 seeds). The early green dip to ~0.47 is a real transient (input transiently routes to
+KC/MBON before reorganizing onto PNs). See the baseline diagnostic below.*
 
 ## Why this is interesting
 - It's a clean, **controlled** instance of "an AI rediscovers biological structure": not "any trained
@@ -62,14 +68,15 @@ as the connectome, scattered at uniformly random positions — Erdős–Rényi-s
    reconstruct the trained net, run task inputs, and correlate per-neuron **activation-RMS** (dynamical
    importance) with **biological hub-strength**.
 
-Seeds: native task 2/condition (FlyWire+hemibrain × connectome+random); MQAR 1–2.
+Seeds: native task **20/condition** (FlyWire+hemibrain × connectome+random; main figure + Robustness
+section); MQAR 1–2.
 
 ## Results
 **Input-layer AUC (‖W_in‖ → biological input neurons), init → final:**
 | condition | **MQAR** (arbitrary) | **native odor task** |
 |---|---|---|
-| hemibrain · connectome (**PNs, cell-type-grounded**) | **0.50 → 0.50** (null) | **0.46 → 0.59** ✅ |
-| hemibrain · random | 0.50 → 0.48 | 0.46 → 0.48 |
+| hemibrain · connectome (**PNs, cell-type-grounded**) | **0.50 → 0.50** (null) | **0.49 → 0.60** ✅ (n=20) |
+| hemibrain · random | 0.50 → 0.48 | 0.49 → 0.50 (n=20) |
 | FlyWire · connectome (sensory *proxy*) | 0.50 → 0.60 | 0.50 → 0.63 |
 | FlyWire · random | 0.50 → 0.51 | 0.50 → 0.50 |
 
