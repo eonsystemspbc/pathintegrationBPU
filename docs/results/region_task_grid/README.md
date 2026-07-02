@@ -28,7 +28,7 @@ z-score correctly ranks **MB×mqar 1.82 > CX×mqar 1.04**.) Stars = paired-t p<0
 
 ## Headline: the clean diagonal did **not** emerge
 
-**Native-diagonal mean z = +0.38 ≈ off-diagonal mean z = +0.40.** The connectome's
+**Native-diagonal mean z = +0.38 ≈ off-diagonal mean z = +0.41.** The connectome's
 advantage, where it exists, is **not aligned to each region's biological function**. The "each
 region is best at its own task" hypothesis is not supported by the grid.
 
@@ -38,7 +38,7 @@ region is best at its own task" hypothesis is not supported by the grid.
 |--------|------|------|------|-----------|---------|
 | **OL** | −0.21* `[native]` | −0.12 | +0.51 | +0.54* | +0.33 |
 | **MB** | +1.43* | **+1.82*** `[native]` | −1.27* | +0.61* | +0.01 |
-| **CX** | +1.25* | +1.04* | −0.47 `[native]` | +0.74* | −0.24 |
+| **CX** | +1.25* | +1.04* | −0.47 `[native]` | +0.79* | −0.16 |
 
 What actually shows up:
 
