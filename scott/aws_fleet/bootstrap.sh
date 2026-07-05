@@ -71,10 +71,11 @@ for w in $(seq 0 $((WORKERS_PER_INSTANCE - 1))); do
   uv run python "$EXP_RUN_SCRIPT" $EXP_ARGS \
         --shard "$SHARD" --num-shards "$NUM_SHARDS" --print-shard-run-ids 2>/dev/null \
     | while read -r rid; do
-        case "$rid" in
-          dense_*) aws s3 sync "$S3_URI/outputs/runs/$rid/" "$EXP_OUTPUT_DIR/runs/$rid/" \
-                       --exclude "*.tmp" --only-show-errors || true ;;
-        esac
+        # --print-shard-run-ids already restricts to THIS shard's run_ids, so sync each one
+        # (experiment-agnostic; a prior version hardcoded `dense_*`, which silently pulled nothing
+        # for non-dense experiments like exp04's bptt_*/plasticity_* -> broke spot-resume).
+        [ -n "$rid" ] && aws s3 sync "$S3_URI/outputs/runs/$rid/" "$EXP_OUTPUT_DIR/runs/$rid/" \
+                             --exclude "*.tmp" --only-show-errors || true
       done
 done
 

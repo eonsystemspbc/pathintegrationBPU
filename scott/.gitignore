@@ -1,6 +1,8 @@
 # scott experiment artifacts (keep scripts + labnotebook tracked, not run outputs)
 **/outputs/
 **/outputs_*/
+**/_smoke/
+**/_stability/
 fleet_config.env
 __pycache__/
 *.pyc
