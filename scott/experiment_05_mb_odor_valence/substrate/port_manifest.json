@@ -1,0 +1,128 @@
+{
+  "description": "Biological-I/O port indices for Experiment 4. For each substrate, '<substrate>__sub_rows' are indices into the 14k adjacency; '<substrate>__<port>' are indices into the substrate's own 0..n-1 space.",
+  "built_utc": "2026-07-02T01:11:30+00:00",
+  "annotation_source": "https://raw.githubusercontent.com/flyconnectome/flywire_annotations/main/supplemental_files/Supplemental_file1_neuron_annotations.tsv",
+  "annotation_release": "FlyWire 783 / Schlegel et al. 2024 (flywire_annotations v2.1.0)",
+  "join_key": "annotation root_id == substrate bodyId",
+  "n_full": 14025,
+  "annotation_matched": 14025,
+  "port_cell_classes": {
+    "alpn": [
+      "ALPN"
+    ],
+    "kc": [
+      "Kenyon_Cell"
+    ],
+    "mbon": [
+      "MBON"
+    ],
+    "dan": [
+      "DAN"
+    ],
+    "mbin": [
+      "MBIN"
+    ]
+  },
+  "core_alpn_classes": [
+    "Kenyon_Cell",
+    "MBON",
+    "DAN",
+    "MBIN",
+    "ALPN"
+  ],
+  "substrate_composition_full": {
+    "NaN": 7146,
+    "Kenyon_Cell": 5177,
+    "CX": 639,
+    "ALPN": 406,
+    "DAN": 331,
+    "MBON": 96,
+    "TuBu": 49,
+    "AN": 41,
+    "mAL": 27,
+    "LHCENT": 26,
+    "pars_intercerebralis": 25,
+    "LHLN": 19,
+    "bilateral": 15,
+    "pars_lateralis": 9,
+    "ALIN": 8,
+    "MBIN": 4,
+    "ALON": 2,
+    "LO": 2,
+    "ALLN": 1,
+    "unknown_sensory": 1,
+    "ME>LO": 1
+  },
+  "substrates": {
+    "core_alpn": {
+      "n": 6014,
+      "edges": 471292,
+      "rho_raw": 0.938,
+      "wcc": 39,
+      "largest_wcc": 5964,
+      "port_counts": {
+        "alpn": 406,
+        "kc": 5177,
+        "mbon": 96,
+        "dan": 331,
+        "mbin": 4
+      }
+    },
+    "full": {
+      "n": 14025,
+      "edges": 574660,
+      "rho_raw": 0.95,
+      "wcc": 62,
+      "largest_wcc": 13862,
+      "port_counts": {
+        "alpn": 406,
+        "kc": 5177,
+        "mbon": 96,
+        "dan": 331,
+        "mbin": 4
+      }
+    }
+  },
+  "compartment_profiles": {
+    "alpn": {
+      "n": 406,
+      "mean_pre_calyx": 848.84,
+      "mean_post_calyx": 31.43,
+      "mean_pre_lobes": 1.27,
+      "mean_post_lobes": 0.11
+    },
+    "kc": {
+      "n": 5177,
+      "mean_pre_calyx": 10.73,
+      "mean_post_calyx": 77.21,
+      "mean_pre_lobes": 110.77,
+      "mean_post_lobes": 59.45
+    },
+    "mbon": {
+      "n": 96,
+      "mean_pre_calyx": 5.76,
+      "mean_post_calyx": 78.1,
+      "mean_pre_lobes": 256.55,
+      "mean_post_lobes": 2021.17
+    },
+    "dan": {
+      "n": 331,
+      "mean_pre_calyx": 6.58,
+      "mean_post_calyx": 3.69,
+      "mean_pre_lobes": 177.56,
+      "mean_post_lobes": 285.3
+    },
+    "mbin": {
+      "n": 4,
+      "mean_pre_calyx": 7845.75,
+      "mean_post_calyx": 6938.25,
+      "mean_pre_lobes": 13789.75,
+      "mean_post_lobes": 29043.5
+    }
+  },
+  "notes": [
+    "core_alpn is the PRIMARY Exp-4 substrate (MB core + the ALPN input layer).",
+    "ALPN (biological input) is entirely in the halo: 0 of 406 in the Exp-2 core.",
+    "predictedNt has no DA labels and native ROI-flow pools cannot separate ALPN/DAN; cell_class is the only signal that cleanly resolves all five roles."
+  ]
+}
