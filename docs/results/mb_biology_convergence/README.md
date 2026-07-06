@@ -112,6 +112,15 @@ end up receiving more input drive); in the random controls init and final overla
 
 ![input-drive distributions](biology_distributions.png)
 
+> **Deeper dive → [weight_dynamics.md](weight_dynamics.md)** takes this distribution view further along
+> the three axes Scott asked for: (1) the bio-vs-non shift as effect sizes — Cohen's d, and AUC on Δw
+> itself (0.60–0.64), with the honest caveat that the init-normal→final-heavy-tail is *generic* (random
+> is even more skewed); (2) **the Δw tail is the input pathway (PN 1.6×), not the projecting/output
+> neurons** — MBON/DAN/output-pool are *depleted* (0.5–0.7×), refuting the "tail = MBON/PN projections"
+> hypothesis; (3) the temporal evolution (Wasserstein/JS distance + cosine alignment per epoch), which
+> shows the connectome diverging from the biology-null over training — with an early transient dip — and
+> confirms alignment is to PN *identity*, not hub in-degree.
+
 **Why some AUC curves sit slightly below 0.5 (it's the baseline, and it's benign).** Per-seed AUC
 tested against 0.5 (n=20):
 
