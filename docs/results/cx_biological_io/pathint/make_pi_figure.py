@@ -34,21 +34,25 @@ def agg(c, k):
 panels = [("heading_err_deg", "heading error (°)  — the readout the fly steers by", False),
           ("position_rmse", "home-vector position RMSE", False),
           ("test_mse", "composite training MSE (bump+home-vector)", True)]
+R2D = 180.0 / np.pi   # evaluate_metrics returns heading error in RADIANS; convert to degrees
 fig, axes = plt.subplots(1, 3, figsize=(13, 4.3))
 for ax, (key, title, gen_note) in zip(axes, panels):
-    ms = [agg(c, key)[0] for c in present]; es = [agg(c, key)[1] for c in present]
+    conv = R2D if key == "heading_err_deg" else 1.0
+    ms = [agg(c, key)[0] * conv for c in present]; es = [agg(c, key)[1] * conv for c in present]
     ax.bar([labels[c] for c in present], ms, yerr=es, capsize=3, color=[colors[c] for c in present])
     ax.set_title(title, fontsize=10)
     for i, v in enumerate(ms):
         ax.text(i, v, f"{v:.2f}" if v < 5 else f"{v:.1f}", ha="center", va="bottom", fontsize=9)
     ax.set_ylim(0, max(ms) * 1.25)
+    if key == "heading_err_deg":
+        ax.axhline(90, ls=":", color="grey", lw=1); ax.text(0.02, 91, "chance ~90°", fontsize=7, color="grey")
     if gen_note:
         ax.text(0.5, 0.94, "generic's 60× readout only helps here", transform=ax.transAxes,
                 ha="center", fontsize=8, style="italic", color="#555")
 fig.suptitle("CX path integration (#1, backprop): connectome beats control on every metric; "
-             "biological I/O matches/beats generic on the behavioural outputs", fontsize=11)
+             "absolute integration is modest (heading ~60–66°)", fontsize=11)
 fig.tight_layout(rect=[0, 0, 1, 0.96])
 fig.savefig(HERE.parent / "fig1_pathint.png", dpi=130)
 print("wrote fig1_pathint.png")
 for c in present:
-    print(f"  {c:20s} heading={agg(c,'heading_err_deg')[0]:.2f}deg  pos={agg(c,'position_rmse')[0]:.3f}  mse={agg(c,'test_mse')[0]:.4f}")
+    print(f"  {c:20s} heading={agg(c,'heading_err_deg')[0]*R2D:.1f}deg  pos={agg(c,'position_rmse')[0]:.3f}  mse={agg(c,'test_mse')[0]:.4f}")

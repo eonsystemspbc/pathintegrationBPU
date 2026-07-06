@@ -11,15 +11,20 @@ This experiment answers it by testing the CX on its **native** computation.
 
 ## Headline
 
-**On the CX's native task, the connectome BEATS degree-matched controls on every metric, and
-biological I/O matches generic all-neuron I/O on the behavioural outputs (decoded heading, home-vector
-position) despite using 60× fewer parameters — the opposite of the arbitrary-task (MQAR) result,
-where biological I/O was catastrophic.** (Generic's larger readout does fit the raw bump ~10% better
-on the composite training MSE, but that edge does not reach the navigation outputs — see Results.)
-The connectome advantage **tracks task alignment**: the wiring helps precisely on the task it evolved
-for, through the neurons that carry that task's I/O, and is a mild handicap on an arbitrary task
-forced through the wrong ports. This resolves the puzzle — the earlier MQAR "advantage" was a
-broad-readout reservoir artifact; the real structural advantage appears only when task and circuit match.
+**On the CX's native task, the connectome BEATS degree-matched controls on every metric — the
+opposite of the arbitrary-task (MQAR) result, where a degree-matched control tied-or-won.** And
+restricting I/O to biological ports costs *little* here (a few degrees of heading, ~0.04 MSE) versus
+the *catastrophe* it caused on MQAR — so the connectome advantage **tracks task alignment**: the
+wiring helps precisely on the task it evolved for, and is a mild handicap on an arbitrary task forced
+through the wrong ports. This resolves the puzzle — the earlier MQAR "advantage" was a broad-readout
+reservoir artifact; the real structural advantage appears only when task and circuit match.
+
+**Two honest qualifiers** (added after a units check): (i) absolute performance is **modest** — heading
+error is ~60–66° (chance ≈ 90°), matching the repo's own `cx_bpu` baseline (~60°); this is a *relative*
+advantage on an imperfect integrator, not a "solved" task. (ii) The higher-capacity generic all-neuron
+readout (60× more params) is in fact *modestly better* than biological I/O on MSE and heading (it loses
+only on position) — biological I/O is nearly-free, not superior. *(An earlier version of this writeup
+reported heading in radians mislabeled as degrees — e.g. "1.09°" was 1.09 rad ≈ 62°; corrected throughout.)*
 
 ![path integration results](fig1_pathint.png)
 
@@ -49,33 +54,35 @@ Reported on all three metrics, because the composite MSE (a training loss domina
 bump reconstruction) and the **behavioural** outputs (decoded heading angle; home-vector position)
 tell different bio-vs-generic stories:
 
-| condition | composite MSE | heading err | position RMSE | trainable params |
+| condition | composite MSE | heading err (deg) | position RMSE | trainable params |
 |---|---|---|---|---|
-| **bio_connectome** | 0.391 ± 0.001 | **1.09°** | **6.68** | 4,848 |
-| **bio_degree_matched** | 0.413 ± 0.002 | 1.15° | 6.83 | 4,848 |
-| generic all-neuron I/O | **0.353 ± 0.007** | **1.04°** | 6.74 | 279,297 |
+| **bio_connectome** | 0.391 ± 0.001 | 62.5° | **6.68** | 4,848 |
+| **bio_degree_matched** | 0.413 ± 0.002 | 65.9° | 6.83 | 4,848 |
+| generic all-neuron I/O | **0.353 ± 0.007** | **59.6°** | 6.74 | 279,297 |
+
+(Heading error in degrees; chance ≈ 90°. All models are modest integrators — the repo's `cx_bpu`
+baseline is likewise ~60°.)
 
 **1. The connectome beats the degree-matched control on every metric.** MSE 0.391 vs 0.413 (all 6
-rewirings 0.410–0.416, strictly worse than all 3 connectome seeds, **zero overlap**); heading 1.09°
-vs 1.15°; position 6.68 vs 6.83. The frozen connectome's ring-attractor + FB-integrator dynamics are
-genuinely useful for path integration, and a degree-preserving rewiring degrades them.
+rewirings 0.410–0.416, strictly worse than all 3 connectome seeds, **zero overlap**); heading 62.5°
+vs 65.9°; position 6.68 vs 6.83. The frozen connectome's ring-attractor + FB-integrator dynamics are
+genuinely more useful for path integration than a degree-preserving rewiring — a consistent (if
+modest) relative advantage, and the opposite of the MQAR topology null.
 
-**2. Biological I/O matches generic all-neuron I/O on the behavioural outputs — with 60× fewer
-trainable params (4.8k vs 279k).** Generic wins **only on the composite MSE** (0.353 vs 0.391): its
-279k-param readout reconstructs the raw 32-bin bump ~10% better. But on the outputs that matter for
-behaviour, biological I/O ties on decoded **heading** (1.09° vs 1.04°) and **beats** generic on
-home-vector **position** (6.68 vs 6.74). So reading self-motion in through 496 PFN/PEN neurons and
-steering out through 95 PFL/PFR neurons decodes the navigation variables as well as touching all
-7,349 — the extra capacity only helps fit the full bump *shape*, which is not the behavioural readout.
-**This is the opposite of MQAR**, where restricting to biological ports was catastrophic on every
-metric (MB: 0.178 vs 0.881).
+**2. The biological I/O restriction costs little (unlike MQAR) — but is not superior to generic.**
+With 60× fewer trainable params (4.8k vs 279k), biological I/O is within ~3° heading and ~0.04 MSE of
+the all-neuron readout; biological I/O even wins on **position** (6.68 vs 6.74). But the higher-capacity
+generic readout is **modestly better** on composite MSE (0.353 vs 0.391) and heading (59.6° vs 62.5°),
+so this is "the biological restriction is nearly free," **not** "biological beats generic." The point vs
+MQAR still stands: routing through 496 PFN/PEN in + 95 PFL/PFR out costs a few percent here, whereas on
+MQAR restricting to biological ports was **catastrophic** (MB: 0.178 vs 0.881).
 
 **Double dissociation — the connectome advantage tracks task alignment:**
 
 | | connectome vs degree-matched | biological vs generic I/O |
 |---|---|---|
 | **arbitrary task** (MQAR; Scott's MB) | control ties-or-wins | bio catastrophic (0.178 vs 0.881, every metric) |
-| **native task** (path integration; here) | **connectome wins (every metric)** | **bio ties/beats generic on behaviour** (heading 1.09 vs 1.04°; position 6.68 vs 6.74; generic wins only raw-bump MSE) |
+| **native task** (path integration; here) | **connectome wins (every metric)** | biological restriction **costs little** (~3° heading, ~0.04 MSE; bio wins position 6.68 vs 6.74) — nearly free, though generic is modestly better on MSE + heading |
 
 ## Biological learning rules on the native task (#2)
 
@@ -88,24 +95,28 @@ backprop**: **hebbian** (correlational) and **delta** (local error / LMS), on a 
 (anatomically-set) input encoder; **hybrid** = local readout + a meta-learned encoder.
 Code: [`pathint/run_pi_plasticity.py`](pathint/run_pi_plasticity.py).
 
-**Result — the pure local rules do NOT solve path integration (heading error; chance ≈ 90°):**
+**Result — no learning rule solves CX heading well in this frozen-backbone regime; all cluster at
+~60–69° (heading error, chance ≈ 90°):**
 
 | rule | connectome | degree-matched |
 |---|---|---|
-| hebbian (0 backprop) | 69.1° | 69.1° |
-| delta (0 backprop) | 66.9° | 67.2° |
-| *backprop #1 (encoder tuned, ref)* | *1.09°* | *1.15°* |
+| hebbian (0 backprop, fixed encoder) | 69.1° | 69.1° |
+| delta (0 backprop, fixed encoder) | 66.9° | 67.2° |
+| hybrid / backprop (encoder tuned) | **62.5°** | 65.9° |
 
 ![learning rules on path integration](fig2_pathint_learning_rules.png)
 
-The local rules extract the *optimal linear decode* of the frozen connectome, but that is near-chance
-for heading (~67°), and **connectome ≈ control (both fail)** — the opposite of "biological rules solve
-it." The bottleneck is not the readout objective (training the readout on the correct composite loss
-gives the same 68.7°) and not the wiring (a random rewiring fails identically). It is the **input
-encoding** — *how self-motion enters the ring-attractor* — which sits **upstream** of both the readout
-and the recurrent wiring. A local readout rule cannot establish it. Only when the encoding is tuned to
-the circuit (backprop #1 — the "hybrid"/meta-learning endpoint for this task) does the frozen
-connectome integrate, and then it beats the control (1.09° vs 1.15°; and the MSE result above).
+Two things stand out. (a) **The pure local rules (fixed encoder) reach ~67–69° and connectome ≈ control**
+— the readout can't fix it (training the readout on the correct composite loss gives the same ~68°) and
+neither can the wiring (a random rewiring fails identically). The bottleneck is the **input encoding** —
+*how self-motion enters the ring-attractor* — which sits upstream of both the readout and the wiring, and
+a local readout rule cannot establish it. (b) **Only when the encoder is tuned (hybrid/backprop) does the
+connectome's advantage over the control appear** (62.5° vs 65.9°) — i.e. the CX's structural edge on its
+native task is real but **only accessible once the input encoding is matched to the circuit**, which
+requires (non-biological) credit assignment through the recurrence (BPTT). Note the absolute level stays
+**modest** (~62°): even end-to-end backprop does not "solve" heading here. So this is *not* Scott's MQAR
+story ("hybrid solves it, wiring irrelevant"); it is "encoder-tuning is required to unlock a small,
+consistent connectome advantage, and a purely-local biological rule cannot do it."
 
 **Why this differs from the MB.** The mushroom body *is* a readout-plasticity circuit — associative
 learning lives at the KC→MBON synapse — so a biological readout rule is exactly the right tool and it
