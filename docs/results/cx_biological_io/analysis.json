@@ -1,0 +1,85 @@
+{
+  "n_runs": 53,
+  "n_units_besthp": 17,
+  "comparisons": {
+    "bptt_bio_vs_generic__test_acc": {
+      "bio_connectome_mean": 0.0955,
+      "generic_io_mean": 0.1649,
+      "delta_bio_minus_generic": -0.0694,
+      "note": "does restricting I/O to biological ports help or hurt vs all-neuron I/O on the same connectome wiring (descriptive; both are one graph x seeds)."
+    },
+    "plasticity_hebbian_connectome_vs_degree__test_acc": {
+      "connectome_mean": 0.2281,
+      "connectome_std": 0.0024,
+      "control_mean": 0.2308,
+      "control_std": 0.0032,
+      "control_p05": 0.2269,
+      "control_p50": 0.2318,
+      "control_p95": 0.2339,
+      "n_connectome": 3,
+      "n_control": 3,
+      "higher_is_better": true,
+      "permutation_p_one_sided": 0.75,
+      "permutation_note": "fraction of control graphs at least as good as the connectome mean (+1 smoothing)",
+      "ranksum_u": 2.0,
+      "ranksum_p": 0.9,
+      "ranksum_caveat": "connectome runs share one graph (pseudo-replication); treat permutation_p as primary"
+    },
+    "plasticity_delta_connectome_vs_degree__test_acc": {
+      "connectome_mean": 0.2281,
+      "connectome_std": 0.0024,
+      "control_mean": 0.2308,
+      "control_std": 0.0033,
+      "control_p05": 0.2269,
+      "control_p50": 0.232,
+      "control_p95": 0.2339,
+      "n_connectome": 3,
+      "n_control": 3,
+      "higher_is_better": true,
+      "permutation_p_one_sided": 0.75,
+      "permutation_note": "fraction of control graphs at least as good as the connectome mean (+1 smoothing)",
+      "ranksum_u": 2.0,
+      "ranksum_p": 0.9,
+      "ranksum_caveat": "connectome runs share one graph (pseudo-replication); treat permutation_p as primary"
+    },
+    "plasticity_hybrid_connectome_vs_degree__test_acc": {
+      "connectome_mean": 0.699,
+      "connectome_std": 0.005,
+      "control_mean": 0.7038,
+      "control_std": 0.0,
+      "control_p05": 0.7038,
+      "control_p50": 0.7038,
+      "control_p95": 0.7038,
+      "n_connectome": 2,
+      "n_control": 1,
+      "higher_is_better": true,
+      "permutation_p_one_sided": 1.0,
+      "permutation_note": "fraction of control graphs at least as good as the connectome mean (+1 smoothing)",
+      "ranksum_u": 1.0,
+      "ranksum_p": 0.66667,
+      "ranksum_caveat": "connectome runs share one graph (pseudo-replication); treat permutation_p as primary"
+    }
+  },
+  "paradigm_table_connectome_test_acc": {
+    "backprop": {
+      "mean": 0.0955,
+      "std": 0.0,
+      "n": 1
+    },
+    "hybrid": {
+      "mean": 0.699,
+      "std": 0.005,
+      "n": 2
+    },
+    "delta": {
+      "mean": 0.2281,
+      "std": 0.0024,
+      "n": 3
+    },
+    "hebbian": {
+      "mean": 0.2281,
+      "std": 0.0024,
+      "n": 3
+    }
+  }
+}
