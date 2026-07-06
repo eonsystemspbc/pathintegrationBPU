@@ -52,7 +52,7 @@ SUBSTRATE = "core_alpn"  # PRIMARY substrate (MB core + ALPN input layer)
 # --- sizes ---------------------------------------------------------------------------------
 SEEDS = 20              # connectome (and generic_io) training-seed replicates
 CONTROL_GRAPHS = 20     # independent degree-matched control graphs -> the null (floor 1/21 = 0.048)
-LR_GRID = ("1e-4", "3e-4", "1e-3", "3e-3", "1e-2")   # backprop + hybrid-outer lr grid
+LR_GRID = ("1e-3",)   # backprop + hybrid-outer lr: single point (sweep disabled per user)
 ETA_GRID = ("0.1", "0.3", "0.5", "1.0")              # DELTA plastic-write-rate (eta) sweep
 HEBBIAN_ETA = "0.5"     # hebbian recall is argmax-invariant to eta scale -> single point (no sweep)
 RULES = ("hebbian", "delta", "hybrid")
