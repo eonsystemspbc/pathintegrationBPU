@@ -32,3 +32,4 @@ awscliv2.zip
 **/substrate/schur_cache/
 **/_stability/
 **/_smoke/
+.qa_tmp/*
