@@ -1,4 +1,5 @@
 outputs/runs/
+outputs_converged/
 _smoke/
 _probe/
 logs/

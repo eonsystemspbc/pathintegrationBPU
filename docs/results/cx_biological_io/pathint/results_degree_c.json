@@ -1,0 +1,26 @@
+[
+  {
+    "condition": "bio_degree_matched",
+    "seed": 4,
+    "test_mse": 0.4142,
+    "heading_err_deg": 1.15,
+    "position_rmse": 6.833,
+    "best_val_mse": 0.4226,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 231.9
+  },
+  {
+    "condition": "bio_degree_matched",
+    "seed": 5,
+    "test_mse": 0.4164,
+    "heading_err_deg": 1.15,
+    "position_rmse": 6.844,
+    "best_val_mse": 0.418,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 231.5
+  }
+]
