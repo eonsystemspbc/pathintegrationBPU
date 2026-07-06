@@ -96,6 +96,26 @@ and the backprop arm has no fast weights** — it must hold them in the hidden s
 fixed-recurrence RNN (exactly what MQAR is built to make hard), while blinded to the role flags.
 That is an architecture/task mismatch, not "biological wiring defeats gradient descent."
 
+**Direct control — decode the binding from the trained net.** To rule out "solved internally,
+discarded at the narrow port," I linearly decoded (ridge, held-out episodes) the queried value from
+different neuron sets of the trained CX bio-backprop net (chance 0.031; own MBON readout 0.094):
+
+| decode from | dim | decode acc |
+|---|---|---|
+| all neurons (full recurrent state) | 7,349 | 0.080 |
+| KC / hidden pool | 1,562 | 0.091 |
+| random 327-neuron readout | 327 | 0.092 |
+| MBON output port | 327 | 0.097 |
+
+Every set floors near chance — the binding is **not decodably present anywhere** in the network, and
+decoding from all 7,349 neurons does **not** beat the 327-neuron MBON port (a *random* 327-neuron
+readout decodes just as well). So the answer was never formed and merely lost at the readout, and the
+MBON restriction is **not** a special bottleneck: of the five differences above, the readout-width one
+(#1) is demonstrably **harmless**. The failure is memory **formation** (no fast weights / no
+store-gate), not I/O width. *(Compute-limited CX proxy at ~0.09; the definitive version is the same
+full-state-vs-MBON decode on the fully-trained MB 0.178 checkpoint — a cheap, decisive control the
+original experiment never ran.)*
+
 **Fairer tests that preserve learning** (increasing fidelity): give the port-gated model the
 `is_value` store-gate (biologically, dopamine presence *is* the store signal — fair, not a cheat);
 match microsteps so "bio vs generic" isolates I/O; and — the genuinely fair fix — give it the
