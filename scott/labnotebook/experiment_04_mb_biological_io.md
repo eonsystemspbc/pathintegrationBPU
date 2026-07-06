@@ -237,9 +237,26 @@ fleet; `run.py` pins every parameter and is the frozen record.
   way: **neither half of the biological MB wiring — the fixed odor-code backbone nor the KC→MBON
   readout — helps arbitrary 32-way MQAR binding under a random codebook, and the connectome is a mild,
   perfectly consistent handicap on both.** This still says nothing about a valence-aligned codebook —
-  the Phase-2 prediction (Exp 5). Data: `subruns/01_kc_code_control/outputs/` (1040 runs, `analysis.json`);
-  figures [`fig1_kc_code_2x2.png`](../experiment_04_mb_biological_io/subruns/01_kc_code_control/figures/fig1_kc_code_2x2.png),
-  [`fig2_which_wiring_matters.png`](../experiment_04_mb_biological_io/subruns/01_kc_code_control/figures/fig2_which_wiring_matters.png).
+  the Phase-2 prediction (Exp 5).
+
+  ![KC-code control — 2×2 recall](../experiment_04_mb_biological_io/subruns/01_kc_code_control/figures/fig1_kc_code_2x2.png)
+
+  *Subrun Fig. 1 — the 2×2 control, recall per learning rule with four wiring conditions each: real
+  connectome (blue), KC→MBON **readout** scrambled (orange), ALPN→KC **KC-code backbone** scrambled
+  (green, the new control), and **both** scrambled (purple). For hebbian and delta the real connectome
+  (blue, 0.37) is the **lowest** bar in every group — scrambling either half of the wiring, or both,
+  nudges recall slightly up (0.40–0.41). For hybrid all four bars are pinned at 1.00 (ceiling, no
+  headroom). Neither the odor-code backbone nor the readout is doing useful work on this task.*
+
+  ![KC-code control — Δ vs connectome](../experiment_04_mb_biological_io/subruns/01_kc_code_control/figures/fig2_which_wiring_matters.png)
+
+  *Subrun Fig. 2 — the same result as a difference from the real connectome (control − connectome): bars
+  **above** zero mean the scramble *beat* the real wiring. Every pure-plasticity bar is a solid
+  +0.03–0.04 above zero with permutation p = 1.0 (all 20 rewired graphs beat the connectome mean), so
+  the answer to the new question — "does the biological KC-coding wiring help the plastic memory?" — is
+  a clear **no** (it is if anything a mild handicap). The hybrid bars hug zero and are not significant.*
+
+  Data: `subruns/01_kc_code_control/outputs/` (1040 runs, `analysis.json`).
 
 ## Results
 
@@ -248,6 +265,36 @@ MB I/O, **the learning paradigm dominates and the wiring topology does not**: a 
 dopamine-gated plasticity architecture solves MQAR near-perfectly where end-to-end backprop through
 the same circuit barely clears the floor, and the connectome's specific topology gives **no**
 advantage over degree-matched controls in any paradigm.
+
+### The four learning rules, in plain terms
+
+All four train the **same** wiring on the **same** task. They differ only in *how* a synapse changes
+its strength — from pure machine learning to pure fly. (The "teaching signal" — which output a value
+should map to — always arrives through the **DAN** dopamine neurons, the circuit's real reward/error
+channel.)
+
+- **backprop (BPTT)** — the standard deep-learning method. Run the whole input sequence, measure the
+  error at the end, and use calculus (gradients) to nudge *every* weight in the network a little to
+  reduce that error; repeat for hundreds of passes over the data. **Global** (each weight's update
+  depends on the whole network), slow, and biologically implausible — a real synapse cannot know the
+  entire network's output error.
+- **Hebbian** — the simplest biological rule: *"cells that fire together, wire together."* When a
+  Kenyon cell and an output neuron happen to be active at the same moment the value is presented,
+  strengthen the synapse between them. **Local** (each synapse uses only its own two neurons'
+  activity), **one-shot** (no repeated passes), no error term — it only ever *accumulates*
+  associations.
+- **delta (prediction-error)** — Hebbian *plus a correction*: push the synapse toward the **right**
+  answer and away from the network's current **wrong** guess (Δw ∝ target − prediction). Still local
+  and one-shot, but unlike Hebbian it can *overwrite* a stale association instead of only piling on.
+  This is close to how the fly's dopamine-gated plasticity is thought to work.
+- **hybrid** — the fly's fast one-shot write (the delta rule above, applied only at the KC→MBON
+  synapse) **wrapped inside a slow outer backprop loop** that meta-learns just the small input encoder
+  and output codebook while the wiring stays frozen. "Learn-to-learn": gradient descent tunes *how the
+  one-shot memory is written and read*, not the memory contents themselves.
+
+A useful way to read the rows below: **backprop** changes ~500k weights over hours; **hebbian/delta**
+change nothing by gradient descent (0 trained params, a single online pass); **hybrid** trains only
+~16k encoder/codebook params on top of the fly's one-shot write.
 
 **1. Learning paradigm is the whole story (connectome substrate, MQAR test recall, chance ≈ 0.031):**
 
@@ -261,6 +308,12 @@ advantage over degree-matched controls in any paradigm.
 
 ![paradigm comparison](../experiment_04_mb_biological_io/figures/fig1_paradigm_comparison.png)
 
+*Figure 1 — final MQAR recall by paradigm on the connectome (bars = mean over seeds). Read it
+top-to-bottom as a ladder from fly to machine: **hybrid** is at ceiling, pure **hebbian/delta** clear
+~12× chance with zero gradient descent, and end-to-end **backprop** through the biological ports barely
+lifts off the floor — even though the very same graph with generic all-neuron I/O (bottom, greyed)
+reaches 0.88. How the network learns matters far more than the ~500k weights backprop is free to tune.*
+
 The fly's own mechanism — a one-shot, dopamine-gated write onto KC→MBON synapses — solves the task
 that end-to-end gradient descent through the identical wiring cannot, at ~40× lower compute. Pure
 local plasticity (zero backprop) already doubles backprop's recall (0.37 vs 0.18, ~12× chance).
@@ -271,6 +324,12 @@ I/O bottleneck — restricting read/write to the real 96-MBON / 406-ALPN ports i
 gradient descent.
 
 ![why backprop fails — the biological I/O bottleneck](../experiment_04_mb_biological_io/figures/fig2_io_bottleneck.png)
+
+*Figure 2 — the same connectome and the same backprop optimizer, changing **only** the I/O. Routing
+read/write through the real 96 MBON + 406 ALPN ports (left, 0.178) vs letting the readout touch all
+6,014 neurons (right, 0.881). Since nothing but the port restriction differs, what defeats gradient
+descent is the biological **I/O bottleneck**, not the optimizer or the wiring — a trainable all-neuron
+readout can route around the circuit; the real ports cannot.*
 
 **2. Connectome topology confers no advantage under biological I/O** (connectome vs degree-matched
 control, ports fixed, ρ=0.95; permutation-rank is primary, MWU demoted as pseudo-replicated):
@@ -283,6 +342,12 @@ control, ports fixed, ρ=0.95; permutation-rank is primary, MWU demoted as pseud
 | hebbian | 0.369 | **0.403** | 1.0 | control *better* (20/20; mirror p=0.048) |
 
 ![connectome advantage across experiments](../experiment_04_mb_biological_io/figures/fig3_advantage_across_experiments.png)
+
+*Figure 3 — connectome recall **minus** degree-matched-control recall, across the project's
+experiments. Bars right of zero = the biological wiring wins; left of zero = a random rewiring wins.
+The connectome's edge is clearly positive under generic all-neuron I/O (Exp 1–3) but collapses to
+zero-or-negative the moment I/O is restricted to the real ports (Exp 4). The "topology advantage"
+travelled with the generic readout — it was never a property the biological ports could use.*
 
 Nowhere does the biological wiring beat a matched random control. For pure local plasticity it is
 reliably, if slightly, **worse**: every one of 20 degree-preserving rewirings of KC→MBON beats the
@@ -322,11 +387,31 @@ apparent "topology advantage" on the generic all-neuron readout that could route
   optimum likely λ<0.1); generic_io was still climbing at the 300-epoch cap (so the bio-vs-generic
   gap is, if anything, understated). Neither changes any ordering.
 
-Supporting figures — [accuracy vs compute cost](../experiment_04_mb_biological_io/figures/fig4_accuracy_vs_cost.png)
-(fly-like learning is more accurate *and* cheaper than generic-I/O backprop from Exp 1–2) and
-[learning curves](../experiment_04_mb_biological_io/figures/fig5_learning_curves.png) (hybrid converges in
-~9 epochs; backprop crawls for 300). Full per-run numbers: `outputs/metrics_by_run.csv` (820 runs);
-stats: `outputs/analysis.json`.
+**How fast each rule learns.**
+
+![learning curves](../experiment_04_mb_biological_io/figures/fig5_learning_curves.png)
+
+*Figure 4 — validation recall vs training epoch (log x-axis), best hyperparameter per paradigm on the
+connectome. The story is in the shape: **hybrid** (solid blue) is already at 1.0 within a few epochs —
+its one-shot plastic write solves each episode immediately, and the outer loop only has to tune the
+tiny encoder. **backprop through generic I/O** (orange) "groks" late, staying near 0.19 until ~epoch 40
+then climbing to 0.88. **backprop through the biological ports** (dashed blue) never groks — it crawls
+to 0.18 over all 300 epochs. **hebbian/delta** are one-shot with no training loop, so they appear as a
+flat reference line at ~0.37 (dotted). The pure fly rules beat 300 epochs of end-to-end backprop with
+a single pass.*
+
+**Accuracy for the compute it costs.**
+
+![accuracy vs compute cost](../experiment_04_mb_biological_io/figures/fig4_accuracy_vs_cost.png)
+
+*Figure 5 — final recall vs wall-clock per run (log x-axis). The fly-like rules sit in the desirable
+top-left: **hybrid** matches generic-I/O backprop's accuracy (~1.0 vs 0.88) at ~40× less compute
+(~6 min vs ~4 hr), and **hebbian/delta** are cheapest of all (~30 s) at a modest 0.37. Generic-I/O
+backprop (top-right) buys its accuracy only with hours of training; biological-I/O backprop
+(bottom-right) pays the same hours and still fails. Wall-clock is reported as a practical value metric,
+not a confound.*
+
+Full per-run numbers: `outputs/metrics_by_run.csv` (820 runs); stats: `outputs/analysis.json`.
 
 Code: [`scott/experiment_04_mb_biological_io/`](../experiment_04_mb_biological_io/)
 (design: [`SPEC.md`](../experiment_04_mb_biological_io/SPEC.md)).
