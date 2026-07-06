@@ -1,0 +1,74 @@
+[
+  {
+    "condition": "bio_connectome",
+    "seed": 0,
+    "test_mse": 0.392,
+    "heading_err_deg": 1.09,
+    "position_rmse": 6.704,
+    "best_val_mse": 0.3924,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 231.3
+  },
+  {
+    "condition": "bio_connectome",
+    "seed": 1,
+    "test_mse": 0.3922,
+    "heading_err_deg": 1.09,
+    "position_rmse": 6.693,
+    "best_val_mse": 0.3924,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 230.9
+  },
+  {
+    "condition": "bio_connectome",
+    "seed": 2,
+    "test_mse": 0.3901,
+    "heading_err_deg": 1.09,
+    "position_rmse": 6.656,
+    "best_val_mse": 0.3987,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 230.8
+  },
+  {
+    "condition": "bio_degree_matched",
+    "seed": 0,
+    "test_mse": 0.4129,
+    "heading_err_deg": 1.15,
+    "position_rmse": 6.821,
+    "best_val_mse": 0.4142,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 231.0
+  },
+  {
+    "condition": "bio_degree_matched",
+    "seed": 1,
+    "test_mse": 0.4148,
+    "heading_err_deg": 1.15,
+    "position_rmse": 6.836,
+    "best_val_mse": 0.4161,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 231.0
+  },
+  {
+    "condition": "bio_degree_matched",
+    "seed": 2,
+    "test_mse": 0.4129,
+    "heading_err_deg": 1.16,
+    "position_rmse": 6.811,
+    "best_val_mse": 0.4215,
+    "n_input": 496,
+    "n_output": 95,
+    "trainable": 4848,
+    "wall_s": 358.9
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "condition": "generic_connectome",
+    "seed": 0,
+    "test_mse": 0.3493,
+    "heading_err_deg": 1.03,
+    "position_rmse": 6.592,
+    "best_val_mse": 0.3518,
+    "n_input": 7349,
+    "n_output": 7349,
+    "trainable": 279297,
+    "wall_s": 294.0
+  },
+  {
+    "condition": "generic_connectome",
+    "seed": 1,
+    "test_mse": 0.3624,
+    "heading_err_deg": 1.06,
+    "position_rmse": 7.069,
+    "best_val_mse": 0.3653,
+    "n_input": 7349,
+    "n_output": 7349,
+    "trainable": 279297,
+    "wall_s": 293.8
+  },
+  {
+    "condition": "generic_connectome",
+    "seed": 2,
+    "test_mse": 0.3479,
+    "heading_err_deg": 1.03,
+    "position_rmse": 6.556,
+    "best_val_mse": 0.3514,
+    "n_input": 7349,
+    "n_output": 7349,
+    "trainable": 279297,
+    "wall_s": 239.7
+  }
+]
