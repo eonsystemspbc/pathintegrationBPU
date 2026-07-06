@@ -1,7 +1,7 @@
 # Input-layer ‖W_in‖ weight *dynamics*: distribution shape, the Δw tail, and temporal evolution
 
-Extends the binary "does ‖W_in‖ classify biological input cells? (ROC-AUC)" result into the three
-richer analyses Scott asked for. Per neuron `w[i] = ‖W_in[i]‖` (L2 of its input-projection row = how
+Extends the binary "does ‖W_in‖ classify biological input cells? (ROC-AUC)" result into three
+richer analyses. Per neuron `w[i] = ‖W_in[i]‖` (L2 of its input-projection row = how
 much task input it receives); `Δw[i] = w_final[i] − w_init[i]`. All computed from the **saved
 `win_snapshots`** (epochs 0→30, 20 seeds × {flywire, hemibrain} × {connectome, random}) — **no
 retraining**. `bio_input = PN` (hemibrain, cell-typed) or the `is_sensory` pool (flywire).
