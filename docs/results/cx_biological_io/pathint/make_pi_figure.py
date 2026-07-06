@@ -49,5 +49,5 @@ if present:
     ax2.bar([labels[c] for c in present], hs, color=["#1b7837", "#b2182b", "#2166ac"][:len(present)])
     ax2.set_ylabel("heading angular error (deg)"); ax2.set_title("Heading readout error")
     for i, v in enumerate(hs): ax2.text(i, v, f"{v:.1f}", ha="center", va="bottom", fontsize=9)
-    fig.tight_layout(); fig.savefig(HERE.parent / "fig3_pathint.png", dpi=130)
-    print(f"\nwrote {HERE.parent/'fig3_pathint.png'}")
+    fig.tight_layout(); fig.savefig(HERE.parent / "fig1_pathint.png", dpi=130)
+    print(f"\nwrote {HERE.parent/'fig1_pathint.png'}")
