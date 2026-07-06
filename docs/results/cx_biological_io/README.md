@@ -64,6 +64,45 @@ params (4.8k vs 279k).** Reading self-motion in through 496 PFN/PEN neurons and 
 | **arbitrary task** (MQAR; Scott's MB) | control ties-or-wins | bio catastrophic (0.178 vs 0.881) |
 | **native task** (path integration; here) | **connectome wins (Δ −0.022)** | **bio ≈ generic (0.39 vs 0.35)** |
 
+## Biological learning rules on the native task (#2)
+
+Scott's MB Result #2 swapped backprop for fly-like learning rules and found they *solved* MQAR
+(hybrid perfectly; degree-matched controls too, so wiring looked irrelevant). Here is the CX +
+path-integration analogue. The CX's plastic site for a learned readout is the output projection
+(hidden→PFL/PFR); the **integration** is done by the recurrent ring-attractor + FB network, which is
+frozen at the connectome. So the biological rules train **only the readout**, locally, with **zero
+backprop**: **hebbian** (correlational) and **delta** (local error / LMS), on a fixed
+(anatomically-set) input encoder; **hybrid** = local readout + a meta-learned encoder.
+Code: [`pathint/run_pi_plasticity.py`](pathint/run_pi_plasticity.py).
+
+**Result — the pure local rules do NOT solve path integration (heading error; chance ≈ 90°):**
+
+| rule | connectome | degree-matched |
+|---|---|---|
+| hebbian (0 backprop) | 69.1° | 69.1° |
+| delta (0 backprop) | 66.9° | 67.2° |
+| *backprop #1 (encoder tuned, ref)* | *1.09°* | *1.15°* |
+
+![learning rules on path integration](fig2_pathint_learning_rules.png)
+
+The local rules extract the *optimal linear decode* of the frozen connectome, but that is near-chance
+for heading (~67°), and **connectome ≈ control (both fail)** — the opposite of "biological rules solve
+it." The bottleneck is not the readout objective (training the readout on the correct composite loss
+gives the same 68.7°) and not the wiring (a random rewiring fails identically). It is the **input
+encoding** — *how self-motion enters the ring-attractor* — which sits **upstream** of both the readout
+and the recurrent wiring. A local readout rule cannot establish it. Only when the encoding is tuned to
+the circuit (backprop #1 — the "hybrid"/meta-learning endpoint for this task) does the frozen
+connectome integrate, and then it beats the control (1.09° vs 1.15°; and the MSE result above).
+
+**Why this differs from the MB.** The mushroom body *is* a readout-plasticity circuit — associative
+learning lives at the KC→MBON synapse — so a biological readout rule is exactly the right tool and it
+works. The central complex is an *integration* circuit — the computation lives in the recurrent
+dynamics and their input encoding, not in a plastic readout — so a biological readout rule addresses
+the wrong locus. **The kind of "biological learning" that helps is dictated by what the circuit
+computes** — a deeper form of the alignment principle. (Consistently, the CX has no dopaminergic
+teaching signal; the biologically-relevant tuning of its encoding is evolutionary/developmental, not
+in-lifetime.)
+
 ## Interpretation — answering Scott's open questions
 
 **"If circuit and task are misaligned, why did the connectome beat controls on MQAR in Exp 1–3?"**
@@ -98,19 +137,26 @@ coarser setup missed.
 
 ```bash
 cd docs/results/cx_biological_io/pathint
+# backprop (#1): bio ports = PFN/PEN in, PFL/PFR out; degree-matched control rescaled to rho=0.95
 ../../../../.venv/bin/python run_pi.py --conditions bio_connectome bio_degree_matched generic_connectome \
-   --seeds 3 --epochs 20     # bio ports = PFN/PEN in, PFL/PFR out; degree-matched control rescaled to rho=0.95
+   --seeds 3 --epochs 20
 ../../../../.venv/bin/python make_pi_figure.py
+# biological learning rules (#2): local readout learning (hebbian / delta), zero backprop, frozen backbone
+../../../../.venv/bin/python run_pi_plasticity.py --conditions connectome degree_matched \
+   --rules hebbian delta --seeds 3
+../../../../.venv/bin/python make_pi2_figure.py
 ```
 
 ## Files
 ```
 cx_biological_io/
-├── README.md            ← this writeup
-├── fig1_pathint.png     ← path-integration results
+├── README.md                        ← this writeup
+├── fig1_pathint.png                 ← #1 backprop results (connectome vs control, bio vs generic)
+├── fig2_pathint_learning_rules.png  ← #2 biological learning rules (heading error by rule)
 └── pathint/
-    ├── run_pi.py  make_pi_figure.py
-    └── results_*.json   ← per-seed test MSE (connectome / degree-matched / generic)
+    ├── run_pi.py            make_pi_figure.py     ← #1 (backprop)
+    ├── run_pi_plasticity.py make_pi2_figure.py    ← #2 (biological learning rules)
+    └── results_*.json   ← per-seed metrics (backprop: test MSE; plasticity: heading error)
 ```
 
 ---

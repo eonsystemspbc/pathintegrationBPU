@@ -1,0 +1,134 @@
+[
+  {
+    "condition": "connectome",
+    "rule": "hebbian",
+    "seed": 0,
+    "test_mse": 0.0954,
+    "heading_err_deg": 69.13,
+    "position_rmse": 0.37,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.5
+  },
+  {
+    "condition": "connectome",
+    "rule": "delta",
+    "seed": 0,
+    "test_mse": 0.0838,
+    "heading_err_deg": 66.98,
+    "position_rmse": 0.342,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.5
+  },
+  {
+    "condition": "connectome",
+    "rule": "hebbian",
+    "seed": 1,
+    "test_mse": 0.0942,
+    "heading_err_deg": 69.13,
+    "position_rmse": 0.364,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.2
+  },
+  {
+    "condition": "connectome",
+    "rule": "delta",
+    "seed": 1,
+    "test_mse": 0.0846,
+    "heading_err_deg": 67.36,
+    "position_rmse": 0.345,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.2
+  },
+  {
+    "condition": "connectome",
+    "rule": "hebbian",
+    "seed": 2,
+    "test_mse": 0.0946,
+    "heading_err_deg": 69.13,
+    "position_rmse": 0.366,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.2
+  },
+  {
+    "condition": "connectome",
+    "rule": "delta",
+    "seed": 2,
+    "test_mse": 0.0844,
+    "heading_err_deg": 66.36,
+    "position_rmse": 0.341,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.2
+  },
+  {
+    "condition": "degree_matched",
+    "rule": "hebbian",
+    "seed": 0,
+    "test_mse": 0.3436,
+    "heading_err_deg": 69.13,
+    "position_rmse": 2.288,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.1
+  },
+  {
+    "condition": "degree_matched",
+    "rule": "delta",
+    "seed": 0,
+    "test_mse": 0.0855,
+    "heading_err_deg": 67.18,
+    "position_rmse": 0.346,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.1
+  },
+  {
+    "condition": "degree_matched",
+    "rule": "hebbian",
+    "seed": 1,
+    "test_mse": 0.3358,
+    "heading_err_deg": 69.13,
+    "position_rmse": 2.228,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.1
+  },
+  {
+    "condition": "degree_matched",
+    "rule": "delta",
+    "seed": 1,
+    "test_mse": 0.0854,
+    "heading_err_deg": 67.24,
+    "position_rmse": 0.347,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.1
+  },
+  {
+    "condition": "degree_matched",
+    "rule": "hebbian",
+    "seed": 2,
+    "test_mse": 0.4227,
+    "heading_err_deg": 69.14,
+    "position_rmse": 2.869,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.1
+  },
+  {
+    "condition": "degree_matched",
+    "rule": "delta",
+    "seed": 2,
+    "test_mse": 0.0859,
+    "heading_err_deg": 67.25,
+    "position_rmse": 0.345,
+    "n_input": 496,
+    "n_output": 95,
+    "wall_s": 3.1
+  }
+]
