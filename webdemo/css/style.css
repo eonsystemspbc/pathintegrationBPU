@@ -498,7 +498,7 @@ details.limits li b { color:#fff; }
 :root[data-theme="light"] header.nav { background: rgba(9,12,19,0.72); border-bottom-color: rgba(255,255,255,0.075); }
 :root[data-theme="light"] .nav-links a { color: #aab4c6; }
 :root[data-theme="light"] .nav-links a:hover { color:#fff; background: rgba(255,255,255,0.08); }
-:root[data-theme="light"] .brand { color:#eef2f8; }
+:root[data-theme="light"] header.nav .brand { color:#eef2f8; }
 :root[data-theme="light"] .nav-cta { color:#eef2f8 !important; border-color: rgba(255,255,255,0.14); }
 :root[data-theme="light"] .theme-toggle, :root[data-theme="light"] .nav-toggle { color:#aab4c6; border-color: rgba(255,255,255,0.14); }
 
