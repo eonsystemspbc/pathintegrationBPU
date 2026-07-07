@@ -201,7 +201,7 @@
       <span class="section-tag"><span class="swatch" style="background:var(--bio)"></span> Demo 02 · Mushroom body</span>
       <h2>A memory wired like a fly - <span class="hl-bio">near attention, at a fraction of the machinery</span></h2>
       <p class="lead">The mushroom body learns "this smell meant food, that one meant a shock." Feed the network stimulus→value pairs, then quiz it. A network wired like a real fly recalls faster and clings to old memories more stubbornly than a same-sized random tangle.</p>
-      <div class="badge-row"><span class="sim-badge data-badge" title="The recall demo plays back the actual output distributions of two trained models (connectome-seeded vs matched-random), captured on real MQAR episodes.">real recorded model outputs</span><span class="sim-badge data-badge">real benchmarks + curves</span><span class="sim-badge" title="The reversal episode's curve shape is illustrative; its endpoints and convergence epochs are real.">reversal shape illustrative</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/mqar_associative_recall" target="_blank" rel="noopener">see the data</a></div>
+      <div class="badge-row"><span class="sim-badge" title="The interactive recall demo is illustrative. The benchmark bars, learning-speed epochs, and retention curve are real logged data.">illustrative recall demo</span><span class="sim-badge data-badge">real benchmarks + curves</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/mqar_associative_recall" target="_blank" rel="noopener">see the data</a></div>
     </div>
 
     <div class="demo reveal glow" style="margin-top:34px">
@@ -219,7 +219,7 @@
         <div class="tabpane on" data-pane="mqar">
           <div class="grid grid-2" style="align-items:start">
             <div>
-              <p class="hint" style="margin-bottom:14px">Each key is bound to a value, then queried. These are the <strong>actual output distributions of two trained models</strong> (connectome-seeded vs matched-random) on real MQAR episodes. The <span class="hl-bio">connectome</span> peaks sharply on the right answer; the <span style="color:var(--ctrl)">random</span> control is fuzzier and sometimes wrong.</p>
+              <p class="hint" style="margin-bottom:14px">Bind each <b>key</b> to a <b>value</b>, then click a key to query. Both models must return the value they were shown. The <span class="hl-bio">connectome</span> peaks sharply on the right answer; the <span style="color:var(--ctrl)">random</span> control is fuzzier and sometimes wrong.</p>
               <div id="mqar-keys"></div>
               <div class="ctl-row" style="margin-top:16px">
                 <button class="btn-sm" id="mqar-shuffle">⟳ New bindings</button>
@@ -485,7 +485,7 @@
 
     <div class="reveal" style="margin-top:20px">
       <div class="scale-controls">
-        <input type="range" id="scale-slider" min="0" max="3" step="1" value="0" aria-label="Connectome scale">
+        <input type="range" id="scale-slider" min="0" max="3" step="0.01" value="0" aria-label="Connectome scale">
         <span class="sc-val" id="scale-val">Fly</span>
         <div class="scale-morph" id="scale-morph" aria-hidden="true"></div>
       </div>
@@ -512,8 +512,8 @@
     </div>
 
     <div class="card glow reveal center" style="margin-top:40px;padding:44px">
-      <p class="pull" style="margin:0 auto"><span class="grad">A library of evolved, task-specialized priors</span> you compose and fine-tune - instead of hand-designing every module from scratch.</p>
-      <p style="color:var(--text-dim);max-width:64ch;margin:22px auto 0">Whether this composes all the way to general intelligence is genuinely open. What is already defensible: mining evolved circuits can beat matched-random baselines on the tasks those circuits were built to solve - aimed squarely at the embodied, data-limited, low-power, continually-changing settings where today's large models are brittle or wasteful.</p>
+      <p class="pull" style="margin:0 auto"><span class="grad">Fidelity is a new axis of AI progress</span>, alongside scale and data.</p>
+      <p style="color:var(--text-dim);max-width:70ch;margin:22px auto 0">AI has advanced along two axes so far, scale and data; connectome fidelity is a third, and the fly already proves it works: matched to the task a region evolved for, its wiring holds a measured, control-verified edge that a size- and degree-matched random network never reaches. As reconstruction climbs from fly to mouse to primate, each higher-fidelity connectome becomes a pretrained prior we cannot yet design by hand, aimed squarely at where today's largest models are weakest: robot controllers that adapt on-device, drones that navigate and map on a few watts, event-camera vision, and systems that keep learning from thin data without forgetting. These are not moonshots but product-shaped gaps, and a circuit evolution already tuned for exactly that job is a credible shortcut. <strong>Alignment plus fidelity, not parameter count alone, is the lever most likely to turn a measured advantage into a real breakthrough.</strong></p>
     </div>
   </div>
 </section>
@@ -551,7 +551,6 @@
 </footer>
 
 <script src="js/results-data.js"></script>
-<script src="js/mqar-recorded.js"></script>
 <script src="js/core.js"></script>
 <script src="js/hero.js"></script>
 <script src="js/cx.js"></script>

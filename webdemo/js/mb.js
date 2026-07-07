@@ -50,90 +50,90 @@
     });
   }
 
-  /* ---------- MQAR interactive recall (plays back REAL trained-model outputs) ---------- */
-  const GLYPHS = ['🍋', '🌸', '🍫', '🌿', '🍯', '🧭', '🍓', '🌶️', '🧄', '🍊', '🌰', '🍇', '🌼', '🍑', '🫐', '🍒', '🌹', '🥥', '🍍', '🌵', '🍄', '🌻', '🥝', '🍎', '🌷', '🥭', '🫒', '🌲', '🍈', '🌾', '🥕', '🌴'];
-  const REC = window.MQAR_REC;
-  const VOCAB = (REC && REC.vocab) || 32;
-  const REAL = !!(REC && REC.episodes && REC.episodes.length);
-  const EPISODES = REAL ? REC.episodes : synthEpisodes();
-  let epIdx = 0, queried = -1;
+  /* ---------- MQAR interactive recall ---------- */
+  const KEY_EMOJI = ['🍋', '🌸', '🍫', '🌿', '🍯', '🧭'];
+  const VALS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  let bindings = [], queried = -1;
 
-  function synthEpisodes() {           // fallback only, until the recorded file lands
-    const eps = [];
-    for (let e = 0; e < 6; e++) {
-      const pool = [...Array(VOCAB).keys()];
-      for (let i = pool.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[pool[i], pool[j]] = [pool[j], pool[i]]; }
-      const keys = pool.slice(0, 8), values = keys.map(() => (Math.random() * VOCAB) | 0);
-      const queries = keys.map((k, qi) => {
-        const truth = values[qi];
-        const bio = Array.from({ length: VOCAB }, () => Math.random() * 0.02); bio[truth] = 0.9 + Math.random() * 0.08;
-        const wrong = Math.random() > 0.82, distr = (truth + 1 + ((Math.random() * 5) | 0)) % VOCAB;
-        const ctrl = Array.from({ length: VOCAB }, () => Math.random() * 0.04); ctrl[truth] = wrong ? 0.25 : 0.55; ctrl[distr] = wrong ? 0.6 : 0.3;
-        const bp = bio.indexOf(Math.max(...bio)), cp = ctrl.indexOf(Math.max(...ctrl));
-        return { key: k, truth, connectome: { probs: bio, pred: bp }, random: { probs: ctrl, pred: cp } };
-      });
-      eps.push({ pairs: keys.map((k, qi) => [k, values[qi]]), queries });
-    }
-    return eps;
+  function seededRand(s) { let x = Math.sin(s) * 10000; return x - Math.floor(x); }
+
+  function newBindings() {
+    // assign each key a distinct value
+    const pool = [...Array(VALS.length).keys()];
+    for (let i = pool.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0;[pool[i], pool[j]] = [pool[j], pool[i]]; }
+    bindings = KEY_EMOJI.map((e, i) => {
+      const vi = pool[i % pool.length];
+      // random model difficulty: ~1 in 6 keys it gets wrong; pick a distractor
+      const diff = seededRand((i + 1) * 7.13 + Math.random() * 100);
+      const wrong = diff > 0.80;                     // ~ matches ~84% ctrl accuracy
+      let distractor = (vi + 1 + ((diff * 5) | 0)) % VALS.length;
+      if (distractor === vi) distractor = (vi + 2) % VALS.length;
+      return { key: e, vi, wrong, distractor, ctrlConf: 0.42 + diff * 0.2 };
+    });
+    queried = -1;
+    renderKeys();
+    document.getElementById('mqar-status').textContent = 'Click a key to query it.';
+    renderRecall(null);
   }
 
   function renderKeys() {
     const host = document.getElementById('mqar-keys'); if (!host) return;
     host.style.cssText = 'display:flex;flex-wrap:wrap;gap:9px';
     host.innerHTML = '';
-    EPISODES[epIdx].pairs.forEach((pair, i) => {
-      const [kt, vt] = pair;
+    bindings.forEach((b, i) => {
       const chip = document.createElement('button');
       chip.className = 'btn-sm';
       chip.style.cssText = `display:flex;align-items:center;gap:7px;padding:8px 12px;${i === queried ? 'border-color:var(--bio);background:var(--bio-soft)' : ''}`;
-      chip.innerHTML = `<span style="font-size:1.15rem">${GLYPHS[kt]}</span><span style="color:var(--text-mute)">→</span><span style="font-size:1.05rem">${GLYPHS[vt]}</span>`;
-      chip.setAttribute('aria-label', `key ${kt} bound to value ${vt}, query it`);
+      chip.innerHTML = `<span style="font-size:1.15rem">${b.key}</span><span style="color:var(--text-mute)">→</span><span class="mono" style="color:var(--bio);font-weight:600">${VALS[b.vi]}</span>`;
       chip.addEventListener('click', () => { queried = i; renderKeys(); doQuery(i); });
       host.appendChild(chip);
     });
   }
 
   function doQuery(i) {
-    const q0 = EPISODES[epIdx].queries[i];
-    renderRecall({ bio: q0.connectome.probs, ctrl: q0.random.probs, truth: q0.truth, bioPick: q0.connectome.pred, ctrlPick: q0.random.pred });
-    const okC = q0.connectome.pred === q0.truth, okR = q0.random.pred === q0.truth;
+    const b = bindings[i];
+    // build confidence vectors over VALS
+    const bio = VALS.map((_, k) => {
+      if (k === b.vi) return 0.86 + Math.random() * 0.1;
+      return Math.random() * 0.05;
+    });
+    const ctrl = VALS.map((_, k) => {
+      if (k === b.vi) return b.wrong ? b.ctrlConf * 0.7 : b.ctrlConf + 0.15;
+      if (k === b.distractor) return b.wrong ? b.ctrlConf + 0.08 : b.ctrlConf * 0.55;
+      return Math.random() * 0.12;
+    });
+    // normalize-ish for display (cap at 1)
+    const nb = bio.map(v => Math.min(1, v));
+    const nc = ctrl.map(v => Math.min(1, v));
+    const bioPick = nb.indexOf(Math.max(...nb));
+    const ctrlPick = nc.indexOf(Math.max(...nc));
+    renderRecall({ bio: nb, ctrl: nc, truth: b.vi, bioPick, ctrlPick });
     const st = document.getElementById('mqar-status');
-    st.innerHTML = `Query <b>${GLYPHS[q0.key]}</b>: connectome recalled <b style="color:var(--bio)">${GLYPHS[q0.connectome.pred]}</b> ${okC ? '✓' : '<span style="color:var(--red)">✗</span>'} · random recalled <b style="color:var(--ctrl)">${GLYPHS[q0.random.pred]}</b> ${okR ? '✓' : '<span style="color:var(--red)">✗ wrong</span>'}`;
+    st.innerHTML = `Query <b>${b.key}</b>: connectome → <b style="color:var(--bio)">${VALS[bioPick]}</b> ${bioPick === b.vi ? '✓' : '✗'} · random → <b style="color:var(--ctrl)">${VALS[ctrlPick]}</b> ${ctrlPick === b.vi ? '✓' : '<span style="color:var(--red)">✗ wrong</span>'}`;
   }
 
-  function renderRecall(q) {
+  function renderRecall(data) {
     const host = document.getElementById('mqar-recall'); if (!host) return;
-    const V = VOCAB, w = 470, h = 200, m = { t: 14, r: 10, b: 40, l: 30 };
+    const w = 360, h = 180, m = { t: 14, r: 10, b: 34, l: 26 };
     const iw = w - m.l - m.r, ih = h - m.t - m.b;
-    const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, width: '100%', role: 'img', 'aria-label': 'recall probability over the vocabulary' });
+    const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, width: '100%' });
+    // axis
     svg.appendChild(el('line', { x1: m.l, y1: m.t + ih, x2: w - m.r, y2: m.t + ih, stroke: C.grid }));
-    if (!q) {
-      svg.appendChild(el('text', { x: w / 2, y: h / 2, 'text-anchor': 'middle', fill: C.mute, 'font-size': 12, text: 'Query a key to see recall →' }));
-      host.innerHTML = ''; host.appendChild(svg); return;
-    }
-    const gW = iw / V, bW = Math.max(2.4, gW * 0.34);
-    const maxp = Math.max(0.02, ...q.bio, ...q.ctrl);
-    const H = v => (v / maxp) * ih;
-    const tx = m.l + gW * q.truth + gW / 2;
-    svg.appendChild(el('rect', { x: tx - gW / 2, y: m.t, width: gW, height: ih, fill: C.teal, opacity: .12 }));
-    for (let i = 0; i < V; i++) {
+    const gW = iw / VALS.length, bW = gW * 0.32;
+    VALS.forEach((v, i) => {
       const gx = m.l + gW * i + gW / 2;
-      svg.appendChild(el('rect', { x: gx - bW - 0.4, y: m.t + ih - H(q.bio[i]), width: bW, height: H(q.bio[i]), rx: 1.5, fill: C.bio, opacity: i === q.bioPick ? 1 : .85 }));
-      svg.appendChild(el('rect', { x: gx + 0.4, y: m.t + ih - H(q.ctrl[i]), width: bW, height: H(q.ctrl[i]), rx: 1.5, fill: C.ctrl, opacity: i === q.ctrlPick ? 1 : .7 }));
-    }
-    svg.appendChild(el('text', { x: tx, y: h - 20, 'text-anchor': 'middle', fill: C.teal, 'font-size': 15, text: GLYPHS[q.truth] }));
-    svg.appendChild(el('text', { x: tx, y: h - 6, 'text-anchor': 'middle', fill: C.teal, 'font-size': 8, 'font-weight': 700, text: 'answer' }));
+      const isTruth = data && i === data.truth;
+      svg.appendChild(el('text', { x: gx, y: h - 18, 'text-anchor': 'middle', fill: isTruth ? C.teal : C.mute, 'font-size': 11, 'font-weight': isTruth ? 700 : 400, text: v }));
+      if (isTruth) svg.appendChild(el('text', { x: gx, y: h - 6, 'text-anchor': 'middle', fill: C.teal, 'font-size': 8, text: 'answer' }));
+      if (!data) return;
+      const bb = data.bio[i], cc = data.ctrl[i];
+      const yb = m.t + ih - bb * ih, yc = m.t + ih - cc * ih;
+      svg.appendChild(el('rect', { x: gx - bW - 1, y: yb, width: bW, height: bb * ih, rx: 2, fill: C.bio, opacity: i === data.bioPick ? 1 : .8 }));
+      svg.appendChild(el('rect', { x: gx + 1, y: yc, width: bW, height: cc * ih, rx: 2, fill: C.ctrl, opacity: i === data.ctrlPick ? 1 : .7 }));
+    });
+    if (!data) svg.appendChild(el('text', { x: w / 2, y: h / 2, 'text-anchor': 'middle', fill: C.mute, 'font-size': 12, text: 'Query a key to see recall →' }));
     host.innerHTML = ''; host.appendChild(svg);
   }
-
-  function showEpisode(idx) {
-    epIdx = ((idx % EPISODES.length) + EPISODES.length) % EPISODES.length;
-    queried = -1; renderKeys();
-    const st = document.getElementById('mqar-status');
-    if (st) st.innerHTML = REAL ? 'Real trained-model outputs. Click a key to query it.' : 'Click a key to query it.';
-    renderRecall(null);
-  }
-  function newBindings() { showEpisode(epIdx + 1); }
 
   /* ---------- reversal episode: recall over time, with a valence flip ---------- */
   const _rev = (window.RESULTS && window.RESULTS.reversal) || [];
@@ -279,16 +279,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     mqarBars();
-    showEpisode(0);
-    if (REAL && REC.testAcc) {
-      const rc = document.getElementById('mqar-recall');
-      if (rc && !document.getElementById('mqar-acc-note')) {
-        const note = document.createElement('figcaption');
-        note.id = 'mqar-acc-note'; note.style.marginTop = '8px';
-        note.innerHTML = `Recorded from two models trained here on real MQAR episodes: <span class="hl-bio">connectome ${REC.testAcc.connectome.toFixed(3)}</span> vs <span style="color:var(--ctrl)">random ${REC.testAcc.random.toFixed(3)}</span> held-out recall (single seed; the benchmark bars below are the 5-seed means).`;
-        rc.parentNode.insertBefore(note, rc.nextSibling);
-      }
-    }
+    newBindings();
     document.getElementById('mqar-shuffle').addEventListener('click', newBindings);
     initReversal();
     initRetention();

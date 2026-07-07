@@ -542,3 +542,10 @@ details.limits li b { color:#fff; }
   #matrix-interactive .picker-body { grid-template-columns: 1fr; }
   #matrix-result { border-left: 0; border-top: 1px solid var(--border); }
 }
+
+/* smoother scale explorer: continuous morph + eased node transitions */
+.scale-morph .sm-bar { transition: opacity .12s linear; }
+.scale-node .sn-dot { transition: background .35s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease); }
+.scale-node::before { transition: background .35s var(--ease); }
+.scale-node { cursor: pointer; }
+.scale-node:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; border-radius: 6px; }

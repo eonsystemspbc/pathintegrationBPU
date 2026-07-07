@@ -213,7 +213,7 @@
   /* ---------- scaling timeline ---------- */
   const SCALE = [
     { name: 'Fly', n: '~140K neurons', note: 'Mapped now', status: 'available',
-      detail: 'The fruit-fly connectome (FlyWire / hemibrain) is fully reconstructed - the smallest complete brain we have. Every result on this page comes from three of its circuits: the central complex, mushroom body and optic lobe. This is the proof of principle: evolved wiring beats matched-random controls on the tasks those circuits were built to solve.' },
+      detail: 'The fly is the smallest complete brain we can map today: proof that biological wiring carries a real, measured advantage, and only the starting line. Its connectome (FlyWire / hemibrain) is fully reconstructed, and every result on this page comes from three of its circuits - central complex, mushroom body, optic lobe - each beating matched-random controls on the task it evolved for. The breakthroughs are upstream, unlocked by better wiring.' },
     { name: 'Mouse', n: '~70M neurons', note: 'In progress', status: 'progress',
       detail: 'Cubic-millimeter cortical volumes (MICrONS) and whole-brain efforts are being reconstructed now. Mouse head-direction and grid systems run on the same ring-attractor logic as the fly compass, at far larger scale - the first test of whether the wiring-as-computation lesson carries to a mammalian brain, with richer navigation, vision and memory priors to mine.' },
     { name: 'Monkey', n: '~6B neurons', note: 'On the horizon', status: 'future',
@@ -221,39 +221,53 @@
     { name: 'Human', n: '~86B neurons', note: 'The goal', status: 'future',
       detail: 'A human wiring diagram is the long-term ambition. The wager is not a brain-in-a-box but a library of evolved, task-specialized priors you compose and fine-tune. Whether that composes all the way to general intelligence is genuinely open - what is already defensible is that mining evolved circuits beats matched-random baselines on aligned tasks. Alignment, not scale alone, is the leverage.' },
   ];
+  const SCALE_LOG = [5.15, 7.85, 9.81, 10.93]; // log10 neuron counts: fly, mouse, monkey, human
+  let scaleIdx = -1;
   function buildScale() {
     const track = document.getElementById('scale-track'); if (!track) return;
     track.innerHTML = '';
     SCALE.forEach((s, i) => {
       const node = document.createElement('div');
-      node.className = 'scale-node' + (i === 0 ? ' on' : '');
+      node.className = 'scale-node';
       node.innerHTML = `<div class="sn-dot"></div><div class="sn-name">${s.name}</div><div class="sn-n">${s.n}</div><div class="sn-note">${s.note}</div>`;
-      node.addEventListener('mouseenter', () => select(i));
-      node.addEventListener('click', () => select(i));
+      node.tabIndex = 0;
+      node.addEventListener('click', () => setScale(i, true));
+      node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setScale(i, true); } });
       track.appendChild(node);
     });
+    const morph = document.getElementById('scale-morph');
+    if (morph) { morph.innerHTML = ''; SCALE_LOG.forEach(l => { const b = el('div', { class: 'sm-bar' }); b.style.height = (l / 11 * 100) + '%'; morph.appendChild(b); }); }
     const slider = document.getElementById('scale-slider');
-    slider && slider.addEventListener('input', () => select(+slider.value));
-    select(0);
+    if (slider) {
+      slider.addEventListener('input', () => onSlide(+slider.value));
+      slider.addEventListener('change', () => { const i = Math.round(+slider.value); slider.value = String(i); setScale(i, false); });
+    }
+    setScale(0, true);
   }
-  const SCALE_LOG = [5.15, 7.85, 9.81, 10.93]; // log10 neuron counts: fly, mouse, monkey, human
-  function drawMorph(idx) {
-    const host = document.getElementById('scale-morph'); if (!host) return;
-    host.innerHTML = '';
-    SCALE_LOG.forEach((l, i) => {
-      const b = el('div', { class: 'sm-bar' });
-      b.style.height = (l / 11 * 100) + '%'; b.style.opacity = i <= idx ? 1 : 0.25;
-      host.appendChild(b);
+  // continuous: bars fade in as the slider passes each scale; node/detail snap to the nearest
+  function morphTo(pos) {
+    document.querySelectorAll('#scale-morph .sm-bar').forEach((b, i) => {
+      const lit = Math.max(0, Math.min(1, pos - i + 1));
+      b.style.opacity = (0.2 + 0.8 * lit).toFixed(3);
     });
   }
-  function select(idx) {
-    $$('#scale-track .scale-node').forEach((n, i) => n.classList.toggle('on', i <= idx));
+  function onSlide(pos) {
+    morphTo(pos);
+    $$('#scale-track .scale-node').forEach((n, i) => n.classList.toggle('on', pos >= i - 0.02));
+    const idx = Math.max(0, Math.min(SCALE.length - 1, Math.round(pos)));
+    if (idx !== scaleIdx) selectNode(idx);
+  }
+  function setScale(idx, moveSlider) {
+    const slider = document.getElementById('scale-slider');
+    if (slider && moveSlider) slider.value = String(idx);
+    onSlide(idx);
+  }
+  function selectNode(idx) {
+    scaleIdx = idx;
     const s = SCALE[idx];
-    const slider = document.getElementById('scale-slider'); if (slider && +slider.value !== idx) slider.value = idx;
     const val = document.getElementById('scale-val'); if (val) val.textContent = s.name + ' · ' + s.n;
-    drawMorph(idx);
     const d = document.getElementById('scale-detail');
-    d.innerHTML = `<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px;flex-wrap:wrap"><h4 style="margin:0;font-size:1.1rem">${s.name} connectome</h4><span class="mono" style="color:var(--bio)">${s.n}</span><span class="pill" style="margin:0">${s.note}</span></div><p style="margin:0;color:var(--text-dim)">${s.detail}</p>`;
+    if (d) d.innerHTML = `<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px;flex-wrap:wrap"><h4 style="margin:0;font-size:1.1rem">${s.name} connectome</h4><span class="mono" style="color:var(--bio)">${s.n}</span><span class="pill" style="margin:0">${s.note}</span></div><p style="margin:0;color:var(--text-dim)">${s.detail}</p>`;
   }
 
   document.addEventListener('DOMContentLoaded', () => {
