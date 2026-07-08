@@ -352,12 +352,23 @@ Exp-1/2 connectome advantage reappears on the aligned task.
   every one of the 20 connectome seeds sits above every one of the 20 control graphs). Effect ≈ +0.022
   raw ≈ 8–10 pooled-SD. Identical trainable-param counts (892k core / 1.56M full), identical edge counts,
   both ρ-matched to 0.95 — the **only** thing that differs between conditions is the recurrence support.
-- **Corroborated by a ~2× learning-speed advantage:** the connectome reaches 0.70 val by ~ep25 vs ~ep49
-  for controls — the same grok-faster signature as Exp 1. The connectome both **plateaus higher and learns
-  faster** on matched support size, degree sequence, weight multiset, and ρ.
-- The plateaus are **flat** at the 300-epoch cap (last-8-epoch val oscillates within noise for both arms),
-  so the gap is an **asymptotic plateau difference, not a transient speed artifact** — controls do not
-  catch up with more training.
+- **Corroborated by a ~2× learning-speed advantage:** averaged over the 20 units, the connectome reaches
+  val 0.65 by ~ep16 vs ~ep34 for controls, and 0.70 by ~ep23 vs ~ep41 — the same grok-faster signature as
+  Exp 1. The connectome both **plateaus higher and learns faster** on matched support size, degree sequence,
+  weight multiset, and ρ.
+- By the 300-epoch cap both arms are **near-plateau** — still creeping upward very slowly but at the *same*
+  rate, so the ~0.022 gap is **stable (slightly widening), not closing.** The difference is an asymptotic
+  plateau gap, **not a transient speed artifact** — controls do not catch up with more training.
+
+![Learning curves: connectome groks faster and plateaus higher](../experiment_05_mb_odor_valence/subruns/01_generic_io_controls/figures/fig2_learning_curves.png)
+
+The per-graph view on a zoomed axis is the honest effect-size picture the full-scale bars above compress
+away: **every one of the 20 connectome seeds sits above every one of the 20 control graphs**, on both
+substrates (0/20 controls reach the connectome mean).
+
+![Per-graph separation, zoomed](../experiment_05_mb_odor_valence/subruns/01_generic_io_controls/figures/fig3_final_separation.png)
+
+![Time-to-grok: connectome reaches each accuracy bar ~2× sooner](../experiment_05_mb_odor_valence/subruns/01_generic_io_controls/figures/fig4_grok_speed.png)
 
 **Two honest caveats:**
 
@@ -366,7 +377,7 @@ Exp-1/2 connectome advantage reappears on the aligned task.
    300-epoch run climbed to 0.976 — a ~24-point climb the short pre-flight structurally could not see (a
    very long slow grok). *Unlike* the primary's hybrid arm (dismissed as a saturated ceiling tie at
    0.996–1.000, where the connectome even lost on initial recall), this is near-ceiling but **not
-   saturated**: flat plateaus 2–4 points below the converge-stop, cleanly separated, zero overlap — so the
+   saturated**: plateaus 2–4 points below the converge-stop, cleanly separated, zero overlap — so the
    contrast is interpretable. But the elevated band **compresses the achievable gap**, so read the +0.022
    magnitude as a band-limited number, not an estimate comparable to Exp-1/2's mid-band gaps. The
    direction, not the size, is the result.
@@ -417,7 +428,7 @@ reproduced every number from the raw run files and cleared the record: `run.py` 
 `analysis.json` cohere; connectome and control conditions have identical trainable-param and edge counts and
 share the ρ=0.95 rescale, so the recurrence *support* is the only difference (clean topology isolation).
 **Result: on both substrates the connectome beats all 20 control graphs** (core 0.976 vs 0.954, full 0.981
-vs 0.960; perm p=0.048 floor, zero overlap), with a ~2× faster grok and flat plateaus. The ceiling risk
+vs 0.960; perm p=0.048 floor, zero overlap), with a ~2× faster grok and near-flat, stable-gap plateaus. The ceiling risk
 flagged at launch **materialized on both arms** — even core_alpn, projected ~0.78–0.85, landed at 0.976
 (the pre-flight's 60-epoch window could not see the long slow grok to ~0.98) — but the arms are *not*
 saturated (no converge-stops; 2–4 points below ceiling with clean separation), so the contrast is

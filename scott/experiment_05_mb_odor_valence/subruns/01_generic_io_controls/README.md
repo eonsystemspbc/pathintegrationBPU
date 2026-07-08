@@ -125,7 +125,8 @@ uv run python scott/experiment_05_mb_odor_valence/subruns/01_generic_io_controls
 
 **Result: the connectome beats degree-matched controls under generic I/O on both substrates** —
 core_alpn 0.976 vs 0.954, full 0.981 vs 0.960; every one of 20 connectome seeds above every one of
-20 control graphs (permutation p = 0.048, the floor), ~2× faster grok, flat 300-epoch plateaus.
+20 control graphs (permutation p = 0.048, the floor), ~2× faster grok, near-flat 300-epoch
+plateaus with a stable gap (asymptotic, not a speed artifact — controls do not catch up).
 So the binary question resolves to **beats, not ties**: Exp-5's primary backprop null (connectome
 *worse* through the biological ports, 0.666 vs 0.817) was the **biological-port I/O bottleneck, not
 the odor→valence task**. The Exp-1/2 generic-I/O advantage reappears on the aligned task.
@@ -135,7 +136,7 @@ the odor→valence task**. The Exp-1/2 generic-I/O advantage reappears on the al
 1. **The hardening under-shot.** The task landed near-ceiling (**0.95–0.98**), not the intended
    0.75–0.90 mid-band. The 60-epoch pre-flight (core 0.735) passed the off-ceiling check, but the
    full 300-epoch run climbed to 0.976 — a slow grok the short pre-flight could not see. It is
-   near-ceiling but *not* saturated (no converge-stops; flat plateaus 2–4 pts below with clean
+   near-ceiling but *not* saturated (no converge-stops; plateaus 2–4 pts below with clean
    zero-overlap separation), so the contrast holds — but the +0.022 magnitude is band-compressed;
    the **direction, not the size**, is the result. If a clean mid-band number is wanted, the
    pre-flight must run to the epoch cap (not 60 epochs) and the task be hardened further (raise

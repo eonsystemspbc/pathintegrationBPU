@@ -25,8 +25,10 @@ results are about the learning *paradigm*, not the connectome's *topology*:
   pure plasticity rules are the only connectome win, but *readout-only*, at the permutation floor
   (p=0.0476 = 1/21 — a rank flag, not an effect size), single-instance (n_eff=1), and substantial
   only on **delta reversal** (+0.034, +13 control-SD).
-- **Q3 — biological-port I/O bottlenecks backprop** (0.666 vs generic 0.995), but descriptive only
-  (generic_io has ~1.8× params + the query bit).
+- **Q3 — biological-port I/O bottlenecks backprop** (0.666 vs generic 0.995), descriptive in the primary
+  run (generic_io has ~1.8× params + the query bit) but **controlled by subrun 01** (below): under generic
+  all-neuron I/O the connectome *beats* degree-matched controls, so the backprop null was the port
+  bottleneck, not the task.
 - **Q4 (cleanest result) — the error-correcting delta rule beats plain Hebbian on reversal:** on the
   flipped odors Hebbian collapses to chance (0.500, can only accumulate) while delta holds 0.711
   (overwrites). A paradigm effect.
@@ -34,6 +36,19 @@ results are about the learning *paradigm*, not the connectome's *topology*:
 Full writeup + figures: the notebook entry below. Designated follow-ups (SPEC §9 / §5.4): a
 degree-preserving **KC-coding-backbone** scramble control (the primary run tested the readout
 topology only) and a **sparse-KC-code** (`kc_topk>0`, APL-like) subrun.
+
+## Subruns
+
+- **[`subruns/01_generic_io_controls/`](subruns/01_generic_io_controls/) — generic-I/O connectome vs
+  degree-matched controls (concluded 2026-07-08).** The missing Exp-1/2 cell: the primary tested only the
+  biological ports and never ran the generic all-neuron I/O + degree-matched control regime (where Exp 1/2
+  found the connectome *beat* controls) on the aligned task. Subrun 01 runs it — backprop, generic I/O for
+  both conditions, `core_alpn` + `full`, 80 runs. **The connectome beats controls on both substrates**
+  (core 0.976 vs 0.954, full 0.981 vs 0.960; 0/20 controls reach it, perm p=0.048; ~2× faster grok, flat
+  plateaus), so **Exp-5's backprop null was the biological-port I/O bottleneck, not the odor→valence task.**
+  Caveats: the hardened task still landed near-ceiling (0.95–0.98, not the 0.75–0.90 target — direction
+  clean but magnitude compressed) and matching is ρ-only (topology not separated from activation-gain
+  conditioning → the clean test is mb-06's RMS-matched control).
 
 - **Design + rationale:** [`SPEC.md`](SPEC.md)
 - **Notebook entry (chronological record + results):**
