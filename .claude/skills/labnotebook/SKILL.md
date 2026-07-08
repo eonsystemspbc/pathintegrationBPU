@@ -87,8 +87,8 @@ Every entry has, in order:
    are results. Note caveats, artifacts, and threats to the conclusion
    honestly. Point to the data files (`outputs/.../metrics.csv`, plots, run
    dirs) rather than pasting bulk data into the notebook.
-   - **Embed the key figures and headline stats** so the entry stands on its own
-     without opening the run folder. Pull a small results table and the one or
+   - **Embed the figures and headline stats** so the entry stands on its own
+     without opening the run folder. Each figure should come with a brief narrative, and typically it is acceptable to let the figures guide the labnotebook (e.g., present the data one figure at a time). Pull a small results table and the one or
      two plots that carry the finding *into* the entry (reference figures by
      relative path, e.g. `![…](../experiment_NN_<slug>/figures/fig1.png)`), and
      keep them where they live on disk — the figure folder is the source of
@@ -108,7 +108,7 @@ follows directly from the finding (a short "what's next" is fine when it does).
   sentence carries no information, delete it.
 - **Plain language over jargon.** Prefer the clearest available wording. When a
   technical term is genuinely the precise one, keep it — but don't reach for
-  jargon to sound rigorous.
+  jargon to sound rigorous. Use simple framing and vocabulary wherever possible. Do not assume that a user knows the definition to something that you haven't previously defind.
 - **Bullets** for methods details, lists of changes, and multi-part results.
   Prose for the purpose and the headline finding.
 - **Be concise but thorough** — every required element present, nothing padded.

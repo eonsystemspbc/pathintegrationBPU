@@ -12,6 +12,29 @@ It runs the **same four learning paradigms** as Exp 4 (backprop, hebbian, delta,
 identical substrate + ports, each against degree-matched controls, and asks whether Exp 4's
 "no wiring advantage" null **flips** when the task fits the circuit.
 
+## Finding (concluded 2026-07-07)
+
+**The null does not cleanly flip.** Across 700 runs (two independent adversarial audits), the strong
+results are about the learning *paradigm*, not the connectome's *topology*:
+
+- **Q1 — only hybrid solves odor→valence** (pooled recall 0.998); delta 0.727, hebbian 0.695, pure
+  backprop *worst* at 0.666 despite full BPTT. Hybrid wins by BPTT-learning the ALPN encoder +
+  codebook, not the wiring (pure delta with a frozen random encoder plateaus at 0.73).
+- **Q2 (headline) — no clean flip.** Backprop's connectome is significantly *worse* than
+  degree-matched controls (0.666 vs 0.817); hybrid is a ceiling tie (~1.00, uninterpretable); the
+  pure plasticity rules are the only connectome win, but *readout-only*, at the permutation floor
+  (p=0.0476 = 1/21 — a rank flag, not an effect size), single-instance (n_eff=1), and substantial
+  only on **delta reversal** (+0.034, +13 control-SD).
+- **Q3 — biological-port I/O bottlenecks backprop** (0.666 vs generic 0.995), but descriptive only
+  (generic_io has ~1.8× params + the query bit).
+- **Q4 (cleanest result) — the error-correcting delta rule beats plain Hebbian on reversal:** on the
+  flipped odors Hebbian collapses to chance (0.500, can only accumulate) while delta holds 0.711
+  (overwrites). A paradigm effect.
+
+Full writeup + figures: the notebook entry below. Designated follow-ups (SPEC §9 / §5.4): a
+degree-preserving **KC-coding-backbone** scramble control (the primary run tested the readout
+topology only) and a **sparse-KC-code** (`kc_topk>0`, APL-like) subrun.
+
 - **Design + rationale:** [`SPEC.md`](SPEC.md)
 - **Notebook entry (chronological record + results):**
   [`../labnotebook/experiment_05_mb_odor_valence.md`](../labnotebook/experiment_05_mb_odor_valence.md)

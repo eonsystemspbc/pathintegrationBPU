@@ -48,7 +48,21 @@ cd "$REMOTE_REPO_DIR"
 
 # --- 3. python env (reproduce from uv.lock) ------------------------------------------
 echo "[bootstrap] uv sync (this is the slow step; pulls torch) ..."
-uv sync --frozen
+# The PyTorch CUDA index (download.pytorch.org -> R2 CDN) intermittently drops TLS
+# handshakes when many workers cold-fetch the ~1GB torch wheels at once ("received fatal
+# alert: HandshakeFailure"). Without set -e a failure here is silent: the worker runs
+# torch-less, produces no result.json, and self-terminates rc=0. Retry with staggered
+# backoff (de-syncs the herd), then abort LOUDLY so the fleet can be debugged/relaunched.
+sync_ok=false
+for attempt in 1 2 3 4 5; do
+  if uv sync --frozen; then sync_ok=true; break; fi
+  echo "[bootstrap] uv sync attempt $attempt FAILED; retrying in $((attempt * 20))s ..."
+  sleep $((attempt * 20))
+done
+if [ "$sync_ok" != true ]; then
+  echo "[bootstrap] FATAL: uv sync failed after 5 attempts (torch fetch) — aborting shard, no results."
+  exit 1
+fi
 echo "[bootstrap] uv sync done"
 
 # --- 4. fetch substrate files --------------------------------------------------------
