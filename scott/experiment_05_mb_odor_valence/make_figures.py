@@ -15,8 +15,13 @@ Reads outputs/analysis.json and renders three figures (validated dataviz palette
                       only delta-reversal is a substantial outlier).
   fig5_io_bottleneck -- Q3 (descriptive): biological-port I/O vs generic all-neuron I/O for
                       backprop (not a clean control -- generic has ~1.8x params + query bit).
+  fig6_learning_curves -- per-rule connectome vs degree-matched-control val_acc-vs-epoch curves
+                      (mean +/-1 SD over 20 units, best-hp per unit by validation): the paradigm
+                      story as a trajectory -- backprop connectome sits BELOW control, hebbian/delta
+                      tie, hybrid solves near-instantly. Reads per-run curves, not analysis.json.
 
 Defensive: only plots paradigms/metrics that exist, so it works on partial (smoke) data too.
+fig1-5 read outputs/analysis.json; fig6 reads outputs/runs/*/result.json (per-epoch curves).
 """
 from __future__ import annotations
 
@@ -264,6 +269,109 @@ def fig5_io_bottleneck(A, figdir):
     plt.close(fig)
 
 
+def _load_runs(outdir):
+    """Every per-run result.json (carries per-epoch 'curve' = val_acc, plus val_acc for hp-select)."""
+    rd = outdir / "runs"
+    rows = []
+    if not rd.exists():
+        return rows
+    for p in sorted(rd.glob("*/result.json")):
+        try:
+            rows.append(json.loads(p.read_text()))
+        except Exception:
+            pass
+    return rows
+
+
+def _rule_of(r):
+    """Normalise a run to a paradigm label, or None to skip.
+    bptt connectome/degree_matched -> 'backprop' (generic_io excluded: not a degree-matched control);
+    plasticity -> its rule (hebbian/delta/hybrid)."""
+    if r.get("arm") == "bptt":
+        return "backprop" if r.get("condition") in ("connectome", "degree_matched") else None
+    if r.get("arm") == "plasticity":
+        return r.get("rule")
+    return None
+
+
+def _best_hp_curves(rows, rule, condition, val_key="val_acc"):
+    """One curve per unit: the hp with the highest validation acc (mirrors the analysis'
+    best-hp-per-unit-by-val test_acc selection). Returns list of curves (lists of val_acc)."""
+    best = {}  # unit -> (val, curve)
+    for r in rows:
+        if _rule_of(r) != rule or r.get("condition") != condition:
+            continue
+        curve = r.get("curve")
+        if not curve:
+            continue
+        v = r.get(val_key)
+        v = v if v is not None else r.get("best_val_acc", -1.0)
+        u = int(r.get("unit", -1))
+        if u not in best or v > best[u][0]:
+            best[u] = (v, curve)
+    return [c for _v, c in best.values()]
+
+
+def _mean_sd_padded(curves, L):
+    """Pad each curve forward (hold last value) to length L, then mean/SD over units.
+    Forward-hold is correct for converged-stop runs (hybrid stops at ~ep6 already at its plateau)."""
+    if not curves:
+        return None, None
+    A = np.array([c[:L] + [c[min(len(c), L) - 1]] * (L - min(len(c), L)) for c in curves], dtype=float)
+    return A.mean(0), A.std(0)
+
+
+def fig6_learning_curves(rows, figdir):
+    """Per-rule connectome vs degree-matched-control learning curves (val_acc vs epoch),
+    mean ±1 SD over the 20 units, best-hp-per-unit by validation. Shows the paradigm story as a
+    trajectory: backprop's connectome sits BELOW control; hebbian/delta tie; hybrid solves near-
+    instantly (converged-stop ~ep6, value held forward). Reads per-run curves, not analysis.json."""
+    present = [p for p in PARADIGM_ORDER if _best_hp_curves(rows, p, "connectome")]
+    if not present:
+        return
+    L = max(len(c) for p in present for cond in ("connectome", "degree_matched")
+            for c in _best_hp_curves(rows, p, cond)) or 1
+    fig, axes = plt.subplots(2, 2, figsize=(11.0, 8.6), squeeze=False)
+    for ax, rule in zip(axes.flat, PARADIGM_ORDER):
+        finals, medlen = {}, {}
+        for cond, col, lab in (("connectome", CONN_COLOR, "connectome"),
+                               ("degree_matched", CTRL_COLOR, "degree-matched control")):
+            curves = _best_hp_curves(rows, rule, cond)
+            if not curves:
+                continue
+            m, sd = _mean_sd_padded(curves, L)
+            x = np.arange(1, L + 1)
+            ax.fill_between(x, m - sd, m + sd, color=col, alpha=0.15, lw=0, zorder=1)
+            ax.plot(x, m, color=col, lw=2, zorder=3, label=lab)
+            finals[cond] = float(m[-1]); medlen[cond] = int(np.median([len(c) for c in curves]))
+        _chance(ax, L)
+        ax.set_ylim(0.45, 1.03); ax.set_xlim(1, L)
+        ax.set_xlabel("epoch", fontsize=10.5); ax.set_ylabel("val accuracy", fontsize=10.5)
+        ax.set_title(rule, fontsize=13, color=INK, fontweight="bold", pad=7)
+        # direct end-of-line value labels (nudged apart when the two curves finish close)
+        cm, km = finals.get("connectome"), finals.get("degree_matched")
+        yc, yk = cm, km
+        if cm is not None and km is not None and abs(cm - km) < 0.035:
+            yc, yk = max(cm, km) + 0.028, min(cm, km) - 0.028
+        for val, ypos, col in ((cm, yc, CONN_COLOR), (km, yk, CTRL_COLOR)):
+            if val is not None:
+                ax.text(L - 3, ypos, f"{val:.3f}", color=col, fontsize=10, ha="right",
+                        va="center", fontweight="bold",
+                        bbox=dict(fc=SURF, ec="none", alpha=0.75, pad=0.4), zorder=6)
+        if rule == "hybrid" and medlen.get("connectome"):
+            ax.text(0.5, 0.90, f"converged-stop ~ep{medlen['connectome']} (value held forward)",
+                    transform=ax.transAxes, ha="center", va="top", fontsize=9, color=MUT, style="italic")
+        _despine(ax); ax.grid(True, color=GRID, lw=0.7, zorder=0); ax.set_axisbelow(True)
+    axes.flat[0].legend(loc="upper left", frameon=True, framealpha=0.9, fontsize=9.5)
+    fig.suptitle("Learning curves: connectome vs degree-matched control, per learning rule",
+                 y=0.975, fontsize=15.5, fontweight="bold", color=INK)
+    fig.text(0.5, 0.935, "odor→valence · biological ports · mean ±1 SD over 20 units, "
+             "best-hp per unit by validation", ha="center", va="top", fontsize=10.5, color=MUT)
+    fig.subplots_adjust(left=0.075, right=0.975, top=0.885, bottom=0.075, hspace=0.30, wspace=0.18)
+    fig.savefig(figdir / "fig6_learning_curves.png", dpi=200)
+    plt.close(fig)
+
+
 def main(argv=None) -> int:
     outdir = Path(argv[0]) if argv else (HERE / "outputs")
     figdir = HERE / "figures"
@@ -278,6 +386,7 @@ def main(argv=None) -> int:
     fig3_reversal(A, figdir)
     fig4_effect_size(A, figdir)
     fig5_io_bottleneck(A, figdir)
+    fig6_learning_curves(_load_runs(outdir), figdir)
     print(f"wrote figures to {figdir} (from {aj})")
     return 0
 

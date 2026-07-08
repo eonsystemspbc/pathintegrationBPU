@@ -130,6 +130,16 @@ encoder — not the topology — is what caps the pure local rules at ~0.70.
 
 ![Connectome vs degree-matched control, per paradigm](../experiment_05_mb_odor_valence/figures/fig2_wiring.png)
 
+The same comparison as a **learning trajectory** (val accuracy vs epoch, connectome vs degree-matched
+control, mean ±1 SD over the 20 units, best-hp per unit by validation) makes the paradigm-dependence
+plain: under **backprop** the connectome (blue) tracks *below* the control (orange) for the entire run —
+the control groks toward ~0.81 while the connectome stalls at ~0.67 — so the "connectome worse" result
+is a persistent trajectory, not a final-epoch fluke. **Hebbian** and **delta** are ties at every epoch,
+and **hybrid** sends both arms to the ceiling within ~3 epochs (converged-stop), leaving no headroom for
+a topology difference.
+
+![Per-rule connectome vs control learning curves](../experiment_05_mb_odor_valence/figures/fig6_learning_curves.png)
+
 **No clean flip, and the result is paradigm-dependent.** Per paradigm on pooled `test_acc`:
 
 | paradigm | connectome | control | permutation p | reading |
@@ -272,6 +282,13 @@ backprop, and is uninterpretable at hybrid's ceiling. Added two figures beyond t
 and `fig5_io_bottleneck` (Q3, labelled descriptive). Next: the SPEC §9 backbone-scramble control
 and/or the SPEC §5.4 sparse-KC-code (`kc_topk>0`) subrun, either of which could still surface a
 KC-coding-topology advantage the dense readout-only primary run cannot.
+
+**2026-07-08 — added learning-curve figure.** Added `fig6_learning_curves` to the primary writeup: per-rule
+connectome-vs-degree-matched-control val-accuracy trajectories (mean ±1 SD over the 20 units, best-hp per
+unit by validation), read from the per-run `curve`s in `outputs/runs/*/result.json` rather than
+`analysis.json`. It re-tells Q1/Q2 as trajectories — backprop's connectome tracks below control the whole
+run, hebbian/delta tie throughout, hybrid hits the ceiling in ~3 epochs — no new data. `make_figures.py`
+regenerates it under `--collect`.
 
 ## Subrun 01 — generic all-neuron I/O vs degree-matched controls (the missing Exp-1/2 cell)
 
