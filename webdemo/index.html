@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connectome-Inspired AI Models - interactive demos</title>
+<meta name="description" content="Fruit-fly brain wiring as an AI prior: connectome-derived recurrent networks beat matched-random controls, but only on the tasks each brain region evolved to solve. Play with the live demos.">
+<link rel="canonical" href="https://18.234.229.32.nip.io/">
+<!-- social / Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Connectome-Inspired AI Models - interactive demos">
+<meta property="og:description" content="A fruit-fly brain's wiring, used as an AI prior. It beats a size-matched random network only at what that brain region evolved to do. Play with the live demos.">
+<meta property="og:image" content="https://18.234.229.32.nip.io/assets/og.png">
+<meta property="og:url" content="https://18.234.229.32.nip.io/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Connectome-Inspired AI Models - interactive demos">
+<meta name="twitter:description" content="A fruit-fly brain's wiring as an AI prior - it wins only at the job it evolved for. Live, playable demos.">
+<meta name="twitter:image" content="https://18.234.229.32.nip.io/assets/og.png">
+<meta name="theme-color" content="#090c13">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23f4b13c' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23f4b13c'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<!-- ===================== NAV ===================== -->
+<header class="nav">
+  <div class="nav-inner">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="13" stroke="#f4b13c" stroke-width="1.5" opacity=".5"/>
+        <line x1="9" y1="10" x2="23" y2="22" stroke="#2fd4c6" stroke-width="1"/>
+        <line x1="23" y1="10" x2="9" y2="22" stroke="#2fd4c6" stroke-width="1"/>
+        <circle cx="9" cy="10" r="2.4" fill="#f4b13c"/><circle cx="23" cy="10" r="2.4" fill="#4b9bff"/>
+        <circle cx="9" cy="22" r="2.4" fill="#4b9bff"/><circle cx="23" cy="22" r="2.4" fill="#f4b13c"/>
+        <circle cx="16" cy="16" r="3" fill="#2fd4c6"/>
+      </svg>
+      <span>Connectomics&nbsp;<span style="color:var(--text-mute);font-weight:400">for</span>&nbsp;AI</span>
+    </div>
+    <nav class="nav-links">
+      <a href="#idea">The idea</a>
+      <a href="#central-complex">Navigation</a>
+      <a href="#mushroom-body">Memory</a>
+      <a href="#optic-lobe">Vision</a>
+      <a href="#matrix">The matrix</a>
+      <a href="#emergence">Emergence</a>
+      <a href="#honesty">Honest science</a>
+      <a href="#scale">Scale</a>
+      <a class="nav-cta" href="https://github.com/eonsystemspbc/pathintegrationBPU" target="_blank" rel="noopener">GitHub ↗</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light/dark theme" title="Toggle light/dark">◐</button>
+    <button class="nav-toggle" aria-label="menu">☰</button>
+  </div>
+</header>
+
+<!-- ===================== HERO ===================== -->
+<section class="hero" id="top">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-veil"></div>
+  <div class="wrap">
+    <div class="hero-badge"><span class="dot"></span> Live interactive demos · <b>fly&nbsp;connectome → neural&nbsp;net</b></div>
+    <h1>Breathing life into AI with the <span class="grad">brain's own wiring</span></h1>
+    <p class="hero-sub">Take a slice of real wiring from a fruit fly's brain - mapped connection by connection - and use it as the scaffold for a neural network. It beats a size-matched random network <em>only</em> at what that brain region evolved to do. Pick a region, pick a task, and watch it happen.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#matrix">▶ Play with the demos</a>
+      <a class="btn btn-ghost" href="#idea">How it works</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="v">3&nbsp;circuits</div><div class="k">navigation · memory · vision, each wired from a real connectome</div></div>
+      <div class="hero-stat"><div class="v">+7.8-12%</div><div class="k">connectome's edge over matched-random, on its native task</div></div>
+      <div class="hero-stat"><div class="v">0.995</div><div class="k">MQAR recall - a fly memory circuit, near the attention ceiling</div></div>
+    </div>
+    <p class="hero-authors"><b>Aarav Sinha · Scott Harris · Viktor Toth · Alexis Pomares · Phillip Shiu</b> &nbsp;·&nbsp; Eon Systems PBC &nbsp;·&nbsp; July 2026</p>
+  </div>
+  <div class="scroll-hint">scroll<span style="font-size:1.1rem">↓</span></div>
+</section>
+
+<!-- ===================== THE IDEA ===================== -->
+<section id="idea">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag">The core idea</span>
+      <h2>A connectome is an <span class="hl-bio">inductive bias</span> you can measure</h2>
+      <p class="lead">Evolution spent hundreds of millions of years wiring circuits that solve hard problems with tiny nervous systems. We convert those wiring diagrams directly into recurrent networks - one neuron per unit, one synapse per allowed connection - and ask a sharp question the field had skipped: does the <em>specific</em> biological wiring beat a <em>random</em> wiring of the same size, in the same model, on the same task?</p>
+    </div>
+
+    <div class="grid grid-2 reveal" style="margin-top:44px; align-items:center">
+      <div class="card">
+        <h3 style="margin-bottom:18px">From wiring diagram to network</h3>
+        <div id="idea-diagram" class="plot"></div>
+        <p style="font-size:.9rem;color:var(--text-dim);margin-top:16px;margin-bottom:0">Each biological neuron becomes one recurrent unit; each directed synapse becomes an allowed connection in <span class="mono">W<sub>rec</sub></span>. The state evolves as a recurrent update - the connectome is the substrate; only the input, output and (sometimes) the edge weights are trained.</p>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:18px">
+          <h4 style="margin-bottom:10px">The one control everyone needs</h4>
+          <p style="font-size:.92rem;color:var(--text-dim);margin-bottom:14px">Every connectome result is matched against a network with the <strong>same neurons, same edge count, same optimizer, same everything</strong> - only the wiring is randomized. That isolates the biology from recurrence, density and parameter count.</p>
+          <div class="pillrow">
+            <span class="pill">random <b>sparse</b></span>
+            <span class="pill">degree-preserving</span>
+            <span class="pill">weight-shuffle</span>
+            <span class="pill">no-recurrence</span>
+          </div>
+        </div>
+        <div class="callout"><b>The result in one line.</b> The connectome wins its <em>native</em> task by many sigma, and merely ties - or slightly trails - everywhere else. That double dissociation is the evidence that structure carries task-specific computation, not a lucky initialization.</div>
+      </div>
+    </div>
+
+    <div class="grid grid-3 reveal" style="margin-top:40px">
+      <div class="card region-card">
+        <svg class="rc-icon" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="14" stroke="#f4b13c" stroke-width="2"/><circle cx="20" cy="6" r="3.2" fill="#f4b13c"/><circle cx="20" cy="20" r="3" fill="#2fd4c6"/></svg>
+        <div class="rc-region">Central complex</div>
+        <h4>Navigation &amp; path integration</h4>
+        <p class="rc-body">A recurrent ring that holds "which way am I facing" and integrates self-motion into a home vector.</p>
+        <div class="rc-metric"><span class="m">+7.8%</span><span class="l">vs random on path integration · wins frozen &amp; trainable</span></div>
+      </div>
+      <div class="card region-card">
+        <svg class="rc-icon" viewBox="0 0 40 40" fill="none"><path d="M20 6 L8 16 M20 6 L32 16 M20 6 L14 20 M20 6 L26 20 M20 6 L20 22" stroke="#f4b13c" stroke-width="1.6"/><circle cx="20" cy="6" r="3.4" fill="#2fd4c6"/><circle cx="8" cy="16" r="2.2" fill="#f4b13c"/><circle cx="32" cy="16" r="2.2" fill="#f4b13c"/><circle cx="14" cy="20" r="2.2" fill="#f4b13c"/><circle cx="26" cy="20" r="2.2" fill="#f4b13c"/><circle cx="20" cy="22" r="2.2" fill="#f4b13c"/></svg>
+        <div class="rc-region">Mushroom body</div>
+        <h4>Associative memory</h4>
+        <p class="rc-body">Sparse Kenyon-cell coding binds a stimulus to a value and recalls it later without interference.</p>
+        <div class="rc-metric"><span class="m">0.995</span><span class="l">MQAR recall - near attention's ceiling of 1.00</span></div>
+      </div>
+      <div class="card region-card">
+        <svg class="rc-icon" viewBox="0 0 40 40" fill="none"><g stroke="#f4b13c" stroke-width="1.4"><path d="M10 12h8l4 6-4 6h-8l-4-6z"/><path d="M22 12h8l4 6-4 6h-8"/></g><circle cx="14" cy="18" r="2" fill="#2fd4c6"/><circle cx="26" cy="18" r="2" fill="#2fd4c6"/></svg>
+        <div class="rc-region">Optic lobe</div>
+        <h4>Visual motion &amp; optic flow</h4>
+        <p class="rc-body">Layered motion detectors turn a swarm of moving pixels into a clean estimate of self-motion.</p>
+        <div class="rc-metric"><span class="m">+12%</span><span class="l">vs random on optic flow, in the data-scarce regime</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CENTRAL COMPLEX ===================== -->
+<section id="central-complex">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag"><span class="swatch" style="background:var(--bio)"></span> Demo 01 · Central complex</span>
+      <h2>The fly's compass - <span class="hl-bio">where the computation is the wiring</span></h2>
+      <p class="lead">The central complex is a ring of neurons where a single bump of activity marks heading, sweeping around the ring as the fly turns. Take the controls below: steer a fly, watch the bump rotate and a home vector accumulate - then scramble the wiring and watch the compass drift.</p>
+      <div class="badge-row"><span class="sim-badge" title="The fly you steer is a faithful simulation of the reported ring-attractor dynamics. The evidence chart below is real logged data.">illustrative sandbox</span><span class="sim-badge data-badge">real benchmark below</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/cx_structure_polar" target="_blank" rel="noopener">see the data</a></div>
+    </div>
+
+    <div class="demo reveal glow" style="margin-top:34px" id="cx-demo">
+      <div class="demo-head">
+        <div class="dh-title"><span class="region-dot" style="background:var(--bio)"></span> Path-integration sandbox</div>
+        <div class="seg" id="cx-mode" style="margin-left:auto">
+          <button data-mode="drive" class="on">Drive it yourself</button>
+          <button data-mode="auto">Auto-wander</button>
+        </div>
+      </div>
+      <div class="demo-body">
+        <div class="demo-stage"><canvas id="cx-stage"></canvas></div>
+        <div class="demo-panel">
+          <div>
+            <h5>Two integrators, same size</h5>
+            <p class="hint" id="cx-hint">Hold <b>← →</b> to turn, <b>↑</b> to walk (or drag on the arena). Both a <span class="hl-bio">connectome</span> ring and a <span style="color:var(--ctrl)">random</span> ring track your heading - watch their estimates of "home" drift apart.</p>
+          </div>
+          <div class="readout">
+            <div class="ro bio"><div class="ro-k"><span class="swatch" style="background:var(--bio)"></span>Connectome error</div><div class="ro-v" id="cx-err-bio">0.00</div></div>
+            <div class="ro ctrl"><div class="ro-k"><span class="swatch" style="background:var(--ctrl)"></span>Random error</div><div class="ro-v" id="cx-err-ctrl">0.00</div></div>
+          </div>
+          <div>
+            <div class="ctl-row"><span class="ctl-label">Heading ring</span><span class="hint" style="flex:1">The bump = the network's current heading estimate</span></div>
+            <canvas id="cx-ring" style="width:100%;height:96px;margin-top:8px"></canvas>
+          </div>
+          <div>
+            <div class="ctl-row"><span class="ctl-label">Home error</span><span class="hint" style="flex:1">accumulated heading error (rad) over the walk</span></div>
+            <canvas id="cx-spark" style="width:100%;height:70px;margin-top:8px"></canvas>
+          </div>
+          <div class="ctl-row" style="margin-top:auto">
+            <button class="btn-sm primary" id="cx-home">↩ Try to walk home</button>
+            <button class="btn-sm" id="cx-reset">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-2 reveal" style="margin-top:34px">
+      <div>
+        <p style="color:var(--text-dim)">We froze the connectome's recurrent circuit and let only its inputs and outputs learn, so any advantage has to come from the wiring itself. On path integration - the exact job this circuit evolved to do - the real connectome tracked heading to about <span class="hl-bio">1.09°</span> and beat every degree-matched control, with <strong>all six rewirings strictly worse and zero overlap</strong>. Shuffling connections while keeping each neuron's partner-count destroys the gain, pinning the advantage on <strong>topology</strong>, not cell counts.</p>
+        <div class="callout" style="margin-top:16px">A ring attractor is a compact, remarkably stable way to hold and update a continuous variable. Because the useful structure survives freezing, it can be dropped into a larger model as a fixed prior - pointing toward <strong>drift-free dead-reckoning</strong> for drones and robots in GPS-denied settings.</div>
+      </div>
+      <div>
+        <h4 style="font-size:1rem;margin-bottom:6px">Heading error vs sequence length <span class="mono" style="color:var(--text-mute);font-size:.8rem">(rad, lower = better)</span></h4>
+        <div class="seg" id="cx-regime" style="margin-bottom:12px">
+          <button data-r="frozen" class="on">Frozen reservoir</button>
+          <button data-r="trainable">Trainable</button>
+        </div>
+        <div id="cx-bars"></div>
+        <div class="legend" id="cx-legend" style="margin-top:10px"></div>
+        <figcaption>Hemibrain CX · 7,349 neurons / ~512k edges · 3 seeds. The <span class="hl-bio">connectome</span> has the lowest error at every length; weight-shuffle tracks it (topology), while no-recurrence collapses.</figcaption>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== MUSHROOM BODY ===================== -->
+<section id="mushroom-body">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag"><span class="swatch" style="background:var(--bio)"></span> Demo 02 · Mushroom body</span>
+      <h2>A memory wired like a fly - <span class="hl-bio">near attention, at a fraction of the machinery</span></h2>
+      <p class="lead">The mushroom body learns "this smell meant food, that one meant a shock." Feed the network stimulus→value pairs, then quiz it. A network wired like a real fly recalls faster and clings to old memories more stubbornly than a same-sized random tangle.</p>
+      <div class="badge-row"><span class="sim-badge" title="The interactive recall demo is illustrative. The benchmark bars, learning-speed epochs, and retention curve are real logged data.">illustrative recall demo</span><span class="sim-badge data-badge">real benchmarks + curves</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/mqar_associative_recall" target="_blank" rel="noopener">see the data</a></div>
+    </div>
+
+    <div class="demo reveal glow" style="margin-top:34px">
+      <div class="demo-head">
+        <div class="dh-title"><span class="region-dot" style="background:var(--bio)"></span> Associative memory</div>
+      </div>
+      <div style="padding:22px 24px 26px">
+        <div class="tabs" id="mb-tabs">
+          <button data-tab="mqar" class="on">Recall (MQAR)</button>
+          <button data-tab="reversal">Reversal learning</button>
+          <button data-tab="retention">Continual retention</button>
+        </div>
+
+        <!-- MQAR -->
+        <div class="tabpane on" data-pane="mqar">
+          <div class="grid grid-2" style="align-items:start">
+            <div>
+              <p class="hint" style="margin-bottom:14px">Bind each <b>key</b> to a <b>value</b>, then click a key to query. Both models must return the value they were shown. The <span class="hl-bio">connectome</span> peaks sharply on the right answer; the <span style="color:var(--ctrl)">random</span> control is fuzzier and sometimes wrong.</p>
+              <div id="mqar-keys"></div>
+              <div class="ctl-row" style="margin-top:16px">
+                <button class="btn-sm" id="mqar-shuffle">⟳ New bindings</button>
+                <span class="hint" id="mqar-status">Click a key to query it.</span>
+              </div>
+            </div>
+            <div>
+              <h5 style="margin-bottom:4px">Recall confidence over the vocabulary</h5>
+              <div id="mqar-recall" class="plot"></div>
+              <div class="legend" style="margin-top:10px">
+                <span class="li"><span class="line" style="border-color:var(--bio)"></span>Connectome</span>
+                <span class="li"><span class="line" style="border-color:var(--ctrl)"></span>Random sparse</span>
+              </div>
+            </div>
+          </div>
+          <hr class="divider" style="margin:24px 0">
+          <div class="grid grid-2" style="align-items:center">
+            <div>
+              <h4 style="font-size:1rem">Benchmark: MQAR test recall <span class="mono" style="color:var(--text-mute);font-size:.8rem">(higher = better)</span></h4>
+              <p style="font-size:.9rem;color:var(--text-dim)">On the standard associative-recall benchmark used to explain the attention-vs-recurrent gap, the full mushroom body (14,025 neurons) reaches <span class="hl-bio">0.995</span> - essentially the attention ceiling - and beats size-matched random by ~9 points. Shuffling the <em>weights</em> barely dents it; randomizing <em>which neurons connect</em> erases it. The advantage is the <strong>topology</strong>.</p>
+              <div class="callout honest" style="margin-top:14px"><b>Honest caveat.</b> Much of this reads as generic structured-recurrence capacity: an optic-lobe connectome truncated to the same size ties the mushroom body. What's cleanly isolated is that <em>biological wiring helps associative memory</em> - not that this one circuit is uniquely gifted.</div>
+            </div>
+            <div>
+              <div id="mqar-bars"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REVERSAL -->
+        <div class="tabpane" data-pane="reversal">
+          <div class="grid grid-2" style="align-items:center">
+            <div>
+              <p class="hint">An odor is paired with reward. Midway, the rule <b>flips</b> - the same odor now signals punishment. A good associative memory must <em>update</em> the association, not just memorize the first label. Press play and watch the connectome re-learn the reversal.</p>
+              <div class="ctl-row" style="margin:18px 0">
+                <button class="btn-sm primary" id="rev-play">▶ Run episode</button>
+                <button class="btn-sm" id="rev-flip">⚡ Flip valence now</button>
+              </div>
+              <div class="readout">
+                <div class="ro bio"><div class="ro-k">Connectome reversal recall</div><div class="ro-v" id="rev-bio">0.992</div></div>
+                <div class="ro ctrl"><div class="ro-k">Random reversal recall</div><div class="ro-v" id="rev-ctrl">0.973</div></div>
+              </div>
+            </div>
+            <div>
+              <h5 style="margin-bottom:6px">Reversal episode &middot; recall over time</h5>
+              <div id="rev-curve" class="plot"></div>
+              <figcaption>Both models learn the odor's value, then the rule flips (red line): recall crashes, then re-learns. The <span class="hl-bio">connectome</span> recovers fast and high (0.995 reversal recall); <span style="color:var(--ctrl)">random</span> dips deeper and lags (0.979). It also gets there ~3&times; faster to begin with (validation loss solved by epoch 17 vs 53).</figcaption>
+            </div>
+          </div>
+        </div>
+
+        <!-- RETENTION -->
+        <div class="tabpane" data-pane="retention">
+          <div class="grid grid-2" style="align-items:center">
+            <div>
+              <p class="hint">Learn <b>five odor→valence tasks in sequence</b>, with no replay. Every model learns each task perfectly at first - the question is how much it <em>forgets</em> as new tasks pile on. A frozen connectome holds a stable, low-interference representation that a random matrix can't.</p>
+              <div class="ctl-row" style="margin:18px 0">
+                <button class="btn-sm primary" id="ret-play">▶ Learn 5 tasks</button>
+              </div>
+              <div class="callout" style="margin-top:6px">The connectome's value here is as a <strong>frozen, forgetting-resistant prior</strong> on its native modality - close to the inductive bias continual-learning and on-device systems need to absorb new data without retraining from scratch.</div>
+            </div>
+            <div>
+              <h5 style="margin-bottom:6px">Retention across the task sequence</h5>
+              <div id="ret-curve" class="plot"></div>
+              <figcaption>Final accuracy after all 5 tasks: <span class="hl-bio">connectome 0.819</span> vs <span style="color:var(--ctrl)">random 0.748</span> (forgetting 0.223 vs 0.308, ~10σ over 3 seeds). All three learn each task equally well - the entire gap is retention.</figcaption>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== OPTIC LOBE ===================== -->
+<section id="optic-lobe">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag"><span class="swatch" style="background:var(--bio)"></span> Demo 03 · Optic lobe</span>
+      <h2>Nature's motion detector - <span class="hl-bio">a head start when data is scarce</span></h2>
+      <p class="lead">The optic lobe turns a swarm of moving pixels into a clean sense of which way the world is sliding past. Steer the scene over a fly-like hex sensor and watch the network read out self-motion - then throttle the training data and watch the connectome's advantage appear exactly where it matters.</p>
+      <div class="badge-row"><span class="sim-badge" title="The hex-sensor sandbox is illustrative. The data-efficiency curve is real logged RMSE with per-seed spread.">illustrative sandbox</span><span class="sim-badge data-badge">real data-efficiency curve</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/optic_flow_data_efficiency" target="_blank" rel="noopener">see the data</a></div>
+    </div>
+
+    <div class="demo reveal glow" style="margin-top:34px">
+      <div class="demo-head">
+        <div class="dh-title"><span class="region-dot" style="background:var(--bio)"></span> Optic-flow sandbox</div>
+        <div class="seg" id="ol-scene" style="margin-left:auto">
+          <button data-s="drag" class="on">Drag the scene</button>
+          <button data-s="auto">Auto-drift</button>
+        </div>
+      </div>
+      <div class="demo-body">
+        <div class="demo-stage"><canvas id="ol-stage"></canvas></div>
+        <div class="demo-panel">
+          <div>
+            <h5>Ego-motion readout</h5>
+            <p class="hint">Drag across the sensor (or auto-drift). Local motion on the hex lattice is pooled into an estimate of <b>yaw</b> and <b>translation</b>. The <span class="hl-bio">connectome</span> reads it more accurately than a <span style="color:var(--ctrl)">random</span> twin - most of all when it has seen little data.</p>
+          </div>
+          <div>
+            <div class="ctl-row"><span class="ctl-label">Training data</span><input type="range" id="ol-frac" min="0" max="7" step="1" value="7" aria-label="training data fraction"><span class="mono" id="ol-frac-lbl" style="min-width:44px;text-align:right;color:var(--bio)">100%</span></div>
+            <p class="hint" style="margin-top:8px">Slide down to starve both models of training examples.</p>
+          </div>
+          <div class="readout">
+            <div class="ro bio"><div class="ro-k">Connectome RMSE</div><div class="ro-v" id="ol-rmse-bio">0.132</div></div>
+            <div class="ro ctrl"><div class="ro-k">Random RMSE</div><div class="ro-v" id="ol-rmse-ctrl">0.143</div></div>
+          </div>
+          <div style="margin-top:auto">
+            <div class="ctl-row"><span class="ctl-label">Live motion</span><span class="hint" id="ol-motion" style="flex:1"> - idle - </span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-2 reveal" style="margin-top:34px">
+      <div>
+        <h4 style="font-size:1rem;margin-bottom:6px">Data-efficiency curve <span class="mono" style="color:var(--text-mute);font-size:.8rem">(RMSE, lower = better)</span></h4>
+        <div class="seg" id="ol-family" style="margin-bottom:12px">
+          <button data-f="sparse" class="on">Sparse</button>
+          <button data-f="pruned">Pruned</button>
+          <button data-f="dense">Dense</button>
+        </div>
+        <div id="ol-chart"></div>
+        <div class="legend" style="margin-top:8px">
+          <span class="li"><span class="line" style="border-color:var(--bio)"></span>Connectome</span>
+          <span class="li"><span class="line" style="border-color:var(--ctrl);border-style:dashed"></span>Random control</span>
+        </div>
+      </div>
+      <div>
+        <p style="color:var(--text-dim)">Every comparison pits the connectome against a random network of identical size and sparsity, so any edge comes from the wiring pattern itself. In the biologically realistic <strong>sparse</strong> regime the fly's motion circuit wins (0.1317 vs 0.1425 RMSE), and the <strong>pruned</strong> connectome beats its random control at <em>every</em> data budget.</p>
+        <div class="callout honest" style="margin-top:14px"><b>Honest caveat.</b> This is an advantage in <em>data efficiency</em>, not a higher ceiling. Give a large <strong>dense</strong> trainable matrix enough data and it ties the connectome (0.1251 vs 0.1254) - flip to the Dense tab to see the gap close.</div>
+        <p style="color:var(--text-dim);margin-top:14px">The same task runs on real <span class="mono">DSEC</span> event-camera footage shot from moving cars - the low-power, tight-compute corner where a sparse structural prior pays off most.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== THE MATRIX ===================== -->
+<section id="matrix">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag">The whole thesis in one grid</span>
+      <h2>Pick a region, pick a task - <span class="hl-bio">watch the wiring win or fail</span></h2>
+      <p class="lead">The whole thesis in one control. Three brain regions × five tasks, each cell the connectome's advantage over a size-matched random network. <strong>Click any cell</strong> to run that head-to-head: the diagonal lights up green where a region meets its native task, and goes flat or red everywhere else. That is a double dissociation.</p>
+      <div class="badge-row"><span class="sim-badge data-badge">real logged advantages</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/region_task_matrix" target="_blank" rel="noopener">see the data</a></div>
+    </div>
+
+    <div class="picker reveal" id="matrix-interactive" style="margin-top:30px">
+      <div class="picker-body">
+        <div class="matrix-pane">
+          <div class="matrix-wrap"><div id="matrix-grid"></div></div>
+          <p class="hint" style="margin-top:14px">Click any cell to run its head-to-head. <span class="hl-bio">Gold-ringed</span> cells are each region's native task; your selection is <span class="hl-teal">ringed in teal</span>.</p>
+        </div>
+        <div class="picker-plot" id="matrix-result"></div>
+      </div>
+    </div>
+
+    <div class="grid grid-2 reveal" style="margin-top:34px;align-items:start;gap:34px">
+      <div>
+        <p style="color:var(--text-dim)">The comparison is deliberately brutal: every real connectome is pitted against random networks matched on size, density and degree distribution, so the ~8-12% edge along the diagonal can only come from the specific pattern of connections. A diagonal that lights up while off-diagonal cells stay flat is the cleanest evidence that <strong>wiring carries task-specific computation</strong> rather than a generic boost.</p>
+        <div class="callout honest" style="margin-top:14px"><b>Kept in view.</b> The memory task rewards raw capacity as much as mushroom-body recall, and harder sequential problems (seq-MNIST, arithmetic) stay null for every region. This is a real, bounded signal - not a universal law.</div>
+      </div>
+      <figure style="margin:0">
+        <div class="figframe"><img loading="lazy" src="assets/figures/region_task_matrix__figure1_alignment_matrix.png" alt="Published region × task alignment matrix"></div>
+        <figcaption>The published Figure 1 - the full alignment matrix from the paper.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== EMERGENCE ===================== -->
+<section id="emergence">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag">A surprise from training</span>
+      <h2>Wire the senses in at random - <span class="hl-bio">and training routes them back to biology</span></h2>
+      <p class="lead">We never tell the network where the fly's senses plug in. Input arrives smeared at random across all ~11,000 neurons. Yet as it learns the task, the input wiring migrates onto the precise projection neurons the real fly uses. Nobody pointed it there.</p>
+      <div class="badge-row"><span class="sim-badge" title="The ROC-AUC animation reproduces the reported training curve (0.5 to ~0.60, p = 3.6e-5).">illustrative animation of a real result</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/mb_biology_convergence" target="_blank" rel="noopener">see the data</a></div>
+    </div>
+
+    <div class="grid grid-2 reveal" style="margin-top:34px;align-items:center">
+      <div class="card">
+        <div class="ctl-row" style="margin-bottom:14px">
+          <h4 style="font-size:1rem;margin:0">Do input ports find the biological cells?</h4>
+          <button class="btn-sm primary" id="emerge-replay" style="margin-left:auto">▶ Replay training</button>
+        </div>
+        <div id="emerge-chart" class="plot"></div>
+        <div class="legend" style="margin-top:10px">
+          <span class="li"><span class="line" style="border-color:var(--bio)"></span>Connectome</span>
+          <span class="li"><span class="line" style="border-color:var(--ctrl);border-style:dashed"></span>Random wiring</span>
+          <span class="li"><span class="line" style="border-color:var(--text-mute);border-style:dotted"></span>chance (0.5)</span>
+        </div>
+        <figcaption>ROC-AUC = how well the learned input weights single out the true biological input cells.</figcaption>
+      </div>
+      <div>
+        <p style="color:var(--text-dim)">This is emergence you can measure: the input weights' ability to single out the true biological cells climbs from chance (<span class="mono">AUC ≈ 0.5</span>) to <span class="hl-bio">≈ 0.6</span> during training, while a matched random-wired network never leaves chance (<span class="mono">p = 3.6 × 10⁻⁵</span>). Because the wiring is the only thing that differs, the pull toward biology has to come from the connectome's structure.</p>
+        <div class="callout" style="margin-top:14px">In a model whose recurrent core is a real brain, you can read off <strong>which neurons carry which signal</strong> after training - turning an opaque network into an inspectable one. A concrete handle on interpretability.</div>
+        <div class="callout honest" style="margin-top:12px"><b>Honest caveat.</b> The effect is real but modest (AUC ≈ 0.6, not 0.9), and it shows up only when the circuit is trained on the task it evolved to do.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== HONEST SCIENCE ===================== -->
+<section id="honesty">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag">Where the prior does <em>not</em> help</span>
+      <h2>The honest science - <span class="hl-bio">tightening the test, not selling it</span></h2>
+      <p class="lead">The closest prior work reported that wiring an AI's hidden layer like a fly's brain classifies images better. We reproduced it, added the one control it left out, and the special advantage on generic tasks disappeared. This sharpened the hypothesis instead of inflating it.</p>
+      <div class="badge-row"><span class="sim-badge data-badge">real reproduction numbers</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/blob/main/docs/results/bpu_reproduction_gap_analysis.md" target="_blank" rel="noopener">see the analysis</a></div>
+    </div>
+
+    <div class="grid grid-2 reveal" style="margin-top:34px;align-items:center">
+      <div>
+        <h4 style="font-size:1rem">Add the matched-random control → the edge vanishes</h4>
+        <p style="font-size:.92rem;color:var(--text-dim)">The original comparison changed two things at once - connectome-vs-random <em>and</em> recurrent-vs-feedforward - so its edge on CIFAR-10 couldn't be credited to the wiring alone. Put a random matrix in the <em>exact same architecture</em> and the connectome's advantage on generic image classification evaporates: a matched random-sparse network in fact <em>edges it</em> on both MNIST (0.967 vs 0.965) and CIFAR-10 (0.491 vs 0.468), and a dense trainable matrix beats them all. MNIST still reproduces cleanly (~97%); the underlying work is real. The lesson: a connectome helps only when the task matches the computation its circuitry evolved to perform.</p>
+        <div class="pillrow" style="margin-top:14px">
+          <span class="pill">MNIST: connectome <b>0.965</b> vs random <b>0.967</b></span>
+          <span class="pill">CIFAR-10: connectome <b>0.468</b> vs random <b>0.491</b></span>
+          <span class="pill">random <b>edges</b> the connectome on both</span>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:1rem;margin-bottom:6px">Same architecture, connectome vs random</h4>
+        <div id="bpu-bars"></div>
+        <figcaption>Real reproduction numbers. On generic image classification the connectome does not win - random sparse matches or edges it, and dense trainable leads. The special ingredient lives in the architecture around the matrix, not the fly's specific wiring.</figcaption>
+      </div>
+    </div>
+
+    <div class="card reveal" style="margin-top:30px">
+      <h4 style="font-size:1rem;margin-bottom:14px">The control hierarchy - how we know it's really the topology</h4>
+      <div class="grid grid-4" style="gap:16px">
+        <div><div class="mono" style="color:var(--bio);font-size:1.2rem">connectome ≈ weight-shuffle</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Keep the exact wiring, permute the weights, and the win survives → the <b>graph</b> carries it, not the synaptic strengths.</p></div>
+        <div><div class="mono" style="color:var(--ctrl);font-size:1.2rem">≫ random &amp; degree</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Break the wiring - even keeping each neuron's degree - and it falls 9-16 points on MQAR.</p></div>
+        <div><div class="mono" style="color:var(--red);font-size:1.2rem">no-recurrence → chance</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Zero the recurrent path and it collapses (~0.12 on seq-MNIST), proving the recurrence is load-bearing.</p></div>
+        <div><div class="mono" style="color:var(--blue);font-size:1.2rem">frozen vs trainable</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Trainable helps the CX (tune one attractor); frozen helps MB continual (protect memories). The verdict tracks the task, not the region.</p></div>
+      </div>
+    </div>
+
+    <details class="limits reveal">
+      <summary>Limitations &amp; how to read this page</summary>
+      <div class="limits-body">
+        <ul>
+          <li><b>Interactive sandboxes are simulations.</b> The fly you steer, the hex sensor, and the recall demo are faithful reproductions of the reported dynamics, not live models. Every chart, bar, and curve is <b>real logged data</b> from the result files (see each "see the data" link).</li>
+          <li><b>The associative-memory win is partly generic.</b> On MQAR an optic-lobe connectome truncated to the same size ties the mushroom body, so what is cleanly isolated is that biological wiring helps associative recall, not that this one circuit is uniquely gifted.</li>
+          <li><b>Optic flow is data-efficiency, not a ceiling.</b> The connectome's edge is largest when data is scarce and shrinks as random catches up; a large dense trainable matrix ties it at convergence.</li>
+          <li><b>The advantage is topological, and small in absolute terms.</b> Weight-shuffle (same wiring, permuted weights) usually tracks the connectome; the CX margins are a few hundredths of a radian, from a single connectome graph (pseudo-replication).</li>
+          <li><b>Foreign tasks are null.</b> On sequential MNIST and arithmetic the connectome merely ties its topology-matched control. This is a task-specific prior, not a universal architecture.</li>
+          <li><b>On generic image classification the connectome does not win</b> once the matched-random control is added &mdash; it slightly trails random sparse on both MNIST and CIFAR-10 (chart above).</li>
+        </ul>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ===================== SCALE ===================== -->
+<section id="scale">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag">Where this goes</span>
+      <h2>Don't hand-design every module - <span class="hl-bio">inherit the circuits evolution already tuned</span></h2>
+      <p class="lead">The fly is the smallest complete brain we can map. As wiring diagrams sharpen - mouse and monkey are arriving now, human is on the horizon - the same three circuits reappear at larger scale, each a candidate prior for the job it evolved to do. Drag through the scale.</p>
+    </div>
+
+    <div class="reveal" style="margin-top:20px">
+      <div class="scale-controls">
+        <input type="range" id="scale-slider" min="0" max="3" step="0.01" value="0" aria-label="Connectome scale">
+        <span class="sc-val" id="scale-val">Fly</span>
+        <div class="scale-morph" id="scale-morph" aria-hidden="true"></div>
+      </div>
+      <div class="scale-track" id="scale-track"></div>
+      <div class="card" id="scale-detail" style="margin-top:6px"></div>
+    </div>
+
+    <div class="grid grid-3 reveal" style="margin-top:36px">
+      <div class="card future-card">
+        <h4><svg class="fc-icon" viewBox="0 0 34 34" fill="none"><circle cx="17" cy="17" r="11" stroke="#f4b13c" stroke-width="1.6"/><path d="M17 8v9l6 4" stroke="#2fd4c6" stroke-width="1.6"/></svg> Navigation core</h4>
+        <p>A ring-attractor heading system for <b>drones and edge robots</b> that must localize and hold a course under a tight power budget, in GPS-denied settings - drift-free dead reckoning over long trajectories.</p>
+        <span class="fc-tag">central complex → SLAM · odometry</span>
+      </div>
+      <div class="card future-card">
+        <h4><svg class="fc-icon" viewBox="0 0 34 34" fill="none"><path d="M6 20h6l3-9 4 14 3-8h6" stroke="#f4b13c" stroke-width="1.6" fill="none"/></svg> Event-vision front end</h4>
+        <p>A sparse optic-flow prior for <b>event-camera perception</b> in autonomous vehicles and robots - fast, low-power motion estimation exactly where labeled data and energy are the binding constraints.</p>
+        <span class="fc-tag">optic lobe → DSEC · collision avoidance</span>
+      </div>
+      <div class="card future-card">
+        <h4><svg class="fc-icon" viewBox="0 0 34 34" fill="none"><circle cx="11" cy="17" r="2.6" fill="#f4b13c"/><circle cx="23" cy="11" r="2.6" fill="#2fd4c6"/><circle cx="23" cy="23" r="2.6" fill="#4b9bff"/><path d="M13 16l8-4M13 18l8 4" stroke="#f4b13c" stroke-width="1.4"/></svg> Associative memory layer</h4>
+        <p>A forgetting-resistant recall module for <b>chemical &amp; hazard sensors</b> and continual, on-device learning - updating from a handful of noisy labels without retraining from scratch.</p>
+        <span class="fc-tag">mushroom body → few-shot · in-context</span>
+      </div>
+    </div>
+
+    <div class="card glow reveal center" style="margin-top:40px;padding:44px">
+      <p class="pull" style="margin:0 auto"><span class="grad">Fidelity is a new axis of AI progress</span>, alongside scale and data.</p>
+      <p style="color:var(--text-dim);max-width:70ch;margin:22px auto 0">AI has advanced along two axes so far, scale and data; connectome fidelity is a third, and the fly already proves it works: matched to the task a region evolved for, its wiring holds a measured, control-verified edge that a size- and degree-matched random network never reaches. As reconstruction climbs from fly to mouse to primate, each higher-fidelity connectome becomes a pretrained prior we cannot yet design by hand, aimed squarely at where today's largest models are weakest: robot controllers that adapt on-device, drones that navigate and map on a few watts, event-camera vision, and systems that keep learning from thin data without forgetting. These are not moonshots but product-shaped gaps, and a circuit evolution already tuned for exactly that job is a credible shortcut. <strong>Alignment plus fidelity, not parameter count alone, is the lever most likely to turn a measured advantage into a real breakthrough.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="brand" style="margin-bottom:14px">
+          <svg class="logo" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="13" stroke="#f4b13c" stroke-width="1.5" opacity=".5"/><line x1="9" y1="10" x2="23" y2="22" stroke="#2fd4c6" stroke-width="1"/><line x1="23" y1="10" x2="9" y2="22" stroke="#2fd4c6" stroke-width="1"/><circle cx="16" cy="16" r="3" fill="#2fd4c6"/></svg>
+          <span>Connectomics for AI</span>
+        </div>
+        <p style="color:var(--text-dim);font-size:.95rem;margin-bottom:4px"><a href="https://eon.systems" target="_blank" rel="noopener" style="display:inline;color:var(--teal)">Eon Systems PBC</a>, 2026</p>
+        <p style="font-style:italic;color:var(--teal);font-size:.95rem;letter-spacing:.01em;margin:0 0 10px">"in the pursuit of general intelligence"</p>
+        <p class="foot-note">Interactive demos are faithful simulations of the reported dynamics; all benchmark numbers are drawn verbatim from the project's result files.</p>
+      </div>
+      <div>
+        <h5>Explore</h5>
+        <a href="#central-complex">Central complex · navigation</a>
+        <a href="#mushroom-body">Mushroom body · memory</a>
+        <a href="#optic-lobe">Optic lobe · vision</a>
+        <a href="#matrix">Region × task matrix</a>
+        <a href="#scale">Scaling &amp; implications</a>
+      </div>
+      <div>
+        <h5>Sources</h5>
+        <a href="https://github.com/eonsystemspbc/pathintegrationBPU" target="_blank" rel="noopener">Project repository ↗</a>
+        <a href="https://arxiv.org/abs/2507.10951" target="_blank" rel="noopener">BPU paper (arXiv 2507.10951) ↗</a>
+        <a href="https://arxiv.org/abs/2312.04927" target="_blank" rel="noopener">MQAR / Zoology (Arora 2023) ↗</a>
+        <a href="https://dsec.ifi.uzh.ch/" target="_blank" rel="noopener">DSEC event-camera dataset ↗</a>
+        <a href="https://elifesciences.org/articles/66039" target="_blank" rel="noopener">CX connectome (Hulse 2021) ↗</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/results-data.js"></script>
+<script src="js/core.js"></script>
+<script src="js/hero.js"></script>
+<script src="js/cx.js"></script>
+<script src="js/mb.js"></script>
+<script src="js/ol.js"></script>
+<script src="js/matrix.js"></script>
+</body>
+</html>
