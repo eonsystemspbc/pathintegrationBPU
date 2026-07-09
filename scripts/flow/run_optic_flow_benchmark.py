@@ -949,6 +949,18 @@ def train_one_model(
             break
     if best_state is not None:
         model.load_state_dict(best_state)
+    _save_dir = os.environ.get("SAVE_MODELS_DIR")
+    if _save_dir:  # opt-in checkpoint export for the live-inference demo (off unless env set)
+        import json as _json, dataclasses as _dc
+        _sd = Path(_save_dir); _sd.mkdir(parents=True, exist_ok=True)
+        torch.save(model.state_dict(), _sd / f"model_{model_name}_seed{seed}.pt")
+        (_sd / "meta.json").write_text(_json.dumps({
+            "model": model_name, "N": int(model.N),
+            "input_dim": int(model.input_dim), "output_dim": int(model.output_dim),
+            "state_clip": float(model.state_clip), "pool_gated": bool(getattr(model, "pool_gated", False)),
+            "spec": _dc.asdict(spec),
+        }))
+        log_event(f"saved-checkpoint model={model_name} seed={seed} -> {_sd}")
     test = evaluate_model(
         model,
         spec,

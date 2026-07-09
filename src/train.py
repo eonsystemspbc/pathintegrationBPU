@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import copy
 import time
 from dataclasses import replace
@@ -792,6 +793,22 @@ def run_training(
         )
         loss_rows.extend(history["epoch_rows"])
         pd.DataFrame(loss_rows).to_csv(paths.loss_history_csv, index=False)
+        _save_dir = os.environ.get("SAVE_MODELS_DIR")
+        if _save_dir:  # opt-in checkpoint export for the live-inference demo (no effect unless set)
+            import json as _json
+            _sd = Path(_save_dir); _sd.mkdir(parents=True, exist_ok=True)
+            torch.save(model.state_dict(), _sd / f"model_{model_name}_seed{seed}.pt")
+            (_sd / "meta.json").write_text(_json.dumps({
+                "task": task_spec.kind, "heading_bins": int(task_spec.heading_bins),
+                "home_distance_scale": float(task_spec.home_distance_scale),
+                "input_dim": int(input_dim_for_task(task_spec)),
+                "output_dim": int(output_dim_for_task(task_spec)),
+                "K": int(getattr(model, "K", 1)), "N": int(model.N),
+                "state_clip": float(getattr(model, "state_clip", 0.0)),
+                "sensory_indices": model.sensory_indices.detach().cpu().tolist(),
+                "output_indices": model.output_indices.detach().cpu().tolist(),
+            }))
+            tqdm.write(f"saved-checkpoint model={model_name} seed={seed} -> {_sd}")
         latency_loader = _loader(
             val_split.path,
             min(train_config.batch_size, 64),

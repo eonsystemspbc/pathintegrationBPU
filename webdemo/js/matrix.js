@@ -10,10 +10,10 @@
     if (t >= 0) {
       // gray -> green
       const a = 0.10 + t * 0.42;
-      return `rgba(55,201,138,${a})`;
+      return `rgba(124,186,105,${a})`;
     } else {
       const a = 0.08 + (-t) * 0.30;
-      return `rgba(236,106,106,${a})`;
+      return `rgba(217,139,118,${a})`;
     }
   }
   function buildMatrix() {

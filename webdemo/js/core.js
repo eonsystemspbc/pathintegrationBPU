@@ -24,11 +24,11 @@ const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const lerp  = (a,b,t) => a + (b-a)*t;
 const fmt   = (v,d=3) => Number(v).toFixed(d);
 
-/* ---------- palette (mirrors css tokens) ---------- */
+/* ---------- palette (Eon brand; tuned for the dark instrument panels charts render on) ---------- */
 const C = {
-  bio:'#f4b13c', bioGlow:'rgba(244,177,60,0.55)', ctrl:'#8592a6',
-  blue:'#4b9bff', violet:'#9a8cf0', red:'#ec6a6a', green:'#37c98a', teal:'#2fd4c6',
-  ink:'#eef2f8', dim:'#aab4c6', mute:'#6c7789', grid:'#2c2c2a', surf:'#10151f',
+  bio:'#D4A0B0', bioGlow:'rgba(212,160,176,0.55)', ctrl:'#9089A0',
+  blue:'#7B8FE8', violet:'#C9B8E8', red:'#D98B76', green:'#7CBA69', teal:'#40E0D0',
+  ink:'#FAF8F5', dim:'#C8C0D0', mute:'#8FA0C8', grid:'#2A2538', surf:'#1E1A2A',
 };
 
 /* ============================================================
@@ -303,16 +303,17 @@ function showTip(x,y,html){ const t=tooltip(); t.innerHTML=html; t.classList.add
 function hideTip(){ if(_tt) _tt.classList.remove('show'); }
 
 function initTheme(){
+  // Brand: default = light ("credible science"); dark is the cinematic opt-in.
   const btn=document.getElementById('theme-toggle');
   let saved=null; try{ saved=localStorage.getItem('theme'); }catch(e){}
-  if(saved==='light') document.documentElement.setAttribute('data-theme','light');
-  const setIcon=()=>{ if(btn) btn.textContent = document.documentElement.getAttribute('data-theme')==='light'?'☀':'◐'; };
+  if(saved==='dark') document.documentElement.setAttribute('data-theme','dark');
+  const setIcon=()=>{ if(btn) btn.textContent = document.documentElement.getAttribute('data-theme')==='dark'?'☀':'☾'; };
   setIcon();
   btn && btn.addEventListener('click',()=>{
-    const isLight=document.documentElement.getAttribute('data-theme')==='light';
-    if(isLight) document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme','light');
-    try{ localStorage.setItem('theme', isLight?'dark':'light'); }catch(e){}
+    const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+    if(isDark) document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme','dark');
+    try{ localStorage.setItem('theme', isDark?'light':'dark'); }catch(e){}
     setIcon();
   });
 }
