@@ -53,7 +53,11 @@
   /* ---------- MQAR interactive recall ---------- */
   const KEY_EMOJI = ['🍋', '🌸', '🍫', '🌿', '🍯', '🧭'];
   const VALS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+  // vocab-token ids handed to the live model (keys and values are disjoint, all < 32)
+  const KEY_TOK = [1, 2, 3, 4, 5, 6];
+  const VAL_TOK = [10, 11, 12, 13, 14, 15, 16, 17];
   let bindings = [], queried = -1;
+  const liveOn = () => window.Live && Live.isOpen() && Live.has('mqar');
 
   function seededRand(s) { let x = Math.sin(s) * 10000; return x - Math.floor(x); }
 
@@ -68,11 +72,14 @@
       const wrong = diff > 0.80;                     // ~ matches ~84% ctrl accuracy
       let distractor = (vi + 1 + ((diff * 5) | 0)) % VALS.length;
       if (distractor === vi) distractor = (vi + 2) % VALS.length;
-      return { key: e, vi, wrong, distractor, ctrlConf: 0.42 + diff * 0.2 };
+      return { key: e, vi, keyTok: KEY_TOK[i], valTok: VAL_TOK[vi], wrong, distractor, ctrlConf: 0.42 + diff * 0.2 };
     });
     queried = -1;
     renderKeys();
-    document.getElementById('mqar-status').textContent = 'Click a key to query it.';
+    const st = document.getElementById('mqar-status');
+    st.innerHTML = liveOn()
+      ? '<span class="live-dot"></span>Live GPU inference &middot; click a key to query it.'
+      : 'Click a key to query it.';
     renderRecall(null);
   }
 
@@ -91,6 +98,35 @@
   }
 
   function doQuery(i) {
+    if (liveOn()) { doQueryLive(i); return; }
+    doQuerySynthetic(i);
+  }
+
+  // Real recall: send the whole key->value episode to the trained models on the
+  // GPU and render the actual softmax the network returns at the value tokens.
+  async function doQueryLive(i) {
+    const b = bindings[i];
+    const st = document.getElementById('mqar-status');
+    st.innerHTML = `<span class="live-dot"></span>Querying <b>${b.key}</b>&hellip;`;
+    try {
+      const r = await Live.call({
+        op: 'mqar',
+        bindings: bindings.map(x => [x.keyTok, x.valTok]),
+        query: b.keyTok,
+      });
+      // pull the model's probability mass on each candidate value token
+      const bio = VALS.map((_, k) => r.connectome.probs[VAL_TOK[k]]);
+      const ctrl = VALS.map((_, k) => r.random.probs[VAL_TOK[k]]);
+      const bioPick = bio.indexOf(Math.max(...bio));
+      const ctrlPick = ctrl.indexOf(Math.max(...ctrl));
+      renderRecall({ bio, ctrl, truth: b.vi, bioPick, ctrlPick });
+      st.innerHTML = `<span class="live-dot"></span>Query <b>${b.key}</b>: connectome → <b style="color:var(--bio)">${VALS[bioPick]}</b> ${bioPick === b.vi ? '✓' : '✗'} · random → <b style="color:var(--ctrl)">${VALS[ctrlPick]}</b> ${ctrlPick === b.vi ? '✓' : '<span style="color:var(--red)">✗ wrong</span>'}`;
+    } catch (e) {
+      doQuerySynthetic(i);  // server hiccup: degrade to the offline illustration
+    }
+  }
+
+  function doQuerySynthetic(i) {
     const b = bindings[i];
     // build confidence vectors over VALS
     const bio = VALS.map((_, k) => {
@@ -280,6 +316,12 @@
     initTabs();
     mqarBars();
     newBindings();
+    // upgrade the hint to "live" once the GPU socket connects (may be after load)
+    if (window.Live) Live.onState(state => {
+      const st = document.getElementById('mqar-status');
+      if (st && state === 'open' && Live.has('mqar') && queried < 0)
+        st.innerHTML = '<span class="live-dot"></span>Live GPU inference &middot; click a key to query it.';
+    });
     document.getElementById('mqar-shuffle').addEventListener('click', newBindings);
     initReversal();
     initRetention();

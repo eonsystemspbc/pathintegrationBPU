@@ -8,7 +8,7 @@
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let W, H, DPR, nodes = [], edges = [], pulses = [], raf, mouse = { x: -1e4, y: -1e4 };
 
-  const PAL = ['#f4b13c', '#4b9bff', '#2fd4c6', '#9a8cf0'];
+  const PAL = ['#D4A0B0', '#7B8FE8', '#40E0D0', '#C9B8E8'];
 
   function resize() {
     DPR = Math.min(2, window.devicePixelRatio || 1);
