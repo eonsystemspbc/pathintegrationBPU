@@ -5,11 +5,11 @@ Notebook: [`../labnotebook/experiment_06_mb_evidence_integration.md`](../labnote
 ## The question
 
 Every connectome-vs-control result so far (Exp 1–5) used tasks where the answer is available at a
-single moment — MQAR key→value lookup, Exp-5 single-shot odor→valence binding. **Does connectome
-topology help when the task instead REQUIRES temporal integration** — reading each odor's latent
-category out of the *running mean* of several noisy scalar evidence samples spread across an
-interleaved stream? If real recurrent wiring ever earns its keep, an integration task — where the
-recurrence must accumulate evidence over time — is a natural place to look.
+single moment — MQAR key→value lookup, Exp-5 single-shot odor→valence binding. **Does the connectome
+advantage generalize beyond those single-moment tasks to one that REQUIRES temporal integration** —
+reading each odor's latent 3-way category out of the *running mean* of several noisy scalar evidence
+samples spread across an interleaved stream? Same generic-I/O + degree-matched regime, only the task
+class changes.
 
 ## Design
 
@@ -108,6 +108,11 @@ regenerates `figures/`.
 
 ## Status
 
-**Seeded 2026-07-08.** Code + smoke complete; **pre-flight required before spend** (band check on
-both substrates + verifier ablations + lr micro-sweep). **Results are a placeholder — the 80-run
-fleet has NOT been launched.**
+**Concluded 2026-07-09.** The connectome beats degree-matched controls on **both** substrates —
+core **0.827** vs 0.725, full **0.838** vs 0.739 (complete separation: the connectome's worst seed
+tops every control graph; **+4.31 / +5.72 control-SD**; perm-p at the 1/21 floor; chance 0.333). **The
+Exp-1/2 advantage generalizes to the temporal-integration task class.** Scope: generality *across task
+classes*, not "better at integration" (the same regime already wins on non-integration MQAR); n=1
+biological graph. Two independent adversarial reviews found no flaw; matching held per-run (ρ=0.9500
+all 80). Full write-up, figures, and caveats in the
+[notebook entry](../labnotebook/experiment_06_mb_evidence_integration.md).
