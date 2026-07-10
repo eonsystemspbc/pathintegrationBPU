@@ -4,18 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Connectome-Inspired AI Models - interactive demos</title>
-<meta name="description" content="Fruit-fly brain wiring as an AI prior: connectome-derived recurrent networks beat matched-random controls, but only on the tasks each brain region evolved to solve. Play with the live demos.">
-<link rel="canonical" href="https://18.234.229.32.nip.io/">
+<meta name="description" content="Fruit-fly brain wiring as an AI prior: connectome-derived recurrent networks beat matched-random controls, but most clearly on the tasks each brain region evolved to solve. Play with the live demos.">
+<link rel="canonical" href="https://ai.eon.systems/">
 <!-- social / Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="Connectome-Inspired AI Models - interactive demos">
-<meta property="og:description" content="A fruit-fly brain's wiring, used as an AI prior. It beats a size-matched random network only at what that brain region evolved to do. Play with the live demos.">
-<meta property="og:image" content="https://18.234.229.32.nip.io/assets/og.png">
-<meta property="og:url" content="https://18.234.229.32.nip.io/">
+<meta property="og:description" content="A fruit-fly brain's wiring, used as an AI prior. It beats a size-matched random network most clearly on the tasks that brain region evolved to do. Play with the live demos.">
+<meta property="og:image" content="https://ai.eon.systems/assets/og.png">
+<meta property="og:url" content="https://ai.eon.systems/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Connectome-Inspired AI Models - interactive demos">
-<meta name="twitter:description" content="A fruit-fly brain's wiring as an AI prior - it wins only at the job it evolved for. Live, playable demos.">
-<meta name="twitter:image" content="https://18.234.229.32.nip.io/assets/og.png">
+<meta name="twitter:description" content="A fruit-fly brain's wiring as an AI prior - it wins most clearly on the jobs it evolved for. Live, playable demos.">
+<meta name="twitter:image" content="https://ai.eon.systems/assets/og.png">
 <meta name="theme-color" content="#0F0D15">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,7 +45,7 @@
       <a href="#mushroom-body">Memory</a>
       <a href="#optic-lobe">Vision</a>
       <a href="#matrix">The matrix</a>
-      <a href="#emergence">Emergence</a>
+      <a href="#continual">Continual learning</a>
       <a href="#honesty">Honest science</a>
       <a href="#scale">Scale</a>
       <a class="nav-cta" href="https://github.com/eonsystemspbc/pathintegrationBPU" target="_blank" rel="noopener">GitHub ↗</a>
@@ -62,7 +62,7 @@
   <div class="wrap">
     <div class="hero-badge"><span class="dot"></span> Live interactive demos · <b>fly&nbsp;connectome → neural&nbsp;net</b></div>
     <h1>Breathing life into AI with the <span class="grad">brain's own wiring</span></h1>
-    <p class="hero-sub">Take a slice of real wiring from a fruit fly's brain - mapped connection by connection - and use it as the scaffold for a neural network. It beats a size-matched random network <em>only</em> at what that brain region evolved to do. Pick a region, pick a task, and watch it happen.</p>
+    <p class="hero-sub">Take a slice of real wiring from a fruit fly's brain - mapped connection by connection - and use it as the scaffold for a neural network. It beats a size-matched random network most clearly on the tasks that brain region evolved to do. Pick a region, pick a task, and watch it happen.</p>
     <div class="hero-cta">
       <a class="btn btn-primary" href="#matrix">▶ Play with the demos</a>
       <a class="btn btn-ghost" href="#idea">How it works</a>
@@ -83,18 +83,18 @@
     <div class="reveal">
       <span class="section-tag">The core idea</span>
       <h2>A connectome is an <span class="hl-bio">inductive bias</span> you can measure</h2>
-      <p class="lead">A fly's brain solves real problems with a few thousand neurons. We turn its wiring diagrams into recurrent networks - one neuron per unit, one synapse per allowed connection - and test whether the <em>specific</em> biological wiring beats a <em>random</em> wiring of the same size, in the same model, on the same task.</p>
+      <p class="lead">A fly's brain solves real problems with a few thousand neurons. We turn its wiring diagrams into recurrent networks - one unit per neuron, one weighted edge per connection (weighted by synapse count) - and test whether the <em>specific</em> biological wiring beats a <em>random</em> wiring of the same size, in the same model, on the same task.</p>
     </div>
 
     <div class="grid grid-2 reveal" style="margin-top:44px; align-items:center">
       <div class="card">
         <h3 style="margin-bottom:18px">From wiring diagram to network</h3>
         <div id="idea-diagram" class="plot"></div>
-        <p style="font-size:.9rem;color:var(--text-dim);margin-top:16px;margin-bottom:0">Each biological neuron becomes one recurrent unit; each directed synapse becomes an allowed connection in <span class="mono">W<sub>rec</sub></span>. The state evolves as a recurrent update - the connectome is the substrate; only the input, output and (sometimes) the edge weights are trained.</p>
+        <p style="font-size:.9rem;color:var(--text-dim);margin-top:16px;margin-bottom:0">Each biological neuron becomes one recurrent unit; each connection becomes a weighted edge in <span class="mono">W<sub>rec</sub></span>, its weight set by the number of synapses between the two neurons. The state evolves as a recurrent update - the connectome is the substrate; only the input, output and (sometimes) the edge weights are trained.</p>
       </div>
       <div>
         <div class="card" style="margin-bottom:18px">
-          <h4 style="margin-bottom:10px">The one control everyone needs</h4>
+          <h4 style="margin-bottom:10px">The control that isolates the wiring</h4>
           <p style="font-size:.92rem;color:var(--text-dim);margin-bottom:14px">Every connectome result is matched against a network with the <strong>same neurons, same edge count, same optimizer, same everything</strong> - only the wiring is randomized. That isolates the biology from recurrence, density and parameter count.</p>
           <div class="pillrow">
             <span class="pill">random <b>sparse</b></span>
@@ -103,7 +103,7 @@
             <span class="pill">no-recurrence</span>
           </div>
         </div>
-        <div class="callout"><b>The result in one line.</b> The connectome wins on the task it evolved for, and ties - or slightly trails - on every other. That split says the wiring carries task-specific computation, not a lucky initialization.</div>
+        <div class="callout"><b>The result in one line.</b> The connectome wins on the task it evolved for; on the other tasks it shows no consistent edge over random. That split says the wiring carries task-specific computation, not a lucky initialization.</div>
       </div>
     </div>
 
@@ -181,7 +181,7 @@
     <div class="grid grid-2 reveal" style="margin-top:34px">
       <div>
         <p style="color:var(--text-dim)">We froze the connectome's recurrent circuit and trained only its input and output, so any advantage comes from the wiring. On path integration - the task this circuit evolved for - the connectome tracked heading to about <span class="hl-bio">1.09°</span> and beat every degree-matched control, with <strong>all six rewirings worse and no overlap</strong>. Keeping each neuron's partner count but shuffling which neurons connect removes the gain. The advantage is in the <strong>topology</strong>.</p>
-        <div class="callout" style="margin-top:16px">A ring attractor is a compact, stable way to hold and update a continuous value. The structure survives freezing, so it can drop into a larger model as a fixed prior - a route toward <strong>drift-free dead-reckoning</strong> for drones and robots without GPS.</div>
+        <div class="callout" style="margin-top:16px">The fly's central complex is a ring attractor - a compact, stable way to hold and update a continuous variable like heading. It's the wiring we seed the network from, though we haven't yet shown the model relies on the attractor itself. As a structural prior it points toward <strong>drift-free dead-reckoning</strong> for drones and robots without GPS.</div>
       </div>
       <div>
         <h4 style="font-size:1rem;margin-bottom:6px">Heading error vs sequence length <span class="mono" style="color:var(--text-mute);font-size:.8rem">(rad, lower = better)</span></h4>
@@ -202,7 +202,7 @@
   <div class="wrap">
     <div class="reveal">
       <span class="section-tag"><span class="swatch" style="background:var(--bio)"></span> Demo 02 · Mushroom body</span>
-      <h2>A memory wired like a fly - <span class="hl-bio">near attention, at a fraction of the machinery</span></h2>
+      <h2>A memory wired like a fly - <span class="hl-bio">near the attention ceiling on recall</span></h2>
       <p class="lead">The mushroom body learns "this smell meant food, that one meant a shock." Feed the network stimulus→value pairs, then quiz it. A network wired like a real fly recalls faster and forgets old memories more slowly than a same-sized random network.</p>
       <div class="badge-row"><span class="sim-badge live-badge" title="Every query runs the trained mushroom-body connectome and a size-matched random control live on the GPU; the recall bars are the models' real softmax output. The benchmark bars, learning-speed epochs, and retention curve are logged data.">live GPU inference</span><span class="sim-badge data-badge">real benchmarks + curves</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/mqar_associative_recall" target="_blank" rel="noopener">see the data</a></div>
     </div>
@@ -365,7 +365,7 @@
     <div class="reveal">
       <span class="section-tag">The whole thesis in one grid</span>
       <h2>Pick a region, pick a task - <span class="hl-bio">watch the wiring win or fail</span></h2>
-      <p class="lead">Three brain regions × five tasks. Each cell is the connectome's advantage over a size-matched random network. <strong>Click any cell</strong> to run that head-to-head: the diagonal is green where a region meets its native task, and flat or red elsewhere - a double dissociation.</p>
+      <p class="lead">Three brain regions × five tasks. Each cell is the connectome's advantage over a size-matched random network. <strong>Click any cell</strong> to run that head-to-head: the diagonal is green where a region meets its native task, and flat or negative elsewhere - each region does best on the job it evolved for.</p>
       <div class="badge-row"><span class="sim-badge data-badge">real logged advantages</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/tree/main/docs/results/region_task_matrix" target="_blank" rel="noopener">see the data</a></div>
     </div>
 
@@ -386,8 +386,44 @@
   </div>
 </section>
 
-<!-- ===================== EMERGENCE ===================== -->
-<section id="emergence">
+<!-- ===================== CONTINUAL LEARNING (energy minimization) ===================== -->
+<section id="continual">
+  <div class="wrap">
+    <div class="reveal">
+      <span class="section-tag">A second route to structure</span>
+      <h2>Energy minimization grows <span class="hl-bio">connectome-like structure</span></h2>
+      <p class="lead">There is a second route to the same place. Train a transformer to minimize an energy objective, and its internal wiring self-organizes into connectome-like modules. Across a continual-learning curriculum that induces catastrophic forgetting, it makes about a tenth the errors of a normal transformer.</p>
+      <div class="badge-row"><span class="sim-badge" title="Stylized conceptual schematics. Reported figures (~99% vs ~90% retention; 1 vs 10 errors per 100) are end-of-curriculum, single-seed results - illustrative pending multi-seed replication.">illustrative schematic · single-seed</span></div>
+    </div>
+
+    <div class="callout honest reveal" style="margin-top:22px;max-width:80ch">
+      <b>What's being compared.</b> These are results at the <em>end</em> of an operator-drift curriculum that induces catastrophic forgetting - not a fresh baseline on a stationary task. The "normal transformer" is the baseline measured after the full curriculum, where it has forgotten earlier skills. On the stationary (no-curriculum) task both approaches reach a comparable ceiling; the energy-minimization advantage is specifically about resisting forgetting, not a generic accuracy boost.
+    </div>
+
+    <div class="grid grid-3 reveal" style="margin-top:28px">
+      <div class="card">
+        <div id="cl-fig-1" class="plot"></div>
+        <h4 style="font-size:1rem;margin-top:16px">1 &middot; Energy minimization &rarr; organization</h4>
+        <p style="font-size:.9rem;color:var(--text-dim);margin-bottom:0">Descending an energy landscape drives the network toward brain-like modular structure; a normal network never matches it.</p>
+      </div>
+      <div class="card">
+        <div id="cl-fig-2" class="plot"></div>
+        <h4 style="font-size:1rem;margin-top:16px">2 &middot; Structure emerges</h4>
+        <p style="font-size:.9rem;color:var(--text-dim);margin-bottom:0">The energy-minimized model's connectivity matrix is structured like a biological connectome; the normal transformer's interactions stay unstructured.</p>
+      </div>
+      <div class="card">
+        <div id="cl-fig-3" class="plot"></div>
+        <h4 style="font-size:1rem;margin-top:16px">3 &middot; Tenfold fewer errors</h4>
+        <p style="font-size:.9rem;color:var(--text-dim);margin-bottom:0">On 100 problems at the end of the curriculum, the energy-minimized model makes about 1 error to the normal transformer's ~10.</p>
+      </div>
+    </div>
+
+    <p class="foot-note reveal" style="margin-top:18px;max-width:92ch">Note: these are stylized conceptual schematics. The reported figures (~99% vs ~90% retention; 1 vs 10 errors per 100) are end-of-curriculum continual-learning results from a single-seed run, and should be treated as illustrative pending multi-seed replication.</p>
+  </div>
+</section>
+
+<!-- ===================== EMERGENCE (moved off the main page for sparseness; hidden, easily restored) ===================== -->
+<section id="emergence" hidden>
   <div class="wrap">
     <div class="reveal">
       <span class="section-tag">A surprise from training</span>
@@ -425,8 +461,8 @@
     <div class="reveal">
       <span class="section-tag">Where the prior does <em>not</em> help</span>
       <h2>The control the earlier claim <span class="hl-bio">left out</span></h2>
-      <p class="lead">Earlier work reported that wiring an AI's hidden layer like a fly's brain classifies images better. We reproduced it, added the matched-random control it left out, and the advantage on generic tasks disappeared.</p>
-      <div class="badge-row"><span class="sim-badge data-badge">real reproduction numbers</span><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/blob/main/docs/results/bpu_reproduction_gap_analysis.md" target="_blank" rel="noopener">see the analysis</a></div>
+      <p class="lead"><a href="https://arxiv.org/abs/2507.10951" target="_blank" rel="noopener">Earlier work</a> reported that wiring an AI's hidden layer like a fly's brain classifies images better. We reproduced it, added the matched-random control it left out, and the advantage on generic tasks disappeared.</p>
+      <div class="badge-row"><span class="sim-badge data-badge">real reproduction numbers</span><a class="deeplink" href="https://arxiv.org/abs/2507.10951" target="_blank" rel="noopener">the BPU paper</a><a class="deeplink" href="https://github.com/eonsystemspbc/pathintegrationBPU/blob/main/docs/results/bpu_reproduction_gap_analysis.md" target="_blank" rel="noopener">see the analysis</a></div>
     </div>
 
     <div class="grid grid-2 reveal" style="margin-top:34px;align-items:center">
@@ -478,7 +514,7 @@
     <div class="reveal">
       <span class="section-tag">Where this goes</span>
       <h2>Reuse the circuits <span class="hl-bio">evolution already tuned</span></h2>
-      <p class="lead">The fly is the smallest complete brain we can map. As wiring diagrams sharpen - mouse and monkey now, human on the horizon - the same circuits reappear at larger scale, each a candidate prior for the job it evolved for. Drag through the scale.</p>
+      <p class="lead">The fly is the smallest complete brain we've mapped so far. As wiring diagrams sharpen - mouse and monkey now, human on the horizon - the same circuits reappear at larger scale, each a candidate prior for the job it evolved for. Drag through the scale.</p>
     </div>
 
     <div class="reveal" style="margin-top:20px">
@@ -557,5 +593,6 @@
 <script src="js/mb.js"></script>
 <script src="js/ol.js"></script>
 <script src="js/matrix.js"></script>
+<script src="js/cl.js"></script>
 </body>
 </html>

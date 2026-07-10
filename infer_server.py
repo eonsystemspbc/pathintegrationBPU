@@ -73,15 +73,18 @@ def _sparse_stepper(ckpt, N):
     return {"W_rec": W_rec, "W_in": sd["W_in"].to(DEVICE), "b_in": sd["b_in"].to(DEVICE),
             "W_out": sd["W_out"].to(DEVICE), "b_out": sd["b_out"].to(DEVICE),
             "sensory": sd["sensory_indices"].to(DEVICE), "output": sd["output_indices"].to(DEVICE)}
-CX_DIR = "outputs/cx_demo_models_frozen"   # frozen reservoir: advantage is the wiring itself
+# Connectome: trainable model (recurrent weights learned -> genuinely path-integrates, bump
+# tracks heading). Random: frozen reservoir. Same task params (K/N/bins/scale/clip) in both dirs.
+CX_DIR_CONN = "outputs/cx_demo_models"          # trainable connectome
+CX_DIR_RAND = "outputs/cx_demo_models_frozen"   # frozen random control
 try:
-    _cx_meta = json.load(open(ROOT / CX_DIR / "meta.json"))
+    _cx_meta = json.load(open(ROOT / CX_DIR_RAND / "meta.json"))
     CX_K, CX_N, CX_BINS = _cx_meta["K"], _cx_meta["N"], _cx_meta["heading_bins"]
     CX_HDS, CX_CLIP = _cx_meta["home_distance_scale"], _cx_meta["state_clip"]
-    CX_CONN = _sparse_stepper(ROOT / CX_DIR / "model_cx_bpu_seed0.pt", CX_N)
-    CX_RAND = _sparse_stepper(ROOT / CX_DIR / "model_random_seed0.pt", CX_N)
+    CX_CONN = _sparse_stepper(ROOT / CX_DIR_CONN / "model_cx_bpu_seed0.pt", CX_N)
+    CX_RAND = _sparse_stepper(ROOT / CX_DIR_RAND / "model_random_seed0.pt", CX_N)
     MODELS["cx"] = True
-    log(f"CX loaded: N={CX_N} K={CX_K} bins={CX_BINS}")
+    log(f"CX loaded: N={CX_N} K={CX_K} bins={CX_BINS} (conn=trainable, rand=frozen)")
 except Exception as e:
     log("CX load FAILED:", e)
 
