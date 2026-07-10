@@ -15,38 +15,33 @@ README [`README.md`](../experiment_06_mb_evidence_integration/README.md).
 
 ## Purpose
 
-Every connectome-vs-control result to date (Exp 1–5) used tasks whose answer is available at a
-**single moment**: MQAR key→value lookup (Exp 1–4), Exp-5 single-shot odor→valence binding (each
-odor shown once with its reinforcement). None of them require the recurrence to **accumulate
-evidence over time**. Experiment 6 asks the question on a task that does: read each odor's latent
-category out of the **running mean** of several noisy scalar evidence samples spread across an
-interleaved stream. If real recurrent wiring ever helps a trainable substrate, temporal integration
-— where the recurrence must carry and combine information across many steps — is a natural place to
-look, and it is a regime none of the earlier tasks probed.
-
-This keeps the clean, well-powered comparison of Exp-5 subrun-01 (generic all-neuron I/O +
-degree-matched controls + genuine training-seed replicates, the Exp-1/2 regime where the connectome
-*beat* controls on MQAR) and swaps **only the task** from single-shot binding to temporal
-integration.
+Every connectome-vs-control result so far (Exp 1–5) used tasks whose answer sits at a **single
+moment**: MQAR key→value lookup (Exp 1–4) and Exp-5 single-shot odor→valence binding. Experiment 6
+tests whether the connectome advantage from that regime **generalizes to a structurally different
+task** — one that requires the recurrence to **integrate evidence over time**: read each odor's latent
+3-way category out of the **running mean** of several noisy scalar samples spread across an interleaved
+stream. It keeps the well-powered Exp-5-subrun-01 comparison (generic all-neuron I/O + degree-matched
+controls + genuine training-seed replicates — the Exp-1/2 regime where the connectome beat controls on
+MQAR) and swaps **only the task**, single-shot binding → temporal integration.
 
 ## Hypothesis + falsification
 
-**Hypothesis:** if connectome topology helps a trainable recurrent substrate anywhere, it should
-help most on a task that requires temporal integration, because the structured recurrence provides
-an accumulation prior that random degree-matched wiring lacks. Under generic all-neuron I/O with all
-operator confounds matched (params, degree/weight multiset, ρ=0.95, **and** activation-RMS), the
-`generic_connectome` pooled 3-way `test_acc` should exceed the `generic_degree` control distribution
-(permutation-rank at or near the 1/21 floor, with a positive effect size in control-SD units), on at
-least one substrate.
+**Hypothesis:** the connectome advantage generalizes beyond single-moment tasks. Under generic
+all-neuron I/O with all operator confounds matched (params, degree/weight multiset, ρ=0.95,
+activation-RMS), `generic_connectome` pooled 3-way `test_acc` exceeds the `generic_degree` control
+distribution on the temporal-integration task too — permutation-rank at/near the 1/21 floor, positive
+effect in control-SD units, on at least one substrate.
 
-**Falsification (the honest null this design is built to expose):** if `generic_connectome` **ties**
-the degree-matched controls (connectome mean inside the control p05–p95 band) once the operator gain
-is matched, then topology does not help temporal integration either — extending the Exp-4/5 "no
-wiring advantage" story to a third task family and further localizing the Exp-1/2 MQAR advantage to
-something task-specific rather than a general property of the wiring. A connectome **loss** (as in
-Exp-5's biological-port backprop) would be the strongest anti-topology result yet, and the
-activation-RMS match is included precisely so a loss cannot be dismissed as an unmatched-gain
-artifact.
+**Falsification:** a **tie** (connectome mean inside the control p05–p95 band) once the gain is matched
+shows the advantage does **not** carry to this task class, localizing the Exp-1/2 MQAR result to
+something task-specific. A connectome **loss** (as in Exp-5's biological-port backprop) would be a
+stronger anti-topology result; the activation-RMS match is included so neither a tie nor a loss can be
+dismissed as an unmatched-gain artifact.
+
+**Scope:** this asks whether the advantage *generalizes across task classes*, not whether the connectome
+is *better at integration specifically* — the same regime already wins on non-integration MQAR, and there
+is no non-integration control here to isolate an integration channel. n=1 biological graph → "this
+connectome," not "topology as a class."
 
 ## Methods
 
