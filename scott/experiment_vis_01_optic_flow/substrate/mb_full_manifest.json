@@ -1,0 +1,18 @@
+{
+  "substrate": "mb_full",
+  "source": "flywire_mushroom_body (FlyWire release 783)",
+  "N": 14025,
+  "edges": 574660,
+  "orientation": "M[post_index, pre_index]  (rec = M @ h flows pre->post)",
+  "signed": false,
+  "inhibitory_edge_fraction": 0.0,
+  "raw_spectral_radius_signed": 0.95,
+  "rho_target_at_runtime": 0.95,
+  "weight": "summed syn_count, signed per presynaptic dominant fast NT (mb-* build)",
+  "provenance": {
+    "signed": false,
+    "adjacency": "adjacency_unsigned.npz",
+    "node_set": "all 14,025 MB-neuropil-anchored neurons (verbatim)"
+  },
+  "pools": {}
+}

@@ -1,0 +1,10 @@
+# built substrate data artifacts (rebuildable via build_ol_substrate.py; staged to the fleet via
+# SUBSTRATE_FILES). The small manifest.json + celltype_pools.npz ARE tracked (the record).
+substrate/ol_substrate.npz
+substrate/root_ids.npy
+# run outputs + smoke + temp probes (also covered by scott/.gitignore)
+outputs/
+_smoke/
+__pycache__/
+*.pyc
+_probe_tmp.py

@@ -1,0 +1,41 @@
+{
+  "substrate": "ol_left",
+  "release": "783",
+  "left_optic_rois": [
+    "LA_L",
+    "ME_L",
+    "LO_L",
+    "LOP_L",
+    "AME_L"
+  ],
+  "N": 48894,
+  "edges": 4205392,
+  "orientation": "M[post_index, pre_index]  (rec = M @ h flows pre->post)",
+  "signed": true,
+  "sign_coverage_neurons": 0.9937,
+  "inhibitory_edge_fraction": 0.438,
+  "raw_spectral_radius_signed": 1360.054,
+  "rho_target_at_runtime": 0.95,
+  "weight": "summed syn_count, signed by presynaptic dominant fast NT (ACh +, GABA/Glut -)",
+  "celltype_join": {
+    "status": "unavailable",
+    "note": "no cell-type TSV present/downloadable; substrate built by ROI only, labels recoverable later via a root_id join (0% labelled now)."
+  },
+  "pools": {
+    "T4": {
+      "n": 0
+    },
+    "T5": {
+      "n": 0
+    },
+    "photoreceptor": {
+      "n": 0
+    },
+    "HS": {
+      "n": 0
+    },
+    "VS": {
+      "n": 0
+    }
+  }
+}

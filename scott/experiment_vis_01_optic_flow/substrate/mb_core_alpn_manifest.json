@@ -1,0 +1,20 @@
+{
+  "substrate": "mb_core_alpn",
+  "source": "flywire_mushroom_body (FlyWire release 783)",
+  "N": 6014,
+  "edges": 471292,
+  "orientation": "M[post_index, pre_index]  (rec = M @ h flows pre->post)",
+  "signed": false,
+  "inhibitory_edge_fraction": 0.0,
+  "raw_spectral_radius_signed": 0.938,
+  "rho_target_at_runtime": 0.95,
+  "weight": "summed syn_count, signed per presynaptic dominant fast NT (mb-* build)",
+  "provenance": {
+    "signed": false,
+    "adjacency": "adjacency_unsigned.npz",
+    "node_set": "MB core (KC/MBON/DAN/MBIN) + ALPN = core_alpn__sub_rows",
+    "port_indices_source": "scott/experiment_04_mb_biological_io/substrate/port_indices.npz",
+    "n_sub_rows": 6014
+  },
+  "pools": {}
+}
