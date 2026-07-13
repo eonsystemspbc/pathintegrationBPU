@@ -10,12 +10,12 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Connectome-Inspired AI Models - interactive demos">
 <meta property="og:description" content="A fruit-fly brain's wiring, used as an AI prior. It beats a size-matched random network most clearly on the tasks that brain region evolved to do. Play with the live demos.">
-<meta property="og:image" content="https://ai.eon.systems/assets/og.png">
+<meta property="og:image" content="https://ai.eon.systems/assets/og.png?v=2">
 <meta property="og:url" content="https://ai.eon.systems/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Connectome-Inspired AI Models - interactive demos">
 <meta name="twitter:description" content="A fruit-fly brain's wiring as an AI prior - it wins most clearly on the jobs it evolved for. Live, playable demos.">
-<meta name="twitter:image" content="https://ai.eon.systems/assets/og.png">
+<meta name="twitter:image" content="https://ai.eon.systems/assets/og.png?v=2">
 <meta name="theme-color" content="#0F0D15">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -468,7 +468,7 @@
     <div class="grid grid-2 reveal" style="margin-top:34px;align-items:center">
       <div>
         <h4 style="font-size:1rem">Add the matched-random control → the edge vanishes</h4>
-        <p style="font-size:.92rem;color:var(--text-dim)">The original comparison changed two things at once - connectome-vs-random <em>and</em> recurrent-vs-feedforward - so its edge on CIFAR-10 couldn't be credited to the wiring alone. Put a random matrix in the <em>exact same architecture</em> and the connectome's advantage on generic image classification evaporates: a matched random-sparse network in fact <em>edges it</em> on both MNIST (0.967 vs 0.965) and CIFAR-10 (0.491 vs 0.468), and a dense trainable matrix beats them all. MNIST still reproduces cleanly (~97%); the underlying work is real. The lesson: a connectome helps only when the task matches the computation its circuitry evolved to perform.</p>
+        <p style="font-size:.92rem;color:var(--text-dim)">The original result changed two things at once - connectome-vs-random <em>and</em> recurrent-vs-feedforward - so its edge couldn't be pinned on the wiring. Put a random matrix in the <em>same architecture</em> and the advantage on generic image classification is gone: matched random-sparse actually <em>edges</em> the connectome on MNIST (0.967 vs 0.965) and CIFAR-10 (0.491 vs 0.468). A connectome helps only when the task matches the computation its circuitry evolved for.</p>
         <div class="pillrow" style="margin-top:14px">
           <span class="pill">MNIST: connectome <b>0.965</b> vs random <b>0.967</b></span>
           <span class="pill">CIFAR-10: connectome <b>0.468</b> vs random <b>0.491</b></span>
@@ -479,16 +479,6 @@
         <h4 style="font-size:1rem;margin-bottom:6px">Same architecture, connectome vs random</h4>
         <div id="bpu-bars"></div>
         <figcaption>Real reproduction numbers. On generic image classification the connectome does not win - random sparse matches or edges it, and dense trainable leads. The special ingredient lives in the architecture around the matrix, not the fly's specific wiring.</figcaption>
-      </div>
-    </div>
-
-    <div class="card reveal" style="margin-top:30px">
-      <h4 style="font-size:1rem;margin-bottom:14px">The control hierarchy - how we know it's really the topology</h4>
-      <div class="grid grid-4" style="gap:16px">
-        <div><div class="mono" style="color:var(--bio);font-size:1.2rem">connectome ≈ weight-shuffle</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Keep the exact wiring, permute the weights, and the win survives → the <b>graph</b> carries it, not the synaptic strengths.</p></div>
-        <div><div class="mono" style="color:var(--ctrl);font-size:1.2rem">≫ random &amp; degree</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Break the wiring - even keeping each neuron's degree - and it falls 9-16 points on MQAR.</p></div>
-        <div><div class="mono" style="color:var(--red);font-size:1.2rem">no-recurrence → chance</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Zero the recurrent path and it collapses (~0.12 on seq-MNIST), proving the recurrence is load-bearing.</p></div>
-        <div><div class="mono" style="color:var(--blue);font-size:1.2rem">frozen vs trainable</div><p style="font-size:.85rem;color:var(--text-dim);margin:6px 0 0">Trainable helps the CX (tune one attractor); frozen helps MB continual (protect memories). The verdict tracks the task, not the region.</p></div>
       </div>
     </div>
 
@@ -548,6 +538,7 @@
     <div class="card glow reveal center" style="margin-top:40px;padding:44px">
       <p class="pull" style="margin:0 auto"><span class="grad">Fidelity is a third axis of AI progress</span>, alongside scale and data.</p>
       <p style="color:var(--text-dim);max-width:70ch;margin:22px auto 0">AI has scaled along two axes, model size and data. Wiring fidelity is a third: matched to the task a region evolved for, the connectome holds a measured, control-verified edge a size- and degree-matched random network never reaches. As reconstructions improve from fly to mouse to primate, each becomes a pretrained prior aimed at where large models are weakest - on-device robot control, low-power navigation, event-camera vision, and learning from thin data without forgetting.</p>
+      <p style="color:var(--text-dim);max-width:70ch;margin:18px auto 0">That reframes what a connectome is worth. At the margin, scale and data are getting expensive - and they buy the least on the problems the physical world runs on: sample-efficient control, learning that doesn't forget, useful behaviour on a few watts. A validated, brain-derived prior is a different kind of asset - mapped once, inherited by many systems - and the cost to reconstruct a mouse or human circuit is large but finite, and falling every year. If the small, control-verified edge we measure in the fly holds as fidelity climbs, then collecting these circuits is a rational bet: paying once for a reusable prior aimed at the parts of intelligence that more scale hasn't solved.</p>
     </div>
   </div>
 </section>
