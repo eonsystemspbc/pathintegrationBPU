@@ -156,19 +156,49 @@ h_{t+1} = (1 − α) · h_t + α · tanh( (M_AL ⊙ W) h_t + B_ORN · A · x_t )
 
 ## Controls (`build_operators.py`, `src/connectome.py`), all rescaled to ρ = 0.95
 
-| arm | matches the connectome's… | kind | isolates |
-|---|---|---|---|
-| **connectome** | — | sparse | — |
-| degree | in/out degree sequence (degree-preserving rewire) | sparse, param-matched | wiring beyond degree |
-| random | edge count + weight multiset (Erdős–Rényi) | sparse, param-matched | wiring beyond sparsity/weights |
-| spectrum | eigenvalue spectrum, random eigenvectors | dense, ρ-matched | dynamics vs directions |
-| dense | dense Gaussian init | dense, ρ-matched | pure density / trainable-init effect |
+A control graph is a **null model**: it strips away one property of the connectome while holding
+others fixed, so a connectome-vs-control gap is attributable to the property that was destroyed.
+Every arm shares the **same biological port index sets** — the adapter injects into the same input
+positions and the readout reads the same output positions — so *only the recurrent wiring differs*.
+The connectome is one graph over the 6 training seeds (pseudo-replication); each control is an
+independent random graph per seed (6 graphs).
 
-Every arm uses the **same biological port index sets** — only the recurrent wiring differs. The
-connectome is one graph evaluated over the training seeds (pseudo-replication); each control is an
-independent graph per seed. Sparse arms are **trainable-parameter-matched** (258,882 edges); dense
-arms are the density/dynamics reference for *"is the sparse connectome structure special, or would
-any dense init do?"*.
+| arm | construction | preserves | randomizes | node identity | recurrent params |
+|---|---|---|---|---|---|
+| **connectome** | the real AL graph, signed, ρ-scaled | everything | — | biological | 258,882 (sparse) |
+| **degree** | Maslov–Sneppen degree-preserving double-edge swap (10× |E| swaps) | in- **and** out-degree of every node; edge count; weight multiset | which specific pairs connect | **preserved** (ports = same neurons) | 258,882 (sparse) |
+| **random** | Erdős–Rényi: place |E| edges uniformly at random, permute the connectome's weights onto them | edge count; weight multiset; global density | degree sequence **and** wiring | scrambled (ports = same *positions*) | 258,882 (sparse) |
+| **spectrum** | real Schur `A = ZTZ`ᵀ, then `VTV`ᵀ with `V` Haar-random orthogonal | the **exact eigenvalue spectrum** (dynamics) | the eigenvectors (wiring directions) | scrambled | 12,242,728 (dense) |
+| **dense** | full N×N Gaussian `𝒩(0, 1/N)`, ρ-scaled | only density + spectral radius | everything else | scrambled | 12,242,976 (dense) |
+
+**What each isolates.**
+- **degree** — the hardest, most-matched null. Same degree sequence *and* node identity, so its I/O
+  ports are literally the same biological neurons; only the pattern of who-wires-to-whom is
+  scrambled. A connectome > degree gap is wiring **specificity beyond the degree distribution** — the
+  cleanest evidence that the *particular* AL circuit matters. (This is the load-bearing comparison.)
+- **random** — destroys the degree sequence too; a connectome > random gap adds the contribution of
+  the hub/degree structure on top of specificity.
+- **spectrum** — matches the connectome's *dynamics* (eigenvalues → same intrinsic timescales /
+  stability) but randomizes the directions. It answers *"is the advantage just the spectrum?"* — no:
+  it collapses (below).
+- **dense** — the density / dense-trainable-init confound. It has **~47× more trainable recurrent
+  weights** than the sparse arms, so if raw capacity or "any dense init" were enough it should win;
+  instead it fails to even fit the training data (see training curves). This isolates *sparse
+  connectome structure* from *dense capacity*.
+
+**Conditioning.** All five are rescaled to spectral radius ρ = 0.95, so no arm wins by having a
+hotter or colder recurrence — the comparison is about *structure*, not gain. The sparse arms are
+exactly **trainable-parameter-matched** (258,882 recurrence weights = the connectome's edge count);
+the dense arms are the deliberately over-parameterised density reference.
+
+![training](figures/fig_training_curves.png)
+
+*Optimisation-level view.* The sparse arms (connectome / degree / random) drive training BCE to
+~0.11 and validation BCE to ~0.2; the **dense and spectrum-matched arms cannot fit the data** (train
+BCE stalls at ~0.33, validation is high and unstable) — they collapse in the metrics because they
+never train through the narrow biological ports, not because of a capacity ceiling. Among the
+well-trained sparse arms, the connectome's edge is in low-concentration *generalisation* (the
+held-out recall metric), which the in-distribution validation loss does not fully expose.
 
 ## Protocol & compute
 
@@ -206,8 +236,9 @@ scripts; they are staged to the fleet via `SUBSTRATE_FILES`.
 
 `build_al_substrate.py` · `gas_task.py` · `build_operators.py` (inputs) — `bio_al_model.py`
 (model) — `common.py` (ports/metrics) — `run_experiment.py` + `run.py` (grid runner + fleet driver)
-— `run_drift.py` + `make_drift_figure.py` (external validation) — `make_figures.py` (figures) —
-`metrics_by_run.csv`, `analysis.json`, `drift_metrics.csv`, `figures/` (results).
+— `run_drift.py` + `make_drift_figure.py` (external validation) — `make_figures.py` +
+`make_overview_figure.py` (figures) — `metrics_by_run.csv`, `loss_history.csv` (per-epoch training
+curves), `analysis.json`, `drift_metrics.csv`, `figures/` (results).
 
 ---
 

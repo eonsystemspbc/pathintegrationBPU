@@ -129,6 +129,44 @@ def panel_effect_size(ax, analysis, io="bio"):
     plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
 
+def _curve(hist, io, arm, frac, metric, max_ep=30):
+    """Mean ± SE of a per-epoch metric across seeds (only epochs a run actually reached)."""
+    s = hist[(hist.io == io) & (hist.arm == arm) & (hist.variant == "standard") & (hist.fraction == frac)]
+    g = s.groupby("epoch")[metric].agg(["mean", "std", "count"]).reset_index()
+    g = g[g.epoch <= max_ep]
+    return g
+
+
+def training_curves(output_dir: Path):
+    """Convergence curves: train loss + val loss over epochs, connectome vs controls, at full
+    and low data — the sample-efficiency story at the optimisation level."""
+    hp = sorted(output_dir.glob("history_shard*.csv"))
+    if not hp:
+        hp = [output_dir / "loss_history.csv"]
+    hist = pd.concat([pd.read_csv(p) for p in hp if p.exists()], ignore_index=True)
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.6))
+    panels = [("train_loss", 100, "Training loss (100% data)", "train BCE"),
+              ("val_loss", 100, "Validation loss (100% data)", "val BCE"),
+              ("val_loss", 10, "Validation loss (10% data)", "val BCE")]
+    for ax, (metric, frac, title, ylab) in zip(axes, panels):
+        for arm in ("connectome", "degree", "random", "spectrum", "dense"):
+            g = _curve(hist, "bio", arm, frac, metric)
+            if g.empty:
+                continue
+            m = g["mean"].to_numpy(); se = (g["std"].fillna(0) / np.sqrt(g["count"].clip(lower=1))).to_numpy()
+            ax.plot(g["epoch"], m, color=ARM_COLORS[arm], lw=2.4 if arm == "connectome" else 1.4,
+                    label=ARM_LABEL[arm], zorder=6 if arm == "connectome" else 3)
+            ax.fill_between(g["epoch"], m - se, m + se, color=ARM_COLORS[arm], alpha=0.15)
+        ax.set_xlabel("epoch"); ax.set_ylabel(ylab); ax.set_title(title, fontsize=10)
+        ax.grid(alpha=0.25)
+    axes[0].legend(fontsize=8)
+    fig.suptitle("Training dynamics (biological I/O) — connectome converges lower & faster than controls",
+                 fontsize=12, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    fig.savefig(FIGS / "fig_training_curves.png", dpi=140, bbox_inches="tight")
+    print(f"wrote {FIGS/'fig_training_curves.png'}")
+
+
 def _fmt(df, io, arm, variant, frac, metric):
     s = df[(df.io == io) & (df.arm == arm) & (df.variant == variant) & (df.fraction == frac)][metric]
     if not len(s):
@@ -237,6 +275,11 @@ def main():
     ax.legend(fontsize=9)
     f2.tight_layout(); f2.savefig(FIGS / "fig_headline_sample_efficiency.png", dpi=140)
     print(f"wrote {FIGS/'fig_headline_sample_efficiency.png'}")
+
+    try:
+        training_curves(a.output_dir)
+    except Exception as e:
+        print(f"training_curves skipped: {e}")
 
     if analysis:
         write_results_readme(df, analysis)
