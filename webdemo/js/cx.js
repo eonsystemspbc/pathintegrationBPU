@@ -143,7 +143,7 @@
       if (hard) { bio = freshEst(0.012); ctrl = freshEst(0.030); errHist = []; }
       else { for (const e of [bio, ctrl]) { e.th = e.thTgt = e.homeAng = e.homeDist = e.ex = e.ey = 0; } }
       trail = [{ x: 0, y: 0 }];
-      pendingTh.length = 0; stepInBout = 0; boutGen++;
+      pendingTh.length = 0; stepInBout = 0; boutGen++; homeResult = null;
       if (window.Live && Live.isOpen() && Live.has('cx')) { resetting = true; Live.call({ op: 'cx_reset' }).catch(() => {}).finally(() => { resetting = false; }); }
     }
     function reset() {
@@ -155,14 +155,11 @@
 
     // model-unit -> pixel (home at arena centre)
     const toPx = (x, y) => ({ x: W / 2 + x * PXPU, y: H / 2 + y * PXPU });
-    // estimated origin (model frame) for an estimator, from its home vector or dead-reckoning
-    function estOrigin(e) {
-      if (live) {
-        const dir = e.th + e.homeAng;                       // allocentric bearing to home
-        return { x: fly.x + e.homeDist * Math.cos(dir), y: fly.y + e.homeDist * Math.sin(dir) };
-      }
-      return { x: fly.x - e.ex, y: fly.y - e.ey };
-    }
+    // Estimated home = current position minus the displacement the model *thinks* it travelled,
+    // integrated from its own per-step heading estimate. That makes the home marker accurate in
+    // distance too (as good as the heading tracking), instead of the raw home-distance readout,
+    // which saturates. Perfect tracking -> ex/ey == fly -> estimated home lands on the true nest.
+    function estOrigin(e) { return { x: fly.x - e.ex, y: fly.y - e.ey }; }
 
     // ---- one model step (20 Hz) ----
     // auto mode replays the training control distribution (alternating run/turn bouts)
@@ -201,6 +198,7 @@
     function tick() {
       if (!visible || resetting) return;   // hold the world still until cx_reset lands (keeps model in sync)
       if (homing) { homeStep(); return; }
+      if (homeResult) { if (performance.now() < homeResult.until) return; endResult(); return; }  // hold on the reveal
       if (mode === 'auto') {
         // end the excursion (re-anchor) at the bout limit or near the wall, so every
         // command stays in the trained run/turn distribution where the connectome leads
@@ -216,10 +214,10 @@
       trail.push({ x: fly.x, y: fly.y }); if (trail.length > 1200) trail.shift();
 
       if (live && !resetting) {
-        // responses arrive in order; remember the true heading for THIS step so the
-        // error pairs the model's estimate with the truth it actually integrated.
+        // responses arrive in order; remember the true heading AND velocity for THIS step so the
+        // error pairs the model's estimate with the truth, and the home vector integrates correctly.
         const g = boutGen;
-        pendingTh.push(fly.th);
+        pendingTh.push({ th: fly.th, v });
         Live.call({ op: 'cx_step', fwd: v, turn: omega }).then(r => applyStep(r, g)).catch(() => { if (g === boutGen) pendingTh.shift(); });
       } else if (!live) {
         // synthetic dead-reckoning fallback
@@ -233,14 +231,14 @@
     const pendingTh = [];
     function applyStep(r, g) {
       if (g !== boutGen || !pendingTh.length) return;   // stale response from a finished bout
-      const trueTh = pendingTh.shift();
-      apply1(bio, r.conn); apply1(ctrl, r.rand);
+      const { th: trueTh, v } = pendingTh.shift();
+      apply1(bio, r.conn, v); apply1(ctrl, r.rand, v);
       recordErr(trueTh);
     }
-    function apply1(e, o) {
+    function apply1(e, o, v) {
       e.thTgt = decodeHeading(o.bump);          // heading estimate (absolute, model frame)
-      e.homeAng = Math.atan2(o.home[1], o.home[0]);
-      e.homeDist = o.home[2];
+      // integrate that heading into an estimated displacement -> the home vector's distance
+      e.ex += Math.cos(e.thTgt) * v; e.ey += Math.sin(e.thTgt) * v;
     }
     function recordErr(trueTh) {
       bio.err = angDist(bio.thTgt, trueTh);
@@ -250,28 +248,35 @@
       errHist.push([bio.err, ctrl.err]); if (errHist.length > 240) errHist.shift();
     }
 
-    // ---- homing: walk to the connectome's estimated home ----
-    let homeInfo = null;
+    // ---- "try to walk home": steer to the connectome's estimated nest, then reveal the miss ----
+    let homeInfo = null, homeResult = null;
     function startHome() {
-      if (homing) return;
+      if (homing || homeResult) return;
+      if (Math.hypot(fly.x, fly.y) < 3) return;         // already essentially home
       homing = true; document.getElementById('cx-home').disabled = true;
-      const bg = estOrigin(bio), cg = estOrigin(ctrl), O = { x: 0, y: 0 };
-      homeInfo = { bg, cg, sx: fly.x, sy: fly.y, t: 0,
-        bioMiss: Math.hypot(bg.x, bg.y) * PXPU, ctrlMiss: Math.hypot(cg.x, cg.y) * PXPU };
+      const bg = estOrigin(bio), cg = estOrigin(ctrl);
+      homeInfo = { bg, cg, sx: fly.x, sy: fly.y, sth: fly.th, t: 0,
+        bioMiss: Math.hypot(bg.x, bg.y), ctrlMiss: Math.hypot(cg.x, cg.y) };   // model-unit distance to true nest
     }
     function homeStep() {
-      homeInfo.t = Math.min(1, homeInfo.t + 0.03);
-      fly.x = lerp(homeInfo.sx, homeInfo.bg.x, homeInfo.t);
-      fly.y = lerp(homeInfo.sy, homeInfo.bg.y, homeInfo.t);
+      homeInfo.t = Math.min(1, homeInfo.t + 0.022);
+      const t = homeInfo.t, e = t * t * (3 - 2 * t);    // smoothstep
       pfly = { x: fly.x, y: fly.y, th: fly.th };
-      if (homeInfo.t >= 1) {
+      fly.x = lerp(homeInfo.sx, homeInfo.bg.x, e);
+      fly.y = lerp(homeInfo.sy, homeInfo.bg.y, e);
+      const dir = Math.atan2(homeInfo.bg.y - homeInfo.sy, homeInfo.bg.x - homeInfo.sx);   // face the walk
+      fly.th = homeInfo.sth + wrapPi(dir - homeInfo.sth) * Math.min(1, t * 4);
+      if (t >= 1) {
         homing = false;
-        const scale = 0.06;
-        document.getElementById('cx-hint').innerHTML = `The <span class="hl-bio">connectome</span> missed home by <b style="color:var(--bio)">${(homeInfo.bioMiss * scale).toFixed(1)}</b> - the <span style="color:var(--ctrl)">random</span> reservoir by <b style="color:var(--ctrl)">${(homeInfo.ctrlMiss * scale).toFixed(1)}</b>. Less heading drift ⇒ a better fix on home.`;
+        homeResult = { bg: homeInfo.bg, cg: homeInfo.cg, bioMiss: homeInfo.bioMiss, ctrlMiss: homeInfo.ctrlMiss, until: performance.now() + 3600 };
+        const tighter = homeInfo.bioMiss <= homeInfo.ctrlMiss;
+        document.getElementById('cx-hint').innerHTML =
+          `The <span class="hl-bio">connectome's</span> guess of home was <b style="color:var(--bio)">${homeInfo.bioMiss.toFixed(1)}</b> off the true nest; the <span style="color:var(--ctrl)">random</span> reservoir's was <b style="color:var(--ctrl)">${homeInfo.ctrlMiss.toFixed(1)}</b> off.`
+          + (tighter ? ' Less heading drift &rArr; a tighter fix on home.' : '');
         document.getElementById('cx-home').disabled = false;
-        newBout(false);   // re-anchor the ring for the next excursion
       }
     }
+    function endResult() { if (homeResult) { homeResult = null; newBout(false); } }
 
     /* ----- rendering (60fps, interpolated between 20 Hz model steps) ----- */
     function drawStage(alpha) {
@@ -288,9 +293,25 @@
       const ix = lerp(pfly.x, fly.x, alpha), iy = lerp(pfly.y, fly.y, alpha);
       const ith = pfly.th + wrapPi(fly.th - pfly.th) * alpha;
       const fp = toPx(ix, iy);
-      // estimated origins once the walk has begun
       const moved = Math.hypot(fly.x, fly.y) > 4;
-      if (moved) {
+      sctx.font = '10px ui-monospace,monospace'; sctx.textAlign = 'center';
+      if (homeResult) {
+        // reveal: both guesses vs the true nest, each with its miss distance
+        const bg = toPx(homeResult.bg.x, homeResult.bg.y), cg = toPx(homeResult.cg.x, homeResult.cg.y);
+        const pr = 12 + 4 * Math.sin(performance.now() / 260);
+        sctx.strokeStyle = C.teal; sctx.lineWidth = 1.5; sctx.globalAlpha = .7;
+        sctx.beginPath(); sctx.arc(O.x, O.y, pr, 0, 7); sctx.stroke(); sctx.globalAlpha = 1;
+        sctx.setLineDash([4, 4]); sctx.lineWidth = 1.5;
+        sctx.strokeStyle = 'rgba(133,146,166,.55)';
+        sctx.beginPath(); sctx.moveTo(cg.x, cg.y); sctx.lineTo(O.x, O.y); sctx.stroke();
+        dot(sctx, cg.x, cg.y, C.ctrl, 4);
+        sctx.strokeStyle = 'rgba(212,160,176,.85)';
+        sctx.beginPath(); sctx.moveTo(bg.x, bg.y); sctx.lineTo(O.x, O.y); sctx.stroke(); sctx.setLineDash([]);
+        dot(sctx, bg.x, bg.y, C.bio, 5);
+        sctx.fillStyle = C.ctrl; sctx.fillText(`random · ${homeResult.ctrlMiss.toFixed(1)} off`, cg.x, cg.y + 16);
+        sctx.fillStyle = C.bio; sctx.fillText(`connectome · ${homeResult.bioMiss.toFixed(1)} off`, bg.x, bg.y - 12);
+      } else if (moved) {
+        // live estimated nests, at accurate distance now (integrated from each model's heading)
         const bg = toPx(estOrigin(bio).x, estOrigin(bio).y), cg = toPx(estOrigin(ctrl).x, estOrigin(ctrl).y);
         dot(sctx, cg.x, cg.y, C.ctrl, 4);
         sctx.setLineDash([3, 3]); sctx.strokeStyle = 'rgba(133,146,166,.5)';
@@ -298,14 +319,11 @@
         sctx.strokeStyle = 'rgba(212,160,176,.6)';
         sctx.beginPath(); sctx.moveTo(fp.x, fp.y); sctx.lineTo(bg.x, bg.y); sctx.stroke(); sctx.setLineDash([]);
         dot(sctx, bg.x, bg.y, C.bio, 5);
-      }
-      drawFly(sctx, fp.x, fp.y, ith);
-      sctx.font = '10px ui-monospace,monospace'; sctx.textAlign = 'center';
-      if (moved) {
-        const bg = toPx(estOrigin(bio).x, estOrigin(bio).y), cg = toPx(estOrigin(ctrl).x, estOrigin(ctrl).y);
         sctx.fillStyle = C.bio; sctx.fillText("connectome's home", bg.x, bg.y - 10);
         sctx.fillStyle = C.ctrl; sctx.fillText("random's home", cg.x, cg.y + 16);
-      } else {
+      }
+      drawFly(sctx, fp.x, fp.y, ith);
+      if (!moved && !homeResult) {
         sctx.fillStyle = C.mute; sctx.fillText('drag or press ↑ to walk', fp.x, fp.y + 26);
       }
     }
@@ -386,6 +404,7 @@
       else if (k === 'ArrowRight') keys.right = v;
       else if (k === 'ArrowUp') keys.up = v;
       else return;
+      if (v) endResult();                    // interrupt a home-result reveal
       if (focused) e.preventDefault();
     }
     let focused = false;
@@ -401,17 +420,17 @@
       const py = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
       target = { x: (px - W / 2) / PXPU, y: (py - H / 2) / PXPU };    // pointer in model units
     }
-    stage.addEventListener('mousedown', e => { dragging = true; ptr(e); stage.focus(); });
+    stage.addEventListener('mousedown', e => { endResult(); dragging = true; ptr(e); stage.focus(); });
     window.addEventListener('mousemove', e => { if (dragging) ptr(e); });
     window.addEventListener('mouseup', () => dragging = false);
-    stage.addEventListener('touchstart', e => { dragging = true; ptr(e); e.preventDefault(); }, { passive: false });
+    stage.addEventListener('touchstart', e => { endResult(); dragging = true; ptr(e); e.preventDefault(); }, { passive: false });
     stage.addEventListener('touchmove', e => { if (dragging) { ptr(e); e.preventDefault(); } }, { passive: false });
     stage.addEventListener('touchend', () => dragging = false);
 
     document.getElementById('cx-mode').addEventListener('click', e => {
       const b = e.target.closest('button'); if (!b) return;
       e.currentTarget.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on');
-      mode = b.dataset.mode;
+      mode = b.dataset.mode; endResult();
     });
     document.getElementById('cx-home').addEventListener('click', startHome);
     const baseHint = 'Hold <b>← →</b> to turn, <b>↑</b> to walk (or drag on the arena). A frozen <span class="hl-bio">connectome</span> ring and a size-matched <span style="color:var(--ctrl)">random</span> ring each track your heading live on the GPU - watch their estimates of "home" drift apart.';

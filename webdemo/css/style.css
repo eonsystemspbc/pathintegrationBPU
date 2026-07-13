@@ -566,6 +566,49 @@ header.nav .brand { color:#FAF8F5; }
   #matrix-result { border-left: 0; border-top: 1px solid var(--border); }
 }
 
+/* ============================================================
+   MOBILE refinements (phones / resizable small viewports)
+   ============================================================ */
+/* let grid/flex children shrink so inner scroll containers (matrix, tables) actually scroll
+   instead of forcing overflow that a rounded/clipped parent then hides */
+.matrix-pane, #matrix-result, .picker-plot, .demo-panel, .demo-stage { min-width: 0; }
+.matrix-wrap, .table-view { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* interactive canvases own their touch gestures (steer instead of scroll; no double-tap zoom) */
+#cx-stage, #ol-stage, #hero-canvas { touch-action: none; }
+
+@media (max-width: 700px) {
+  /* compact the region×task matrix so it fits a phone (scrolls horizontally if still wide) */
+  .matrix { border-spacing: 4px; }
+  .matrix-pane { padding: 18px 16px; }
+  .mcell { width: 54px; height: 56px; border-radius: 8px; }
+  .mcell .mv { font-size: .8rem; }
+  .mcell .mk { font-size: .54rem; }
+  .mcell .native-tag { font-size: .5rem; top: 3px; right: 4px; }
+  .matrix th { font-size: .66rem; padding: 4px 3px; }
+  .matrix th.rowh { max-width: 82px; padding-right: 8px; }
+  .matrix th.rowh small { font-size: .58rem; }
+}
+
+@media (max-width: 560px) {
+  /* keep the hero from getting excessively tall on a phone */
+  .hero { padding-top: 84px; padding-bottom: 44px; }
+  .hero h1 { font-size: clamp(2.05rem, 8.6vw, 2.7rem); margin-bottom: 18px; }
+  .hero-sub { margin-bottom: 24px; }
+  .hero-cta { gap: 10px; }
+  .hero-stats { margin-top: 28px; gap: 18px 26px; }
+  .hero-stat .v { font-size: 1.5rem; }
+  .hero-authors { margin-top: 28px; }
+  /* horizontal controls stay tappable and never overflow */
+  .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs button { white-space: nowrap; }
+  .demo-head { gap: 12px; }
+  .seg button, .chip, .popt { min-height: 38px; }
+  .btn, .btn-sm { min-height: 42px; }
+  .readout { gap: 10px; }
+  /* comfortable side gutters */
+  .demo-panel { padding: 20px 18px; }
+}
+
 /* smoother scale explorer: continuous morph + eased node transitions */
 .scale-morph .sm-bar { transition: opacity .12s linear; }
 .scale-node .sn-dot { transition: background .35s var(--ease), border-color .35s var(--ease), box-shadow .35s var(--ease); }

@@ -33,6 +33,24 @@ The connectome pushes biological-input cells' input weight **up** relative to no
 ## Part 2 — the high-Δw tail is the *input* pathway, **not** the projecting/output neurons
 ![part 2](weight_dynamics_part2.png)
 
+**The figure has three panels:**
+
+- **(A) Enrichment of each biological class in the top-quartile Δw tail.** Each bar is the log
+  odds-ratio of that class landing in the top 25% of neurons by Δw — connectome (green) vs degree-matched
+  random (yellow), with significance stars (vs 0) over the connectome bars. Above zero = over-represented
+  in the tail, below zero = depleted. This is the table below, drawn: PN is the only class clearly above
+  zero; MBON, DAN, `is_output` and `is_sensory` all sit below; every random bar is ≈0.
+- **(B) Enrichment vs how tightly the tail is cut** (connectome only). x-axis = the cut, from the top
+  50% down to the top 1% by Δw (log scale); y-axis = enrichment as a fold over each class's base rate
+  (dotted line at 1.0 = no enrichment). It shows *where in the tail* each class lives: KC climbs toward
+  the extreme tip (top 1% ≈ 1.8×), whereas PN is actually *depleted* at the very tip (≈0.35×) but
+  enriched at moderate cuts (top 25% ≈ 1.4×) — so PNs move up *as a group*, and the single largest
+  gainers are Kenyon cells.
+- **(C) Mean Δw per class** (connectome vs random). The average input-weight change (z-scored within
+  seed) for each class — a direct "who gains, who loses input weight" view: PN, KC and `other` gain
+  (positive), DAN / `is_sensory` / `is_output` lose (negative), MBON is ≈neutral, and random is flat at
+  ≈0 for every class.
+
 Scott's hypothesis was that the high-weight tail corresponds to projecting neurons (MBONs/PNs). Tested
 directly on hemibrain cell types (top-quartile Δw; per-seed Haldane log-odds, one-sample t vs 0 — seed
 is the replication unit, so the fixed labels aren't pseudoreplicated):
@@ -50,14 +68,13 @@ is the replication unit, so the fixed labels aren't pseudoreplicated):
 **The hypothesis is refuted.** The Δw tail is enriched for **PN (the odor-input projection neurons)**
 and loses the **output/projecting side (MBON, is_output) and DAN**. This matches the "single input
 magnet on the PN hub" picture — gradient descent routes free input weight onto the input pathway, not
-the output neurons. Two nuances:
-- **PN ≠ the flow-based `is_sensory` pool.** PN (cell type) is enriched; the broader `is_sensory` pool
-  (582 cells, only 100 of them PN) is *depleted*. The tail is specifically the PN cell type, not the
-  extra-regional input-pool heuristic.
-- **The extreme tip is KCs, not PNs** (panel B). At the top **1%** by Δw, KC ≈ 1.8× while PN ≈ 0.35×;
-  PN enrichment appears at moderate cuts (top 25%, 1.4×). So PNs shift up *as a group* (→ AUC 0.60);
-  the handful of extreme-gain neurons are Kenyon cells. Mean Δw (panel C): PN & KC gain, is_output &
-  DAN lose, MBON ≈ neutral. Random control is flat (~1.0×) for every class.
+the output neurons. Two nuances (both visible in panels A–C above):
+- **PN ≠ the flow-based `is_sensory` pool.** The PN *cell type* is enriched, but the broader
+  `is_sensory` pool (582 cells, only 100 of them PN) is *depleted* — so the tail is specifically the PN
+  cell type, not the extra-regional input-pool heuristic.
+- **PNs shift up as a group, not at the extreme tip.** The +0.22 Cohen's d / AUC-0.60 result in Part 1
+  is a broad rightward move of the whole PN set (panel B, moderate cuts); the single largest Δw gainers
+  are Kenyon cells, not PNs or output neurons.
 
 > flywire has no cell types, so only its flow pools can be scored — there *both* `is_sensory` (1.8×) and
 > `is_output` (1.4×) look enriched, but without types they can't separate input from output. The
