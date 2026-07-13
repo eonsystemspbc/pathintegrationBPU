@@ -1,62 +1,103 @@
-# Optic-flow under biologically-correct I/O — the full optic-lobe connectome does not learn its own deep readout
+# Optic flow through biologically-correct I/O — the full optic-lobe connectome does not learn its own deep readout
 
-**One-line result (negative, well-diagnosed):** When the optic-flow task is wired through the **biologically-correct input/output cells of the fly optic lobe** — inject the visual stimulus only into the **R1–6 photoreceptors** and read self-motion only from the **HS/VS lobula-plate tangential cells (LPTCs)** — the **full left optic-lobe connectome (48,749 neurons, 4.03M edges) fails to learn the task**, across **~12 training methods**, while a degree-matched random control learns. The cause is structural and precisely identified: the biological readout sits ~4–5 synapses deep, so a from-scratch-trained RNN cannot route signal to it. This **sharpens the vis-01 finding** ("the optic-lobe connectome is not a plug-and-play optic-flow substrate") and shows the earlier generic-I/O **+12%** advantage does *not* transfer to biologically-faithful ports.
+*A negative result, fully diagnosed. What happens when you force a connectome model to use the fly's **real** input and output cells instead of a convenient mathematical shortcut.*
 
-> Scope: this is a **model/training + I/O-appropriateness** result on **one** connectome, not a claim about topology in general. It is an internal investigation kept out of `/scott` and out of the polished `docs/results/` (which feeds the demo site).
+---
 
-![connectome stalls under biological I/O](fig_bio_io_stall.png)
+## TL;DR (the plain-language version)
+
+- The fly sees the world with **photoreceptors** and reads its own self-motion (optic flow) out of a handful of wide-field **motion-integrator cells (HS/VS)** deep in the optic lobe. We wired an AI model of the **real optic-lobe connectome** (48,749 neurons, 4 million connections) to use exactly those cells as its input and output — identified from the **actual FlyWire cell types**, not guessed from the graph.
+- **It couldn't learn the task.** After training, the connectome model was no better than chance, while a **scrambled (degree-matched random) version of the same wiring learned fine.**
+- That sounds backwards, so we dug in. The reason is **geometry, not biology failing**: the output cells sit **~4–5 synapses deep** from the input. In an untrained network the useful signal **fades to ~1/30th** by the time it reaches them, so there's almost no gradient to learn from. The scrambled control "wins" only because randomizing the wiring accidentally creates **short-circuits** straight from input to output — it cheats the depth.
+- We tried **~12 different fixes** (more processing steps, gain boosts, several kinds of normalization, leaky memory, different output cells). None got the connectome off the floor with stable training.
+- **What it means:** the earlier "+12% advantage for the optic-lobe connectome on optic flow" came from letting the model read the answer off *any* of its 48k neurons. Force it to use the **real biological ports** and that advantage vanishes — because the real circuit is a *deep, learned computation*, not something a from-scratch network trivially reproduces. This sharpens the prior "the connectome is not plug-and-play for optic flow" finding, and it's the same open training problem the earlier `vis-01` run hit.
+
+> Scope: one connectome, a from-scratch-trained recurrent net. This is a **model/training + I/O-appropriateness** result, not a claim that the fly circuit "can't" do optic flow (it obviously does — it just isn't learned from a blank slate).
+
+![The fly optic-lobe motion pathway and the two biological ports](fig1_pathway.png)
+
+---
 
 ## The question
 
-Experiments mb-01…06 and the region×task matrix found the fly connectome beats degree-matched controls on *its own* tasks — but under **generic all-neuron I/O** (dense trainable input into all N, readout from all N). The optic-lobe→optic-flow cell of that matrix showed **+12%** (transient sample-efficiency; 1 seed; a weak Gaussian control). The natural, more rigorous follow-up:
+Earlier experiments (the region×task matrix, the optic-flow data-efficiency sweep) found the **optic-lobe connectome beats a random control on optic flow — the "+12%"** — but under **generic all-neuron I/O**: the stimulus is injected into *all* neurons and the answer is read from *all* neurons. That lets the readout grab the self-motion signal off whichever neurons happen to encode it, so the specific wiring barely has to do anything. And the control there was a weak Gaussian-random null.
 
-> Does that advantage survive when the network is forced to use the **real biological ports** — photoreceptors in, LPTCs out — instead of reading the answer off whichever of 48k neurons happens to encode it? And with a proper **degree-matched** control instead of a Gaussian one?
+The rigorous follow-up — the optic-lobe analogue of the mushroom-body (exp-04) and central-complex biological-I/O experiments — is:
 
-This is the optic-lobe analogue of the MB (exp-04) and CX biological-I/O experiments.
+> **Does that advantage survive when the network must use the fly's real ports** (photoreceptors in, wide-field motion cells out), against a proper **degree-matched** control?
 
-## What we built (the reusable asset)
+## What we built (the biological ports)
 
-Biological I/O ports assigned from the **actual FlyWire 783 cell-type identities** (Schlegel et al. 2024 whole-brain annotations + Matsliah et al. 2024 optic-lobe visual typing), joined by `root_id` to the left-OL substrate — **not** inferred from graph connectivity (the repo's previous `assign_optic_lobe_io.py` heuristic). 99.3% of OL neurons are typed. Left-OL pool sizes:
+We assigned the input/output cells from the **actual FlyWire 783 cell-type identities** (Schlegel et al. 2024 whole-brain annotations + Matsliah et al. 2024 optic-lobe visual typing), joined by `root_id` — **not** inferred from graph source/sink structure (the repo's previous heuristic). 99.3% of optic-lobe neurons are typed. Left-optic-lobe pool sizes:
 
-| role | pool | cell types | left-OL count |
+| role | pool | cell types (biology) | left-OL count |
 |---|---|---|---:|
-| **INPUT** (primary) | `in_R16` | R1-6 (achromatic motion channel) | **4,043** |
-| INPUT (fallback) | `in_L123` | L1, L2, L3 lamina monopolar | 2,403 |
-| **OUTPUT** (primary) | `out_HSVS` | HSN/HSE/HSS + VS1–8 (wide-field self-motion) | **11** |
+| **INPUT** (primary) | `in_R16` | R1-6 — the achromatic photoreceptor motion channel | **4,043** |
+| INPUT (fallback) | `in_L123` | L1, L2, L3 — first-order lamina interneurons | 2,403 |
+| **OUTPUT** (primary) | `out_HSVS` | HSN/HSE/HSS + VS1–8 — lobula-plate tangential cells (wide-field self-motion) | **11** |
 | OUTPUT (wide) | `out_LPTCwide` | + H2, VST1/2, VSm | 20 |
-| OUTPUT (dense-flow) | `out_T4T5` | T4a–d, T5a–d (elementary motion detectors) | 6,146 |
+| OUTPUT (dense-flow) | `out_T4T5` | T4a–d, T5a–d — elementary motion detectors | 6,146 |
 
-Substrate: the **left optic lobe** induced subgraph of `connectomes/flywire_optic_lobe_bpu` (unsigned adjacency — the exact representation the +12% used), **N = 48,749, 4,032,601 edges**, ρ rescaled to 0.9–0.95 at run time. Task: the existing hex-ommatidia optic-flow regression (`run_optic_flow_benchmark`) — per-ommatidium brightness in, 3-DOF self-motion `[yaw_rate, forward, lateral]` out, MSE loss. Control: **degree-preserving rewire** (`mb.degree_preserving_random_like`, node identity preserved so the same port indices stay valid) — the rigorous control MB/CX use, replacing flow's weak Gaussian null.
+The HS/VS cells are the textbook wide-field optic-flow readout — Krapp & Hengstenberg (1996) showed their receptive fields are *matched filters* for specific self-motion flow fields. There are only ~11 per hemisphere, which is biologically correct (a tiny, low-dimensional self-motion code) and the crux of the difficulty.
 
-## The finding
+---
 
-Under biological I/O the **connectome never leaves the floor** — its held-out mean R² sits at **≈0** (−0.001 at epoch 20) and its training loss is frozen at 0.054 — while the **degree-matched control learns**, its held-out mean R² climbing to **≈0.18** (driven by forward-translation R² ≈ 0.53) over the same 20 epochs. This holds whether the readout is the 11 HS/VS cells **or** the 6,146 T4/T5 cells. See `fig_bio_io_stall.png` and `data_curve_*.csv`.
+## The result
 
-### Why — the mechanism (diagnosed, not guessed)
+Wired through the real ports, the **connectome never leaves the floor** — held-out mean R² ≈ 0 (−0.001), training loss frozen — while the **degree-matched control learns** (mean R² climbs to ≈0.18, driven by forward-translation R² ≈ 0.53). This holds whether the readout is the 11 HS/VS cells *or* the 6,146 T4/T5 cells.
 
-1. **The biological readout is deep.** HS/VS are ~4–5 synapses from the photoreceptors. At initialization the connectome delivers ~**30× weaker** temporally-varying signal to the readout than the control does (`out_tstd` ≈ 1×10⁻⁴ vs 3×10⁻³) — robust across ρ (0.9–0.97), microsteps (1–6), and input gain (1–8×). The control learns only because rewiring **manufactures short R1-6→readout shortcuts** it doesn't have to compute.
-2. **The signal must be routed by training, but the gradient to do so is starved.** Yaw is **not linearly decodable** from the frozen (untrained) HS/VS activations for *either* arm (ridge R² < 0), so the readout can't be trained on fixed features — `W_rec` must learn to route the pathway, but its gradient is vanishingly small.
-3. **You cannot fix it at the readout.** A readout-side rescale is provably a **no-op** — it is absorbed by the linear readout (byte-identical loss trajectory with and without it). The starvation is intrinsic to the deep recurrence.
-4. **Un-starving the gradient destabilizes training.** The one lever that moves the loss — **per-neuron state normalization inside the recurrence** — unfreezes the dynamics (train loss finally drops) but training is unstable (R² oscillates negative; adding a leak term → NaN). Robustly stabilizing this is an open research problem (the unresolved vis-01 "model/training fix" track).
+![Signal deficit at the readout and training curves](fig2_result.png)
 
-### Levers tried (all fail to give the connectome stable learning)
+**Panel A** shows the root cause: at initialization the connectome delivers a **~30–60× weaker** input-driven signal to its biological readout than the control does. **Panel B** shows the consequence: no signal → no gradient → the connectome flatlines while the control climbs.
+
+---
+
+## Why it happens (the mechanism)
+
+![Mechanism: robustness, decodability, and the levers that all floor](fig3_mechanism.png)
+
+1. **The biological readout is deep** (Fig 1). HS/VS sit ~4–5 synapses from the photoreceptors. In a from-scratch RNN, the input-driven *temporal* signal — which is what encodes self-motion — decays as it propagates that deep, arriving ~30× too weak (**Fig 3A**: the gap is stable across *every* spectral radius ρ, so it's structural, not a tuning artifact).
+2. **The signal must be *routed* by training, but the gradient to do so is starved.** Self-motion is **not linearly decodable** from the frozen (untrained) readout for *either* arm (**Fig 3B**, ridge R² < 0) — so you can't train just the readout on fixed features; the recurrent weights `W_rec` must learn to build the pathway, and their gradient is vanishingly small.
+3. **The control "wins" by cheating the depth.** A degree-matched rewire preserves each neuron's connection *count* but randomizes *who connects to whom* — which manufactures short input→readout shortcuts the real circuit doesn't have. So it's a **confounded, too-easy baseline** under deep biological I/O, not evidence that random wiring is better at optic flow.
+4. **No training lever recovers it** (**Fig 3C**). Every method we tried leaves the connectome at the floor while the control (orange line) learns.
+
+## Methodology (the technical details)
+
+**Substrate.** The **left optic lobe** induced subgraph of `connectomes/flywire_optic_lobe_bpu` (unsigned adjacency — the exact representation the +12% used), restricted to `side == left`: **N = 48,749, 4,032,601 edges**. Spectral radius rescaled to ρ = 0.9–0.95 at run time. "Full OL" = one full optic lobe (the two lobes are ~99% independent).
+
+**Task.** The existing hex-ommatidia optic-flow regression (`run_optic_flow_benchmark`): input is per-ommatidium brightness on a 61-cell hex lattice over 16 timesteps; target is 3-DOF self-motion `[yaw_rate, forward, lateral]`; MSE loss; held-out R² metric. Fixed pre-generated train/val/test pools shared across all conditions.
+
+**Model** (`bio_model.py`, `BioFlowRNN`). Sparse **trainable** recurrence whose support is the connectome; ReLU; the visual stimulus is injected **only** into the input-pool neurons (`index_add`) and the readout reads **only** the output-pool neurons (`index_select`). Knobs added for the fix search: microsteps, per-neuron / global-RMS state normalization, leaky recurrence, readout normalization, input gain.
+
+**Control.** **Degree-preserving rewire** (`mb.degree_preserving_random_like`, directed double-edge swaps), which preserves every neuron's in/out degree *and* node identity — so the same biological port indices stay valid — then rescaled to the same ρ. This is the rigorous control the MB/CX experiments use, replacing flow's weak Gaussian null.
+
+**"Biologically correct" means, specifically:** ports chosen by **cell-type identity** from the FlyWire annotation table (R1-6 photoreceptors → HS/VS tangential cells), joined by `root_id` — not the connectivity/ROI heuristic in the repo's `assign_optic_lobe_io.py`, and not a free readout over all neurons.
+
+**The ~12 levers tried (all floor the connectome):**
 
 | lever | range | outcome |
 |---|---|---|
-| readout pool | HS/VS (11) · LPTC-wide (20) · T4/T5 (6,146) | connectome floors on all |
+| readout pool | HS/VS (11) · LPTC-wide (20) · T4/T5 (6,146) | floors on all |
 | microsteps | 1, 3, 6 | no help |
-| input gain | 1×, 8× | scales signal, not the ratio |
-| ρ (spectral radius) | 0.5, 0.7, 0.9, 0.95, 1.1 | higher helps ~2×, still ~30× behind control |
-| readout normalization | detached batch-std · global-RMS scalar | **no-op** (absorbed by linear readout) |
-| state normalization | global-RMS · per-neuron | per-neuron unfreezes but **unstable** |
+| input gain | 1×, 8× | scales signal, not the connectome/control *ratio* |
+| ρ (spectral radius) | 0.5 → 1.1 | higher helps ~2×, still ~30× behind control |
+| readout normalization | detached batch-std · global-RMS scalar | **no-op** — provably absorbed by the linear readout |
+| state normalization | global-RMS · per-neuron | per-neuron *unfreezes* the dynamics but training is **unstable** |
 | leaky recurrence | leak 0.3 | no help alone; + per-neuron norm → **NaN** |
 | lamina input | L1–L3 instead of R1-6 | same stall |
 
+A key negative sub-result: **a readout-side rescale cannot fix it** — it is mathematically absorbed by the trainable linear readout (byte-identical loss with and without it), which is why the fix has to happen *inside* the recurrence, where it destabilizes.
+
 ## What it does and doesn't settle
 
-- **Settles:** the generic-I/O optic-lobe→flow advantage (+12%) does **not** carry over to biologically-correct ports in this from-scratch-trained RNN — because the wiring that made the advantage look real (a free readout over all neurons) was exactly what let the model bypass the connectome's deep pathway. With the real ports, the connectome's *specific structure* (a deep, learned computation) becomes a **liability** for from-scratch training, and a degree-matched control that shortcuts the depth is a **confounded, too-easy baseline**.
-- **Does not settle:** whether the connectome *can* compute optic flow with the right training (developmental/evolutionary wiring is not learned from scratch), or whether a fundamentally different training scheme (running-statistic per-neuron normalization, a shallow→deep readout curriculum, or gated/residual dynamics) would clear the floor. Those are follow-ups, not tweaks.
-- **n = 1** biological graph; **generic-I/O + degree-matched control at full OL** (the clean "does +12% survive a proper control" test) was *not* run — it is the natural companion experiment.
+- **Settles:** the generic-I/O +12% does **not** transfer to biologically-faithful ports in a from-scratch-trained RNN. The advantage came from a free readout that bypassed the connectome's deep pathway; with the real ports, the connectome's *specific structure* is a **liability** for from-scratch training, and a degree-matched control is a **confounded** baseline for deep biological I/O.
+- **Does not settle:** whether the connectome *can* compute optic flow with a better training scheme (running-statistic per-neuron normalization, a shallow→deep readout curriculum, gated/residual dynamics) — those are follow-ups, not tweaks. Nor does it claim the fly circuit can't do this (it does — via developmental/evolutionary wiring, not blank-slate learning).
+- **n = 1** biological graph. The clean companion experiment — **generic-I/O + degree-matched control at full OL** ("does the +12% survive a proper control?") — was *not* run here.
+
+## Relation to prior results
+
+- **The +12%** (region×task matrix / optic-flow data-efficiency): transient, 1-seed, generic-I/O, weak Gaussian control. This result shows *why* it was fragile — it depended on the free readout.
+- **vis-01** (the earlier full-OL optic-flow run) floored under generic I/O and was diagnosed as a **model/training** problem, not vision. This is the same open training problem, now with **biologically-correct ports** and a **precise mechanism** (deep-readout gradient starvation).
 
 ## Reproduce
 
@@ -64,25 +105,32 @@ Under biological I/O the **connectome never leaves the floor** — its held-out 
 # 1. build the left-OL substrate + biological ports from the FlyWire 783 cell-type join (~5s, no GPU)
 uv run python docs/results/optic_flow_biological_io/build_bio_substrate.py
 
-# 2. reproduce the stall vs the control + the signal diagnostic (writes the CSVs behind the figure)
-uv run python docs/results/optic_flow_biological_io/make_writeup_data.py --arm connectome --device 0
-uv run python docs/results/optic_flow_biological_io/make_writeup_data.py --arm control    --device 1
-uv run python docs/results/optic_flow_biological_io/plot_writeup.py
+# 2. regenerate all figure data (signal · robustness · decodability · training curves · lever sweep)
+uv run python docs/results/optic_flow_biological_io/generate_data.py --arm connectome --device 0
+uv run python docs/results/optic_flow_biological_io/generate_data.py --arm control    --device 1
+uv run python docs/results/optic_flow_biological_io/plot_figures.py     # writes fig1/fig2/fig3
 
-# 3. sweep training levers on the deep readout (per-neuron norm, leak, microsteps, ...)
+# 3. sweep training levers directly on the deep readout
 uv run python docs/results/optic_flow_biological_io/test_fix.py --device 0 --arm connectome \
     --configs baseline pn pn_leak leak_ro --epochs 25
 ```
 
-The cell-type annotation table (`Supplemental_file1_neuron_annotations.tsv`, Schlegel 2024) is fetched from `github.com/flyconnectome/flywire_annotations`; the OL join is cached in `substrate/celltypes_783_OL.csv`.
+The FlyWire cell-type table (`Supplemental_file1_neuron_annotations.tsv`, Schlegel 2024) is fetched from `github.com/flyconnectome/flywire_annotations`; the optic-lobe join is cached in `substrate/celltypes_783_OL.csv`.
 
 ## Files
 
-- `build_bio_substrate.py` — left-OL substrate + biological ports from the real cell-type join → `substrate/`.
-- `bio_model.py` — `BioFlowRNN`: port-gated sparse trainable recurrence with the knobs tested (microsteps, readout/state normalization, leak, input gain).
-- `run_bio_data_efficiency.py` — the full sample-efficiency runner (I/O condition × {connectome, degree-matched} × data-fraction × seed; multi-GPU + fleet `--shard` entry). Ready to run once a training fix lands.
-- `test_fix.py` — the model-fix lever sweep.
-- `make_writeup_data.py` / `plot_writeup.py` — regenerate the figure's data + the figure.
-- `substrate/` — `ol_left_unsigned.npz`, `root_ids_left.npy`, `ports.json`, `manifest.json`, `celltypes_783_OL.csv`.
-- `logs/` — the raw pre-flight, diagnostic, and lever-sweep console logs.
-- `data_signal_*.csv`, `data_curve_*.csv` — figure data.
+| file | what it is |
+|---|---|
+| `README.md` | this writeup |
+| `fig1_pathway.png` · `fig2_result.png` · `fig3_mechanism.png` | the figures |
+| `build_bio_substrate.py` | left-OL substrate + biological ports from the real cell-type join |
+| `bio_model.py` | `BioFlowRNN` — port-gated sparse trainable recurrence + every fix knob |
+| `run_bio_data_efficiency.py` | the full sample-efficiency runner (fleet-ready `--shard`), for when a training fix lands |
+| `test_fix.py` | the lever sweep |
+| `generate_data.py` · `plot_figures.py` | regenerate the figure data + the figures |
+| `substrate/` | `ol_left_unsigned.npz`, `ports.json`, `celltypes_783_OL.csv`, `manifest.json`, `root_ids_left.npy` |
+| `data_*.csv` | the figure data |
+| `logs/` | raw pre-flight, diagnostic, and lever-sweep console logs |
+
+### Key references
+Matsliah et al. 2024 *Nature* (optic-lobe parts list) · Schlegel et al. 2024 *Nature* (whole-brain annotations) · Dorkenwald et al. 2024 *Nature* (FlyWire) · Maisak et al. 2013 *Nature* (T4/T5 direction selectivity) · Krapp & Hengstenberg 1996 *Nature* (LPTC optic-flow matched filters) · Nern et al. 2024 *eLife* (LPTN survey).

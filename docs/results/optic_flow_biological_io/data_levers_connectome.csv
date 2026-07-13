@@ -1,0 +1,6 @@
+arm,lever,best_mean_r2
+connectome,baseline,-0.0004
+connectome,readout-norm,-0.0004
+connectome,microsteps=3,-0.0004
+connectome,leaky,-0.0004
+connectome,per-neuron norm,-0.6872
