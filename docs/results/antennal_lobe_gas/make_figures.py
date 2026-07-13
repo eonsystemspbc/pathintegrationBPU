@@ -20,6 +20,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+plt.rcParams.update({
+    "figure.facecolor": "white", "axes.facecolor": "white",
+    "axes.edgecolor": "#444444", "axes.linewidth": 0.8,
+    "axes.titleweight": "bold", "font.size": 11,
+    "axes.spines.top": False, "axes.spines.right": False,
+    "legend.frameon": False, "grid.color": "#dddddd",
+})
+
 HERE = Path(__file__).resolve().parent
 FIGS = HERE / "figures"
 LAT_LABELS = ["pre", "0-5s", "5-10s", "10-30s", "30-60s", ">60s"]
@@ -41,10 +49,13 @@ def panel_sample_efficiency(ax, df, metric, title, ylabel, io="bio"):
         g = agg(df, io, arm, "standard", metric)
         if g.empty:
             continue
-        sd = g["std"].fillna(0).to_numpy()
-        ax.errorbar(g["fraction"], g["mean"], yerr=sd, marker="o", ms=4, capsize=2,
-                    color=ARM_COLORS[arm], lw=2 if arm == "connectome" else 1.3,
-                    label=ARM_LABEL[arm], zorder=5 if arm == "connectome" else 3)
+        m = g["mean"].to_numpy(); sd = g["std"].fillna(0).to_numpy()
+        se = sd / np.sqrt(g["count"].clip(lower=1).to_numpy())     # standard error over seeds
+        lw = 2.6 if arm == "connectome" else 1.5
+        ax.plot(g["fraction"], m, marker="o", ms=5, color=ARM_COLORS[arm], lw=lw,
+                label=ARM_LABEL[arm], zorder=6 if arm == "connectome" else 3)
+        ax.fill_between(g["fraction"], m - se, m + se, color=ARM_COLORS[arm],
+                        alpha=0.18, zorder=2 if arm == "connectome" else 1)
     ad = agg(df, "bio", "adapter_only", "standard", metric)
     if not ad.empty:
         ax.axhline(float(ad["mean"].iloc[-1]), ls=":", color="gray", lw=1, label="adapter-only floor")
@@ -132,7 +143,8 @@ def write_results_readme(df, analysis):
         return
     arms = ["connectome", "degree", "random", "spectrum", "dense"]
     lines = ["## Results\n",
-             f"*{int(len(df))} runs (3 seeds × {df.fraction.nunique()} data fractions × arms × I/O).*\n",
+             f"*{int(len(df))} runs ({df.seed.nunique()} seeds × {df.fraction.nunique()} data "
+             f"fractions × arms × I/O).*\n",
              "Full-data (100%) **biological I/O**, low-concentration held-out test "
              "(train med/high ethylene → test LOW). AUPRC saturates at the window level, so the "
              "discriminating metric is **recall at a fixed 10% false-alarm rate**.\n",
@@ -161,10 +173,20 @@ def write_results_readme(df, analysis):
               "", "See `metrics_by_run.csv`, `analysis.json`, and `figures/` for the full grid, "
               "sample-efficiency curves, detection-latency curves, and worst-interferent breakdown.", ""]
     txt = readme.read_text()
+    # fill the TL;DR headline placeholders from the analysis (keep in sync with the results table)
+    d100 = analysis.get("bio::test_low_recall_at_fpr10::f100", {})
+    for ph, val in {"`CONNECTOME_RECALL`": d100.get("connectome_mean"),
+                    "`DEGREE_RECALL`": d100.get("degree_mean"),
+                    "`RANDOM_RECALL`": d100.get("random_mean")}.items():
+        if val is not None:
+            txt = txt.replace(ph, f"{val:.3f}")   # placeholders already carry their own markup
+    if d100.get("d_vs_degree") is not None:
+        txt = txt.replace("`D_DEGREE`", f"{d100['d_vs_degree']:.1f}")
     marker = "<!-- RESULTS -->"
     head = txt.split("## Results")[0] if "## Results" in txt else txt.split(marker)[0]
     head = re.sub(r"(\s*\n---\s*)+$", "", head.rstrip()).rstrip()   # drop trailing horizontal rule(s)
-    readme.write_text(head + "\n\n---\n\n" + "\n".join(lines) + "\n" + marker + "\n")
+    tail = txt.split(marker, 1)[1] if marker in txt else ""          # preserve the drift section
+    readme.write_text(head + "\n\n---\n\n" + "\n".join(lines) + "\n" + marker + tail)
     print(f"updated {readme} with results")
 
 

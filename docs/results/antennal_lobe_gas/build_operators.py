@@ -56,6 +56,7 @@ def main():
     ap.add_argument("--include-eigenvector", action="store_true", help="also build eigenvector-matched control")
     a = ap.parse_args()
     OPS.mkdir(parents=True, exist_ok=True)
+    schur_cache = SUB / "schur_cache"; schur_cache.mkdir(exist_ok=True)  # reuse dense Schur across seeds
     A = sp.load_npz(SUB / "al_signed.npz").tocsr().astype(np.float32)
     print(f"connectome N={A.shape[0]} nnz={A.nnz} raw_rho={rho_of(A):.2f}")
 
@@ -76,7 +77,8 @@ def main():
     index["sparse_arms"] += ["degree", "random"]
 
     for s in a.seeds:
-        spec = C.spectrum_matched_control_matrix(A, seed=s, mode="full", rho_target=RHO).toarray().astype(np.float16)
+        spec = C.spectrum_matched_control_matrix(A, seed=s, mode="full", rho_target=RHO,
+                                                 schur_cache=schur_cache).toarray().astype(np.float16)
         np.save(OPS / f"spectrum_s{s}.npy", spec)
         dns = C.dense_random_control_matrix(A, seed=s, rho_target=RHO).toarray().astype(np.float16)
         np.save(OPS / f"dense_s{s}.npy", dns)

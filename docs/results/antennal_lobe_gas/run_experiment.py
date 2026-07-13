@@ -274,7 +274,7 @@ def parse_args(argv=None):
     p.add_argument("--arms", nargs="+", default=list(ALL_ARMS), choices=list(ALL_ARMS))
     p.add_argument("--variants", nargs="+", default=["standard", "graded_ln"],
                    choices=["standard", "graded_ln"])
-    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
+    p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5])
     p.add_argument("--fractions", nargs="+", type=int, default=[5, 10, 25, 50, 100])
     p.add_argument("--adapter", dest="include_adapter", action="store_true", default=True)
     p.add_argument("--no-adapter", dest="include_adapter", action="store_false")

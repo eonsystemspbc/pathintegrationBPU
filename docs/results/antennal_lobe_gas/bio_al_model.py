@@ -39,8 +39,9 @@ class BioALRNN(nn.Module):
                  pn_indices=None, receptor_indices=None, broadcast=None,
                  n_glom_olf: int = 0, n_glom_thr: int = 0, n_sensor: int = 8,
                  bio_io: bool = True, leak: float = 0.3, readout_norm: bool = True,
-                 graded_ln: bool = False, ln_indices=None, seed: int = 0) -> None:
+                 graded_ln: bool = False, ln_indices=None, output_dim: int = 1, seed: int = 0) -> None:
         super().__init__()
+        self.output_dim = int(output_dim)
         coo = recurrent.astype(np.float32).tocoo(); coo.sum_duplicates()
         if coo.shape[0] != coo.shape[1]:
             raise ValueError("recurrent must be square")
@@ -91,7 +92,7 @@ class BioALRNN(nn.Module):
             n_read = int(self.pn_idx.numel())
         else:
             n_read = self.N
-        self.readout = nn.Linear(n_read, 1)
+        self.readout = nn.Linear(n_read, self.output_dim)
         nn.init.uniform_(self.readout.weight, -1.0 / math.sqrt(n_read), 1.0 / math.sqrt(n_read))
         nn.init.zeros_(self.readout.bias)
 
@@ -136,7 +137,8 @@ class BioALRNN(nn.Module):
         if self.readout_norm:
             scale = read.detach().pow(2).mean().sqrt()
             read = read / (scale + 1e-8)
-        return self.readout(read).squeeze(-1)
+        out = self.readout(read)
+        return out.squeeze(-1) if self.output_dim == 1 else out
 
 
 class AdapterOnly(nn.Module):

@@ -1,0 +1,24 @@
+{
+  "bio": {
+    "connectome_mean": 0.5988,
+    "degree_mean": 0.6087,
+    "d_vs_degree": -0.285,
+    "random_mean": 0.6537,
+    "d_vs_random": -2.045,
+    "spectrum_mean": 0.5675,
+    "d_vs_spectrum": 0.898,
+    "dense_mean": 0.5513,
+    "d_vs_dense": 1.762
+  },
+  "generic": {
+    "connectome_mean": 0.638,
+    "degree_mean": 0.6165,
+    "d_vs_degree": 0.323,
+    "random_mean": 0.6433,
+    "d_vs_random": -0.078,
+    "spectrum_mean": 0.606,
+    "d_vs_spectrum": 0.538,
+    "dense_mean": 0.5764,
+    "d_vs_dense": 1.145
+  }
+}

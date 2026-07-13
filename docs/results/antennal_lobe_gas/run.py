@@ -26,11 +26,11 @@ PATIENCE = 6
 BATCH = 128
 LR = 3e-3
 LEAK = 0.3
-SEEDS = 3                 # connectome training replicates / independent control graphs
+SEEDS = 6                 # connectome training replicates / independent control graphs (>=5 per request)
 FRACTIONS = (5, 10, 25, 50, 100)
-FLEET_SIZE = 16           # instances = shards (each 1 GPU). Bigger = less wall-clock, ~flat cost.
+FLEET_SIZE = 20           # instances = shards (each 1 GPU). Bigger = less wall-clock, ~flat cost.
 S3_PREFIX = "pathint-exp07-antennal-gas"
-N_RUNS = 195              # 150 standard + 30 graded_ln + 15 adapter_only
+N_RUNS = 390              # 300 standard + 60 graded_ln + 30 adapter_only
 # ------------------------------------------------------------------------------ plumbing
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
@@ -56,7 +56,8 @@ def substrate_files() -> list[str]:
 
 def exp_args() -> str:
     return (f"--device cuda --epochs {EPOCHS} --patience {PATIENCE} --batch-size {BATCH} "
-            f"--lr {LR} --leak {LEAK} --seeds 0 1 2 --fractions {' '.join(map(str, FRACTIONS))}")
+            f"--lr {LR} --leak {LEAK} --seeds {' '.join(str(s) for s in range(SEEDS))} "
+            f"--fractions {' '.join(map(str, FRACTIONS))}")
 
 
 def write_config() -> None:
