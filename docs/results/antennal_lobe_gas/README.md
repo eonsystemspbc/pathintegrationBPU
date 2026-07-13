@@ -191,14 +191,12 @@ hotter or colder recurrence — the comparison is about *structure*, not gain. T
 exactly **trainable-parameter-matched** (258,882 recurrence weights = the connectome's edge count);
 the dense arms are the deliberately over-parameterised density reference.
 
-![training](figures/fig_training_curves.png)
-
-*Optimisation-level view.* The sparse arms (connectome / degree / random) drive training BCE to
-~0.11 and validation BCE to ~0.2; the **dense and spectrum-matched arms cannot fit the data** (train
-BCE stalls at ~0.33, validation is high and unstable) — they collapse in the metrics because they
-never train through the narrow biological ports, not because of a capacity ceiling. Among the
-well-trained sparse arms, the connectome's edge is in low-concentration *generalisation* (the
-held-out recall metric), which the in-distribution validation loss does not fully expose.
+*Note on what separates the arms.* On training/validation loss the three **sparse** arms
+(connectome / degree / random) are indistinguishable — they all fit the data (train BCE ≈ 0.11);
+the dense and spectrum-matched arms cannot fit it at all (train BCE ≈ 0.33, unstable) and collapse
+in every metric. The connectome's edge over the *sparse* controls appears **only** in
+low-concentration held-out generalisation and detection latency (a small, top-ranked margin — see
+Results and caveats), not in the in-distribution loss.
 
 ## Protocol & compute
 
