@@ -62,15 +62,15 @@ Under biological I/O the **connectome never leaves the floor** — its held-out 
 
 ```bash
 # 1. build the left-OL substrate + biological ports from the FlyWire 783 cell-type join (~5s, no GPU)
-uv run python outputs/results/optic_flow_biological_io/build_bio_substrate.py
+uv run python docs/results/optic_flow_biological_io/build_bio_substrate.py
 
 # 2. reproduce the stall vs the control + the signal diagnostic (writes the CSVs behind the figure)
-uv run python outputs/results/optic_flow_biological_io/make_writeup_data.py --arm connectome --device 0
-uv run python outputs/results/optic_flow_biological_io/make_writeup_data.py --arm control    --device 1
-uv run python outputs/results/optic_flow_biological_io/plot_writeup.py
+uv run python docs/results/optic_flow_biological_io/make_writeup_data.py --arm connectome --device 0
+uv run python docs/results/optic_flow_biological_io/make_writeup_data.py --arm control    --device 1
+uv run python docs/results/optic_flow_biological_io/plot_writeup.py
 
 # 3. sweep training levers on the deep readout (per-neuron norm, leak, microsteps, ...)
-uv run python outputs/results/optic_flow_biological_io/test_fix.py --device 0 --arm connectome \
+uv run python docs/results/optic_flow_biological_io/test_fix.py --device 0 --arm connectome \
     --configs baseline pn pn_leak leak_ro --epochs 25
 ```
 
