@@ -1,0 +1,91 @@
+{
+  "substrate": "ol_left_bio_io",
+  "source": "connectomes/flywire_optic_lobe_bpu/adjacency_unsigned.npz (side==left subset)",
+  "release": "783",
+  "signed": false,
+  "N": 48749,
+  "edges": 4032601,
+  "raw_spectral_radius": 0.5518,
+  "orientation": "as-loaded from flywire_optic_lobe_bpu (same as the +12% data-efficiency run)",
+  "celltype_source": "FlyWire 783 Schlegel-2024 annotations + Matsliah-2024 OL typing (root_id join)",
+  "ports": {
+    "in_R16": {
+      "super_class": "sensory",
+      "regex": "R1-6",
+      "n_matched": 4043,
+      "n_connected": 4043,
+      "cell_types": [
+        "R1-6"
+      ]
+    },
+    "in_L123": {
+      "super_class": "optic",
+      "regex": "L[123]",
+      "n_matched": 2403,
+      "n_connected": 2403,
+      "cell_types": [
+        "L1",
+        "L2",
+        "L3"
+      ]
+    },
+    "out_HSVS": {
+      "super_class": "visual_projection",
+      "regex": "(HS[NES]|VS[0-9]+)",
+      "n_matched": 11,
+      "n_connected": 11,
+      "cell_types": [
+        "HSE",
+        "HSN",
+        "HSS",
+        "VS1",
+        "VS2",
+        "VS3",
+        "VS4",
+        "VS5",
+        "VS6",
+        "VS7",
+        "VS8"
+      ]
+    },
+    "out_LPTCwide": {
+      "super_class": "visual_projection",
+      "regex": "(HS[NEST]|VS[0-9]*|VSm|VST[0-9]*|H[12]|dCH|vCH|DCH|VCH|Hx)",
+      "n_matched": 20,
+      "n_connected": 20,
+      "cell_types": [
+        "H2",
+        "HSE",
+        "HSN",
+        "HSS",
+        "VS1",
+        "VS2",
+        "VS3",
+        "VS4",
+        "VS5",
+        "VS6",
+        "VS7",
+        "VS8",
+        "VST1",
+        "VST2",
+        "VSm"
+      ]
+    },
+    "out_T4T5": {
+      "super_class": "optic",
+      "regex": "T[45][a-d]",
+      "n_matched": 6146,
+      "n_connected": 6146,
+      "cell_types": [
+        "T4a",
+        "T4b",
+        "T4c",
+        "T4d",
+        "T5a",
+        "T5b",
+        "T5c",
+        "T5d"
+      ]
+    }
+  }
+}

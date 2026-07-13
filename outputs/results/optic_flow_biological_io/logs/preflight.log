@@ -1,0 +1,1 @@
+dispatch multi-gpu device_ids=[0, 1] jobs=6

@@ -1,0 +1,23 @@
+/home/ec2-user/pathintegrationBPU/outputs/results/optic_flow_biological_io/make_writeup_data.py:40: UserWarning: Sparse invariant checks are implicitly disabled. Memory errors (e.g. SEGFAULT) will occur when operating on a sparse tensor which violates the invariants, but checks incur performance overhead. To silence this warning, explicitly opt in or out. See `torch.sparse.check_sparse_tensor_invariants.__doc__` for guidance.  (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:760.)
+  W = torch.sparse_coo_tensor(m.edge_indices, m.W_rec_values, size=(m.N, m.N), device=dev).coalesce()
+[connectome] ep1 mean_r2=-0.0005 yaw_r2=-0.0006 loss=0.05429
+[connectome] ep2 mean_r2=-0.0005 yaw_r2=-0.0008 loss=0.05428
+[connectome] ep3 mean_r2=-0.0008 yaw_r2=-0.0014 loss=0.05427
+[connectome] ep4 mean_r2=-0.0004 yaw_r2=-0.0002 loss=0.05426
+[connectome] ep5 mean_r2=-0.0005 yaw_r2=-0.0005 loss=0.05428
+[connectome] ep6 mean_r2=-0.0007 yaw_r2=-0.0012 loss=0.05425
+[connectome] ep7 mean_r2=-0.0004 yaw_r2=-0.0003 loss=0.05432
+[connectome] ep8 mean_r2=-0.0007 yaw_r2=-0.0007 loss=0.05427
+[connectome] ep9 mean_r2=-0.0006 yaw_r2=-0.0011 loss=0.05428
+[connectome] ep10 mean_r2=-0.0007 yaw_r2=-0.0012 loss=0.05427
+[connectome] ep11 mean_r2=-0.0004 yaw_r2=-0.0004 loss=0.05428
+[connectome] ep12 mean_r2=-0.0007 yaw_r2=-0.0006 loss=0.05426
+[connectome] ep13 mean_r2=-0.0005 yaw_r2=-0.0006 loss=0.05427
+[connectome] ep14 mean_r2=-0.0007 yaw_r2=-0.0011 loss=0.05425
+[connectome] ep15 mean_r2=-0.0006 yaw_r2=-0.0002 loss=0.05430
+[connectome] ep16 mean_r2=-0.0003 yaw_r2=-0.0002 loss=0.05425
+[connectome] ep17 mean_r2=-0.0006 yaw_r2=-0.0008 loss=0.05425
+[connectome] ep18 mean_r2=-0.0006 yaw_r2=-0.0003 loss=0.05426
+[connectome] ep19 mean_r2=-0.0008 yaw_r2=-0.0010 loss=0.05429
+[connectome] ep20 mean_r2=-0.0006 yaw_r2=-0.0008 loss=0.05426
+wrote data_signal_connectome.csv and data_curve_connectome.csv

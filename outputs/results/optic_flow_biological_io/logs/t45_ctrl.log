@@ -1,0 +1,7 @@
+/home/ec2-user/pathintegrationBPU/scott/experiment_vis_02_optic_flow_bio_io/bio_model.py:90: UserWarning: Sparse invariant checks are implicitly disabled. Memory errors (e.g. SEGFAULT) will occur when operating on a sparse tensor which violates the invariants, but checks incur performance overhead. To silence this warning, explicitly opt in or out. See `torch.sparse.check_sparse_tensor_invariants.__doc__` for guidance.  (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:760.)
+  W = torch.sparse_coo_tensor(self.edge_indices, self.W_rec_values, size=(self.N, self.N),
+[control/baseline] ep 1 yaw_r2=-0.0014 mean_r2=+0.0045 loss=0.04438 (10s)
+[control/baseline] ep 3 yaw_r2=-0.0022 mean_r2=+0.0755 loss=0.04672 (28s)
+[control/baseline] ep 6 yaw_r2=-0.0074 mean_r2=+0.1019 loss=0.04249 (56s)
+[control/baseline] ep 9 yaw_r2=-0.0017 mean_r2=+0.1264 loss=0.02724 (83s)
+[control/baseline] ep12 yaw_r2=-0.0038 mean_r2=+0.1297 loss=0.03991 (110s)
