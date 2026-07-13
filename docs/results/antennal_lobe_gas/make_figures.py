@@ -157,14 +157,24 @@ def write_results_readme(df, analysis):
     lines.append(f"| _adapter-only floor_ | {_fmt(df,'bio','adapter_only','standard',100,'test_low_recall_at_fpr10')} "
                  f"| {_fmt(df,'bio','adapter_only','standard',100,'test_low_auroc')} "
                  f"| {_fmt(df,'bio','adapter_only','standard',100,'test_low_auprc')} |")
-    # headline effect sizes (connectome − control), recall@10%FA, bio
+    # honest reading of the gap: rank the connectome mean against the independent control graphs
+    # (only one connectome exists, so rank is the fair test — NOT Cohen's d, which overstates it).
     d100 = analysis.get("bio::test_low_recall_at_fpr10::f100", {})
-    d10 = analysis.get("bio::test_low_recall_at_fpr10::f10", {})
-    def ds(a):
-        return ", ".join(f"{c} d={a.get(f'd_vs_{c}')}" for c in ("degree", "random", "spectrum", "dense")
-                         if a.get(f"d_vs_{c}") is not None)
-    lines += ["", "**Connectome vs matched controls** (Cohen's *d*, connectome − control, low-conc recall@10%FA):",
-              f"- full data (100%): {ds(d100)}", f"- low data (10%): {ds(d10)}", ""]
+    con = df[(df.io == "bio") & (df.arm == "connectome") & (df.variant == "standard")
+             & (df.fraction == 100)]["test_low_recall_at_fpr10"]
+    cmean = float(con.mean()) if len(con) else float("nan")
+    ranks = []
+    for c in ("degree", "random"):
+        gs = df[(df.io == "bio") & (df.arm == c) & (df.variant == "standard")
+                & (df.fraction == 100)]["test_low_recall_at_fpr10"]
+        if len(gs):
+            ranks.append(f"{int((cmean > gs).sum())}/{len(gs)} {ARM_LABEL[c]} graphs")
+    lines += ["", "**Reading the gap.** The real circuit's mean (" + f"{cmean:.3f}" + ") leads the "
+              "sparse controls by a few points and beats the dense/spectral controls by a wide "
+              "margin. Because there is only one connectome (its seeds are re-trainings of one "
+              "graph), the fair test is its *rank* against the independent control graphs, not an "
+              "effect size: it beats " + " and ".join(ranks) + " — a consistent top-of-the-pack "
+              "finish, but the sparse controls overlap it, so it is suggestive, not decisive.", ""]
     # bio vs generic
     bio100 = _fmt(df, "bio", "connectome", "standard", 100, "test_low_recall_at_fpr10")
     gen100 = _fmt(df, "generic", "connectome", "standard", 100, "test_low_recall_at_fpr10")
