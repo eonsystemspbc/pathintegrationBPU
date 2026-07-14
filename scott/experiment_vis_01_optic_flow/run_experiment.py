@@ -52,16 +52,25 @@ BRACKETS = ("weight_shuffle", "random_sparse", "random_z")  # optional secondary
 # model build -- generic all-neuron I/O on the condition's operator (connectome | control graph)
 # --------------------------------------------------------------------------------------
 def run_condition(cfg, M, substrate: str, condition: str, unit: int, hp: float,
-                  device, out_dir: Path, probe_inputs) -> dict:
-    """Train/evaluate ONE unit. Idempotent (cached result.json short-circuits)."""
+                  device, out_dir: Path, probe_inputs, target_rho: float | None = None,
+                  run_id: str | None = None, w_in_gain: float | None = None) -> dict:
+    """Train/evaluate ONE unit. Idempotent (cached result.json short-circuits).
+
+    target_rho: the spectral radius to rescale the recurrence operator to (both arms). Defaults to
+    C.TARGET_RHO (0.95) so single-rho subruns are unchanged; the rho-sweep subrun passes each grid value.
+    run_id: the plan's run_id (carries the _rho tag when multiple rho values share an output dir, so
+    seed-x-rho cells don't collide on the same run_dir). Falls back to the legacy tag when not given."""
     import torch
-    run_id = f"{substrate}_{condition}_u{int(unit):02d}_hp{float(hp):g}"
+    target_rho = C.TARGET_RHO if target_rho is None else float(target_rho)
+    w_in_gain = getattr(cfg, "w_in_gain", 1.0) if w_in_gain is None else float(w_in_gain)
+    run_id = run_id or f"{substrate}_{condition}_u{int(unit):02d}_hp{float(hp):g}"
     run_dir = Path(out_dir) / "runs" / run_id
     if (run_dir / "result.json").exists():
         return json.loads((run_dir / "result.json").read_text())
 
     act_report: dict = {}
-    op = C.build_condition_operator(M, condition, seed=int(unit), probe_inputs=probe_inputs,
+    op = C.build_condition_operator(M, condition, seed=int(unit), target_rho=target_rho,
+                                    probe_inputs=probe_inputs,
                                     microsteps=cfg.microsteps, activation=cfg.activation,
                                     report=act_report)
     spec = C.episode_spec(cfg)
@@ -69,7 +78,8 @@ def run_condition(cfg, M, substrate: str, condition: str, unit: int, hp: float,
     model = C.flowmodel.FlowRNN(op, input_dim=spec.input_dim, output_dim=C.N_DOF,
                                 seed=cfg.init_seed + unit, state_clip=cfg.state_clip,
                                 microsteps=cfg.microsteps, activation=cfg.activation,
-                                freeze_recurrent=False, normalize=cfg.normalize)
+                                freeze_recurrent=False, normalize=cfg.normalize,
+                                w_in_gain=w_in_gain)
     # NO operator-level activation-RMS match: both arms keep rho=0.95 (the control's operator is NOT
     # rescaled to match activity). Instead the in-model ACTIVITY NORMALIZATION (FlowRNN, applied
     # identically to both arms) bounds activity regardless of sigma_max. The per-arm conditioning
@@ -79,7 +89,8 @@ def run_condition(cfg, M, substrate: str, condition: str, unit: int, hp: float,
         "condition": condition, "substrate": substrate, "run_id": run_id,
         "unit": int(unit), "graph_seed": int(unit), "train_seed": int(unit),
         "hp": float(hp), "lr": float(hp), "io_mode": "generic_all_neuron",
-        "N": int(op.shape[0]), "edges": int(op.nnz), "rho_target": C.TARGET_RHO,
+        "N": int(op.shape[0]), "edges": int(op.nnz), "rho_target": target_rho,
+        "w_in_gain": float(w_in_gain), "normalize": bool(cfg.normalize),
         "microsteps": int(cfg.microsteps), "activation": cfg.activation,
         "act_rms_match": act_report,
     }
@@ -87,16 +98,30 @@ def run_condition(cfg, M, substrate: str, condition: str, unit: int, hp: float,
 
 
 def build_plan(args) -> list[dict]:
-    """One entry per (substrate, condition, unit, hp). connectome units are GENUINE training-seed
-    replicates of the one real graph; control units are independent control graphs."""
+    """One entry per (substrate, condition, unit, hp, rho). connectome units are GENUINE training-seed
+    replicates of the one real graph; control units are independent control graphs. rho (the recurrence
+    spectral-radius init, both arms) is a sweep axis exactly parallel to hp/lr; when the grid has >1 value
+    the run_id carries a `_rho{g}` tag so seed-x-rho cells don't collide on the same run_dir. A single-rho
+    grid (the default [0.95], all of subruns 01-04) leaves the run_id byte-for-byte unchanged."""
+    rho_grid = getattr(args, "rho_grid", None) or [C.TARGET_RHO]
+    multi_rho = len(rho_grid) > 1
+    w_in_grid = getattr(args, "w_in_gain_grid", None) or [getattr(args, "w_in_gain", 1.0)]
+    multi_win = len(w_in_grid) > 1                       # W_in-gain sweep axis (subrun 06), parallel to rho
     plan = []
     for substrate in args.substrates:
         for cond in args.conditions:
             n = args.seeds if cond == "connectome" else args.control_graphs
             for u in range(n):
                 for hp in args.lr_grid:
-                    plan.append(dict(substrate=substrate, condition=cond, unit=u, hp=hp,
-                                     run_id=f"{substrate}_{cond}_u{u:02d}_hp{hp:g}"))
+                    for rho in rho_grid:
+                        for wg in w_in_grid:
+                            rid = f"{substrate}_{cond}_u{u:02d}_hp{hp:g}"
+                            if multi_rho:
+                                rid += f"_rho{rho:g}"
+                            if multi_win:
+                                rid += f"_win{wg:g}"
+                            plan.append(dict(substrate=substrate, condition=cond, unit=u, hp=hp,
+                                             rho=float(rho), w_in_gain=float(wg), run_id=rid))
     return plan
 
 
@@ -299,6 +324,10 @@ def main(argv=None) -> int:
     p.add_argument("--seeds", type=int, default=20, help="connectome training-seed replicates")
     p.add_argument("--control-graphs", type=int, default=20, help="control graphs per control condition")
     p.add_argument("--lr-grid", nargs="+", type=float, default=[1e-3])
+    p.add_argument("--rho-grid", nargs="+", type=float, default=[C.TARGET_RHO],
+                   help="recurrence spectral-radius init to rescale BOTH arms to (sweep axis). Default "
+                        "[0.95] = the pinned value of subruns 01-04. Multiple values => a rho sweep "
+                        "(subrun 05): each (unit x rho) cell is a distinct run, tagged _rho{g} in the run_id.")
     # --- task geometry (pinned in the subrun run.py; overridable for calibration) ---
     p.add_argument("--hex-rings", type=int, default=6)
     p.add_argument("--seq-len", type=int, default=64)
@@ -322,6 +351,12 @@ def main(argv=None) -> int:
                    help="in-model activity RMS-norm on the recurrent state (default ON, both arms)")
     p.add_argument("--no-normalize", dest="normalize", action="store_false",
                    help="disable the in-model activity normalization")
+    p.add_argument("--w-in-gain", dest="w_in_gain", type=float, default=1.0,
+                   help="input-pathway (W_in) init gain (1.0 = unchanged; >1 = stronger input drive)")
+    p.add_argument("--w-in-gain-grid", dest="w_in_gain_grid", nargs="+", type=float, default=None,
+                   help="W_in-gain sweep axis (subrun 06), parallel to --rho-grid: each (unit x gain) cell "
+                        "is a distinct run, tagged _win{g} in the run_id when >1 value. Default None -> "
+                        "[--w-in-gain] (single value), reproducing subruns 01-05 byte-for-byte.")
     # --- trial-type split + per-trial-type scored channels ---
     p.add_argument("--trial-frac-turn", type=float, default=0.5,
                    help="fraction of turn-only trials per batch (rotation varies, translation ~0)")
@@ -411,7 +446,7 @@ def main(argv=None) -> int:
             rot_trans_balance=args.rot_trans_balance, motion_gain=args.motion_gain,
             residual_yaw_dps=args.residual_yaw_dps, gaze_gain_yaw=args.gaze_gain_yaw,
             gaze_gain_roll=args.gaze_gain_roll, gaze_gain_pitch=args.gaze_gain_pitch,
-            scored_dofs=args.scored_dofs, normalize=args.normalize,
+            scored_dofs=args.scored_dofs, normalize=args.normalize, w_in_gain=args.w_in_gain,
             trial_frac_turn=args.trial_frac_turn, trial_frac_translate=args.trial_frac_translate,
             scored_turn=args.scored_turn, scored_translate=args.scored_translate,
             scored_mixed=args.scored_mixed,
@@ -448,7 +483,9 @@ def main(argv=None) -> int:
         M, _meta = cache[spec_row["substrate"]]
         try:
             run_condition(cfg, M, spec_row["substrate"], spec_row["condition"], spec_row["unit"],
-                          spec_row["hp"], device, args.output_dir, probe_inputs)
+                          spec_row["hp"], device, args.output_dir, probe_inputs,
+                          target_rho=spec_row.get("rho"), run_id=spec_row["run_id"],
+                          w_in_gain=spec_row.get("w_in_gain"))
         except Exception as e:
             print(f"  ERROR {spec_row['run_id']}: {type(e).__name__}: {e}", flush=True)
             if args.smoke:

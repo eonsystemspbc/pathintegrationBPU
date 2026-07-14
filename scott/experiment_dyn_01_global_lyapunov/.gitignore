@@ -1,0 +1,7 @@
+# run outputs + built substrate artifacts (rebuildable; not the record)
+outputs/
+substrate/*.npz
+substrate/*.npy
+_smoke/
+__pycache__/
+*.pyc

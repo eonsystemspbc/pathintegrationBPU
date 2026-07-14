@@ -8,8 +8,9 @@ Convention: one `.md` per experiment (`experiment_NN_<slug>.md`), each with Date
 Purpose / Methods / Results. Add results at the end of a run; don't pre-fill numbers.
 
 Experiments are grouped by **research track**, identified by a prefix on the ID: **`mb`** =
-mushroom body, **`vis`** = optic-flow / vision. Refer to experiments by prefixed ID (`mb-03`),
-not the bare number.
+mushroom body, **`vis`** = optic-flow / vision, **`dyn`** = dynamics / phase-space
+characterization of the connectome-as-RNN (task-independent). Refer to experiments by prefixed
+ID (`mb-03`), not the bare number.
 
 ## Experiments
 
@@ -21,7 +22,8 @@ not the bare number.
 | mb-04 | 2026-07-01 | Biological MB I/O (ALPN→KC→MBON, DAN) × four learning rules on MQAR — how much does the rule vs the wiring matter? | Concluded 2026-07-04 | [entry](experiment_04_mb_biological_io.md) |
 | mb-05 | 2026-07-04 | The same biological ports × four rules on the natural odor→valence reversal task — does Exp-4's null flip? | Concluded 2026-07-07 | [entry](experiment_05_mb_odor_valence.md) |
 | mb-06 | 2026-07-08 | Does the connectome advantage hold on a task that REQUIRES temporal integration of noisy evidence? | Concluded 2026-07-09 | [entry](experiment_06_mb_evidence_integration.md) |
-| vis-01 | 2026-07-09 | Vision analogue of mb-01: does the optic-lobe connectome beat random rewiring at reading self-motion from a fly-eye movie? | Blocked 2026-07-12 | [entry](experiment_vis_01_optic_flow.md) |
+| vis-01 | 2026-07-09 | Vision analogue of mb-01: does the optic-lobe connectome beat random rewiring at reading self-motion from a fly-eye movie? | Floor broken 2026-07-13 (norm-off + W_in=3); control test pending | [entry](experiment_vis_01_optic_flow.md) |
+| dyn-01 | 2026-07-13 | Does the connectome-as-RNN globally expand or contract nearby states (largest Lyapunov exponent), and does its wiring differ from a degree-matched shuffle? | MB done; OL pending | [entry](experiment_dyn_01_global_lyapunov.md) |
 
 ## Results
 
@@ -86,5 +88,30 @@ Optic lobe and mushroom body floor *equally* → the blocker is training these s
 on continuous regression (state collapses to a fixed point, readout emits the per-episode
 mean), **not vision**. The headline connectome-vs-control test (subrun 02) stays blocked until
 a fix lifts a substrate above floor — develop it on the cheap `mb_core_alpn` (~3 h) before
-rerunning the optic lobe (~26 h).
+rerunning the optic lobe (~26 h). First fix tried — a spectral-radius sweep (subrun 05, ρ =
+0.95→1.2) — **floored at every ρ**, falsifying the ρ-curable hypothesis. Second fix (subrun
+06, guided by dyn-01): turn the RMS activity-normalization **off** and drive the input harder.
+**This broke the floor** — best seed reached test R² 0.449 (val-peak 0.594 ≈ the 0.58 GRU
+ceiling), with `W_in` = 3 the sweet spot. It's a high-variance, seed-dependent win (typical
+seed still low; winners still climbing at the 300-epoch cap), so the connectome *can* do this
+regression once it stops over-contracting — but the fair connectome-vs-control test still
+needs a new subrun at `W_in` = 3, longer training, with the degree-matched control.
 [`code`](../experiment_vis_01_optic_flow/)
+
+**dyn-01** — *In progress.* First experiment of a new `dyn` (dynamics) track that characterizes
+the connectome-as-RNN's phase space directly, independent of any task. Question: on average, does
+the recurrence **expand or contract** nearby states — the largest Lyapunov exponent, measured by a
+twin-trajectory (Benettin) probe — and is the connectome's wiring different from its own
+degree-matched shuffle at matched ρ? The motivation is the classification-vs-regression split across
+mb-01…06 and vis-01: a strongly contracting network settles to a fixed point (good at
+*settle-to-an-answer* classification, bad at *track-a-moving-signal* regression), so measuring where
+each substrate sits should build theory for what the connectome can and can't learn. Mushroom-body
+result in (optic lobe pending): **every substrate contracts (λ < 0) in every regime** — consistent with
+the vis-01 fixed-point collapse. But the connectome is **not** more contracting than its degree-matched
+shuffle: intrinsically (normalization off) it *ties* the shuffle (Δλ ≤ 0.01), and in the task-effective
+regime (normalization on) it is the *least*-contracting graph (λ ≈ −0.45 vs the controls' ≈ −1.3, z =
+12–18). Two byproducts: the RMS normalization is quantified as the **dominant** contraction lever
+(dwarfing ρ — corroborating vis-01's suspicion that ρ was the wrong knob), and "keeps activity bounded"
+is shown to be a *different* property from "contracts perturbations." (A float64 / relative-perturbation
+fix was needed first, after a smoke gave a physically impossible λ from precision underflow.)
+[`code`](../experiment_dyn_01_global_lyapunov/)

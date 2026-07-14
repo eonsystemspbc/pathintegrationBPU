@@ -317,6 +317,7 @@ def make_args(**overrides) -> SimpleNamespace:
         # --- model ---
         microsteps=2, activation="relu", state_clip=0.0, init_seed=0,
         normalize=True,                   # in-model activity normalization (biological gain control), both arms
+        w_in_gain=1.0,                    # input-pathway init gain (1.0 = unchanged; >1 = stronger W_in drive)
         # --- optimisation (mirrors the Exp-1/5/6 regime) ---
         epochs=300, patience=300, converge_r2=0.995,
         train_batches=120, val_batches=30, test_batches=60, batch_size=48,

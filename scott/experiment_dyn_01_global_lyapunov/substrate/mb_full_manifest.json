@@ -1,0 +1,13 @@
+{
+  "substrate": "mb_full",
+  "N": 14025,
+  "edges": 574660,
+  "orientation": "M[post, pre]  (rec = M @ h flows pre->post)",
+  "inhibitory_edge_fraction": 0.0,
+  "rho_target_at_runtime": "set by dynlib.build_operator (default 0.95)",
+  "provenance": {
+    "node_set": "all 14,025 MB neurons (verbatim)",
+    "signed": false,
+    "source": "connectomes/flywire_mushroom_body/adjacency_unsigned.npz"
+  }
+}

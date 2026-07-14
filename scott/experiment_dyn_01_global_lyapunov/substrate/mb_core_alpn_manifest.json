@@ -1,0 +1,14 @@
+{
+  "substrate": "mb_core_alpn",
+  "N": 6014,
+  "edges": 471292,
+  "orientation": "M[post, pre]  (rec = M @ h flows pre->post)",
+  "inhibitory_edge_fraction": 0.0,
+  "rho_target_at_runtime": "set by dynlib.build_operator (default 0.95)",
+  "provenance": {
+    "node_set": "MB core (KC/MBON/DAN/MBIN) + ALPN = core_alpn__sub_rows",
+    "signed": false,
+    "n_sub_rows": 6014,
+    "port_indices_source": "vendored substrate/port_indices.npz (from exp-04)"
+  }
+}

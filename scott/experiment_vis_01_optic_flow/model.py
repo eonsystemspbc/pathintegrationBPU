@@ -97,7 +97,7 @@ class FlowRNN(nn.Module):
                  seed: int = 0, state_clip: float = 0.0, microsteps: int = 1,
                  activation: str = "relu", freeze_recurrent: bool = False,
                  normalize: bool = True, norm_gain: float = 1.0, norm_learnable: bool = True,
-                 norm_eps: float = 1e-5) -> None:
+                 norm_eps: float = 1e-5, w_in_gain: float = 1.0) -> None:
         super().__init__()
         if activation not in _ACTS:
             raise ValueError(f"activation must be one of {tuple(_ACTS)}")
@@ -131,7 +131,10 @@ class FlowRNN(nn.Module):
             self.register_buffer("norm_gain", g0)
 
         gen = torch.Generator(device="cpu"); gen.manual_seed(int(seed))
-        scale_in = 1.0 / math.sqrt(max(input_dim, 1))
+        # w_in_gain scales the INPUT-pathway init (default 1.0 = unchanged). A larger gain makes the
+        # movie re-perturb the recurrent state harder each frame -- the "stronger W_in" anti-fixed-point
+        # lever (dyn-01 found the state collapses because the recurrence out-contracts a weak input drive).
+        scale_in = float(w_in_gain) / math.sqrt(max(input_dim, 1))
         scale_out = 1.0 / math.sqrt(max(self.N, 1))
         self.W_in = nn.Parameter(torch.empty(self.N, input_dim).uniform_(-scale_in, scale_in, generator=gen))
         self.b_rec = nn.Parameter(torch.zeros(self.N))

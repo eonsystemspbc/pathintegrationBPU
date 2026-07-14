@@ -69,6 +69,22 @@ region + a different, physically-grounded task class.
   vision. Substrates built by `build_mb_substrate.py`; resolved via the `common.load_substrate` name registry.
   Figures + curves: `figures/fig_yaw1d_training_curves.png`, `figures/fig_yaw1d_summary.png`
   (`make_yaw1d_figures.py`).
+- **`subruns/05_rho_sweep/`** — the **spectral-radius (ρ) sweep**: the first fix-attempt for the
+  subrun-03/04 floor. subruns 03+04 showed the blocker is a **fixed-point state collapse** (contractive
+  recurrence → readout emits the per-episode mean → R²≈0), and the one damping knob never varied is the
+  recurrence **ρ=0.95 init** — ρ<1 is exactly what makes the state contract. This sweeps **ρ ∈ {0.95, 1.0,
+  1.05, 1.2}** on the cheapest substrate (`mb_core_alpn`, ~3 h/run), **connectome only, 10 seeds per ρ =
+  40 fleet runs**. ρ=0.95 re-confirms the subrun-04 floor (the sweep's own control point). Learnability
+  probe, single-arm — **not** the connectome-vs-control test (subrun 02). Caveat: ρ=0.95 already coexists
+  with σ_max≈2.44 (non-normal), so the ρ=1.2 (maybe 1.05) seeds may **diverge** rather than learn — an
+  informative bound on usable ρ, not a failed run. Rides the engine's new additive `--rho-grid` axis
+  (default `[0.95]` reproduces subruns 01–04 byte-for-byte; `_rho{g}` run_id tag only when >1 ρ). GRU
+  ceiling shared with subruns 03/04 (identical yaw task). Figures: `make_rho_sweep_figures.py`
+  (R²-vs-ρ summary + per-ρ curves). **RAN 2026-07-13 (34/40; 6 spot preemptions) and FLOORED at every ρ** —
+  median best val R² 0.053 / 0.031 / 0.032 / 0.026 for ρ = 0.95 / 1.0 / 1.05 / 1.2, all ≈0 vs the 0.58 GRU
+  ceiling, drifting *down* with ρ; no divergence at the high end. Falsifies the ρ-curable-fixed-point
+  hypothesis; new suspect is the in-model RMS normalization re-imposing contraction independent of ρ. Next:
+  ρ-sweep with normalize OFF, then a temporal-difference input channel.
 
 ## Reproduce
 
