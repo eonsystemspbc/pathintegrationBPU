@@ -1,0 +1,7 @@
+prepared N-pool train=4000 val=600 test=1200 input_dim=61 jobs=3
+job-start io=bio_HSVS arm=connectome seed=0 frac=100% n_train=4000 N=48749 edges=4032601 n_in=4043 n_out=11 params=4328009
+/home/ec2-user/pathintegrationBPU/scripts/flow/run_optic_flow_benchmark.py:421: UserWarning: Sparse invariant checks are implicitly disabled. Memory errors (e.g. SEGFAULT) will occur when operating on a sparse tensor which violates the invariants, but checks incur performance overhead. To silence this warning, explicitly opt in or out. See `torch.sparse.check_sparse_tensor_invariants.__doc__` for guidance.  (Triggered internally at /pytorch/aten/src/ATen/Context.cpp:760.)
+  W = torch.sparse_coo_tensor(
+  epoch io=bio_HSVS arm=connectome f=100% ep=1 val_yaw_r2=-0.0016 val_mean_r2=-0.0008 train_loss=0.05410
+  epoch io=bio_HSVS arm=connectome f=100% ep=3 val_yaw_r2=-0.0028 val_mean_r2=-0.0012 train_loss=0.05409
+  epoch io=bio_HSVS arm=connectome f=100% ep=6 val_yaw_r2=-0.0008 val_mean_r2=-0.0007 train_loss=0.05404
