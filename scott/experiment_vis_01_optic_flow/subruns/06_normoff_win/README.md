@@ -33,13 +33,15 @@ deltas). Engine change backing this subrun: an additive `--w-in-gain-grid` axis 
 ## Result (ran 2026-07-13, all 40 runs, on-demand)
 
 **The R² ≈ 0 floor broke.** With normalization off the connectome tracks yaw; **best seed test R² 0.449
-(val-peak 0.594 ≈ the 0.58 causal-GRU ceiling)**, `W_in` = 3 the sweet spot (test-R² mean 0.113 vs 0.055
-for the norm-off/`W_in` = 1 baseline). It is a **high-variance, seed-dependent** win — typical seed still
-low (all-40 test-R² median 0.065; 8/40 clear 0.10, 2 diverged) and the strong seeds were **still climbing
-at the 300-epoch cap** (best epochs 279–299). `W_in` = 5 overshoots (divergence-dominated). Figures:
+(val-peak 0.594 ≈ the 0.58 causal-GRU ceiling)**. `W_in` = 3 wins the 300-epoch snapshot (test-R² mean
+0.113 vs 0.055 for the norm-off/`W_in` = 1 baseline), but `W_in` = 5's median is **climbing fastest** at
+the cap (tail slope +0.016 vs ×3's +0.006 per 100 ep) and ends highest — so which gain wins at convergence
+is unresolved (×5 is noisy but undertrained, not diverging). It is a **high-variance, seed-dependent** win
+— typical seed still low (all-40 test-R² median 0.065; 8/40 clear 0.10, 2 diverged) and every strong seed
+was **still climbing at the 300-epoch cap** (best epochs 279–299). Figures:
 [`figures/fig_win_sweep_summary.png`](figures/fig_win_sweep_summary.png),
 [`figures/fig_win_sweep_curves.png`](figures/fig_win_sweep_curves.png) — regenerate with
 `uv run python scott/experiment_vis_01_optic_flow/make_win_sweep_figures.py`. Full write-up:
 [vis-01 notebook → "Update 2026-07-13 → Results"](../../../labnotebook/experiment_vis_01_optic_flow.md).
-Next: a **new subrun** at `W_in` = 3, longer training, with the degree-matched control (this `run.py` is
-frozen).
+Next: a **new subrun** (07) — 750 epochs, `W_in` ∈ {3, 4, 5}, with the degree-matched control (this
+`run.py` is frozen).

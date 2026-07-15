@@ -244,22 +244,79 @@ def _preact_rms(op: sp.coo_matrix, probe_inputs: np.ndarray, seed: int = 0,
     return (sq / max(cnt, 1)) ** 0.5
 
 
+def _scale_op(op: sp.coo_matrix, alpha: float) -> sp.coo_matrix:
+    """Return alpha * op as a fresh COO (does NOT touch rho/sigma structure -- a uniform gain)."""
+    return sp.coo_matrix((op.data * float(alpha), (op.row, op.col)), shape=op.shape)
+
+
+def match_operator_act_rms(op: sp.coo_matrix, probe_inputs: np.ndarray, target_rms: float, *,
+                           microsteps: int = 2, activation: str = "relu", seed: int = 0,
+                           tol: float = 0.03, max_iter: int = 32) -> tuple[sp.coo_matrix, float, float]:
+    """Find a single scalar alpha so the pre-normalization activation-RMS of (alpha * op) matches
+    `target_rms` (the connectome's), and return (alpha*op, alpha, achieved_rms).
+
+    WHY a scalar (and what it costs): activation-RMS is driven by the operator's TRANSIENT gain
+    (sigma_max), which for a non-normal control is decoupled from rho. `_preact_rms` is monotone
+    increasing in alpha (more recurrent gain -> larger pre-activations), so a log-space bisection
+    converges. This deliberately lets the control's rho DRIFT off target_rho -- you cannot hold both
+    rho and activity with one scalar, and for a normalization-OFF regression comparison it is the
+    activity level the linear readout sees that must be matched to isolate wiring SHAPE."""
+    def f(a: float) -> float:
+        return _preact_rms(_scale_op(op, a), probe_inputs, seed=seed,
+                           microsteps=microsteps, activation=activation)
+    # grow an upper bracket where f(hi) >= target and finite; back off if we grew into divergence.
+    hi, fhi, grow = 1.0, f(1.0), 0
+    while np.isfinite(fhi) and fhi < target_rms and grow < 40:
+        hi *= 1.5; fhi = f(hi); grow += 1
+    shrink = 0
+    while (not np.isfinite(fhi)) and shrink < 40:
+        hi *= 0.8; fhi = f(hi); shrink += 1
+    lo = 1e-4
+    flo = f(lo)
+    if not (np.isfinite(fhi) and flo <= target_rms <= fhi):   # cannot bracket -> best-effort clamp
+        a = hi if (np.isfinite(fhi) and target_rms > fhi) else lo
+        return _scale_op(op, a), float(a), float(f(a))
+    for _ in range(max_iter):
+        mid = (lo * hi) ** 0.5                                # geometric (log) midpoint
+        fm = f(mid)
+        if not np.isfinite(fm):
+            hi = mid; continue
+        if abs(fm - target_rms) <= tol * target_rms:
+            return _scale_op(op, mid), float(mid), float(fm)
+        if fm < target_rms:
+            lo = mid
+        else:
+            hi = mid
+    a = (lo * hi) ** 0.5
+    return _scale_op(op, a), float(a), float(f(a))
+
+
 def build_condition_operator(M: sp.csr_matrix, condition: str, seed: int,
                              target_rho: float = TARGET_RHO,
                              probe_inputs: np.ndarray | None = None,
                              microsteps: int = 2, activation: str = "relu",
-                             report: dict | None = None) -> sp.coo_matrix:
-    """Forward operator for one condition/unit. BOTH arms get ONLY the rho=target_rho rescale (NO
-    operator-level activation-RMS matching -- that is replaced by the in-model activity normalization,
-    which keeps both arms comparable without collapsing the control's rho).
+                             report: dict | None = None,
+                             match_act_rms: bool = False) -> sp.coo_matrix:
+    """Forward operator for one condition/unit.
 
-    connectome  -> forward_operator(M)               rescaled to rho=target_rho.
-    control     -> forward_operator(builder(M,seed)) rescaled to rho=target_rho (rho stays 0.95 too).
+    DEFAULT (match_act_rms=False): BOTH arms get ONLY the rho=target_rho rescale (NO operator-level
+    activation-RMS matching -- that is replaced by the in-model activity normalization, which keeps both
+    arms comparable without collapsing the control's rho). Byte-for-byte the historical behaviour.
+      connectome  -> forward_operator(M)               rescaled to rho=target_rho.
+      control     -> forward_operator(builder(M,seed)) rescaled to rho=target_rho (rho stays 0.95 too).
+
+    match_act_rms=True (subrun 07, normalization-OFF fair comparison): the connectome is STILL only
+    rho-rescaled (it is the reference, unchanged), but each CONTROL operator is additionally rescaled by
+    a scalar so its pre-normalization activation-RMS matches the connectome's. This is what isolates
+    wiring SHAPE once the in-model normalization is gone (the control's larger sigma_max would otherwise
+    make its activity run hotter). It deliberately lets the control's rho drift off target_rho -- one
+    scalar cannot hold both rho and activity, and activity is what a linear readout with no normalization
+    actually sees. Requires probe_inputs.
 
     `report` (if given) is filled with the per-arm CONDITIONING DIAGNOSTICS -- rho, sigma_max, and the
-    PRE-normalization activation-RMS (the un-normalized regime the normalization absorbs) -- which are
-    RECORDED for reporting, NOT matched."""
-    if condition in ("connectome", "generic_connectome"):
+    PRE-normalization activation-RMS -- plus, when matching, the match target/achieved/scale."""
+    is_connectome = condition in ("connectome", "generic_connectome")
+    if is_connectome:
         op, _r, _s = rescale_to_rho(forward_operator(M), target_rho)
     else:
         builder = CONTROL_BUILDERS.get(condition)
@@ -267,13 +324,28 @@ def build_condition_operator(M: sp.csr_matrix, condition: str, seed: int,
             raise ValueError(f"unknown condition {condition!r}")
         op, _r, _s = rescale_to_rho(forward_operator(builder(M, seed)), target_rho)
 
+    match_info: dict = {}
+    if match_act_rms and not is_connectome:
+        if probe_inputs is None:
+            raise ValueError("match_act_rms=True requires probe_inputs (the shared activity probe)")
+        conn_op, _, _ = rescale_to_rho(forward_operator(M), target_rho)      # the reference arm
+        target = _preact_rms(conn_op, probe_inputs, microsteps=microsteps, activation=activation)
+        op, alpha, achieved = match_operator_act_rms(
+            op, probe_inputs, target, microsteps=microsteps, activation=activation)
+        match_info = {"act_rms_target": round(float(target), 5), "act_scale": round(float(alpha), 5)}
+
     if report is not None:
-        r = {"match_mode": "normalization_no_match",
+        if match_act_rms:
+            mode = "act_rms_reference" if is_connectome else "act_rms_matched"
+        else:
+            mode = "normalization_no_match"
+        r = {"match_mode": mode,
              "rho_after": round(rho_of(op), 4),
              "sigma_max_after": round(sigma_max_of(op), 4)}
         if probe_inputs is not None:                            # pre-normalization activation-RMS diagnostic
             r["act_rms_prenorm"] = round(
                 _preact_rms(op, probe_inputs, microsteps=microsteps, activation=activation), 5)
+        r.update(match_info)
         report.update(r)
     return op
 

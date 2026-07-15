@@ -53,13 +53,17 @@ BRACKETS = ("weight_shuffle", "random_sparse", "random_z")  # optional secondary
 # --------------------------------------------------------------------------------------
 def run_condition(cfg, M, substrate: str, condition: str, unit: int, hp: float,
                   device, out_dir: Path, probe_inputs, target_rho: float | None = None,
-                  run_id: str | None = None, w_in_gain: float | None = None) -> dict:
+                  run_id: str | None = None, w_in_gain: float | None = None,
+                  match_act_rms: bool = False) -> dict:
     """Train/evaluate ONE unit. Idempotent (cached result.json short-circuits).
 
     target_rho: the spectral radius to rescale the recurrence operator to (both arms). Defaults to
     C.TARGET_RHO (0.95) so single-rho subruns are unchanged; the rho-sweep subrun passes each grid value.
     run_id: the plan's run_id (carries the _rho tag when multiple rho values share an output dir, so
-    seed-x-rho cells don't collide on the same run_dir). Falls back to the legacy tag when not given."""
+    seed-x-rho cells don't collide on the same run_dir). Falls back to the legacy tag when not given.
+    match_act_rms: when True, control operators are scalar-rescaled to match the connectome's
+    pre-normalization activation-RMS (subrun 07 normalization-OFF fair comparison; default off = the
+    historical rho-only behaviour)."""
     import torch
     target_rho = C.TARGET_RHO if target_rho is None else float(target_rho)
     w_in_gain = getattr(cfg, "w_in_gain", 1.0) if w_in_gain is None else float(w_in_gain)
@@ -72,7 +76,7 @@ def run_condition(cfg, M, substrate: str, condition: str, unit: int, hp: float,
     op = C.build_condition_operator(M, condition, seed=int(unit), target_rho=target_rho,
                                     probe_inputs=probe_inputs,
                                     microsteps=cfg.microsteps, activation=cfg.activation,
-                                    report=act_report)
+                                    report=act_report, match_act_rms=match_act_rms)
     spec = C.episode_spec(cfg)
     torch.manual_seed(cfg.init_seed + unit)
     model = C.flowmodel.FlowRNN(op, input_dim=spec.input_dim, output_dim=C.N_DOF,
@@ -289,11 +293,21 @@ def analyze(out_dir: Path) -> dict:
         ctrl_rho, ctrl_sig, ctrl_rms = diag("rho_after", "degree_matched"), \
             diag("sigma_max_after", "degree_matched"), diag("act_rms_prenorm", "degree_matched")
         mean = lambda xs: round(float(np.mean(xs)), 4) if xs else None          # noqa: E731
+        # the true per-run match_mode (subrun 07 records "act_rms_matched" on the control arm)
+        modes = {r.get("act_rms_match", {}).get("match_mode") for r in rows
+                 if r.get("substrate") == substrate}
+        matched = "act_rms_matched" in modes
+        ctrl_scale = diag("act_scale", "degree_matched")
         if conn_rho or ctrl_rho:
             analysis["act_rms_match"][substrate] = {
-                "match_mode": "normalization_no_match",
-                "normalization": "in-model activity RMS-norm (both arms, every microstep); operator NOT "
-                                 "rescaled to match -- so the control keeps rho=0.95 too",
+                "match_mode": "act_rms_matched" if matched else "normalization_no_match",
+                "normalization": ("normalization OFF; each control operator scalar-rescaled so its "
+                                  "pre-norm activation-RMS matches the connectome's (rho then drifts off "
+                                  "0.95 on the control) -- isolates wiring SHAPE without normalization")
+                                 if matched else
+                                 ("in-model activity RMS-norm (both arms, every microstep); operator NOT "
+                                  "rescaled to match -- so the control keeps rho=0.95 too"),
+                "control_act_scale_mean": mean(ctrl_scale),
                 "connectome_rho_mean": mean(conn_rho),
                 "connectome_sigma_max_mean": mean(conn_sig),
                 "connectome_prenorm_act_rms_mean": mean(conn_rms),
@@ -357,6 +371,12 @@ def main(argv=None) -> int:
                    help="W_in-gain sweep axis (subrun 06), parallel to --rho-grid: each (unit x gain) cell "
                         "is a distinct run, tagged _win{g} in the run_id when >1 value. Default None -> "
                         "[--w-in-gain] (single value), reproducing subruns 01-05 byte-for-byte.")
+    p.add_argument("--match-control-act-rms", dest="match_control_act_rms", action="store_true",
+                   default=False,
+                   help="subrun 07 (normalization-OFF fair comparison): scalar-rescale each control "
+                        "operator so its pre-normalization activation-RMS matches the connectome's (the "
+                        "connectome is unchanged). Isolates wiring SHAPE once the in-model normalization "
+                        "is gone. Default OFF -> rho-only rescale, reproducing subruns 01-06.")
     # --- trial-type split + per-trial-type scored channels ---
     p.add_argument("--trial-frac-turn", type=float, default=0.5,
                    help="fraction of turn-only trials per batch (rotation varies, translation ~0)")
@@ -485,7 +505,8 @@ def main(argv=None) -> int:
             run_condition(cfg, M, spec_row["substrate"], spec_row["condition"], spec_row["unit"],
                           spec_row["hp"], device, args.output_dir, probe_inputs,
                           target_rho=spec_row.get("rho"), run_id=spec_row["run_id"],
-                          w_in_gain=spec_row.get("w_in_gain"))
+                          w_in_gain=spec_row.get("w_in_gain"),
+                          match_act_rms=getattr(args, "match_control_act_rms", False))
         except Exception as e:
             print(f"  ERROR {spec_row['run_id']}: {type(e).__name__}: {e}", flush=True)
             if args.smoke:

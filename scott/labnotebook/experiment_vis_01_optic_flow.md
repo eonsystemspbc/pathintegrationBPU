@@ -1,14 +1,18 @@
 # Experiment vis-01 — optic-lobe connectome vs degree-matched controls on optic flow
 
 **Date started:** 2026-07-09
-**Status (updated 2026-07-13):** *Latest:* the dynamics experiment [dyn-01](experiment_dyn_01_global_lyapunov.md)
-found the **RMS activity-normalization is the dominant force freezing the state** (it triples the
-contraction, dwarfing ρ — which is why subrun 05's ρ sweep did nothing). **Subrun 06 ran and the R² ≈ 0
-floor broke:** with normalization **off** on `mb_core_alpn`, the connectome now tracks yaw — best seed test
-R² 0.449 (val-peak 0.594 ≈ the GRU ceiling), with `W_in` = 3 the sweet spot. It is a high-variance,
-seed-dependent win (typical seed still low; the winners were still climbing at the epoch cap), not the
-fair control test — next is a new subrun at `W_in` = 3, longer training, **with** the degree-matched
-control. See "Update 2026-07-13" below. *(Prior status retained:)* **Subruns 03 + 04 finished — the connectome FlowRNN floors on EVERY substrate.**
+**Status (updated 2026-07-14):** *Latest:* **subrun 07 ran — the fair control test lands on "connectome ≈
+control."** With normalization **off** on `mb_core_alpn`, 750 epochs, `W_in` ∈ {3, 4, 5}, and the
+degree-matched control fairly activity-RMS-matched, the connectome now learns yaw regression well (×5 median
+best-val R² 0.59 ≈ the 0.58 GRU ceiling) — but so does the control: the connectome's edge is small (Δ ≤ 0.10
+test R², +0.4–0.7 control-SD), higher-mean at every gain and more *reliable* at ×5, yet **not significant on
+the pre-registered permutation rank** (*p* = 0.36–0.55). So the floor-break was about **dynamics**
+(normalization off + drive), **not the specific wiring** — a genuine contrast with mb-01/02/06, and coherent
+with dyn-01 (norm-off, the connectome ties its shuffle on contraction). Both arms still climbing at the cap;
+n = 1 connectome graph. See "Update 2026-07-14" below. *(Prior:)* the dynamics experiment
+[dyn-01](experiment_dyn_01_global_lyapunov.md) found the **RMS activity-normalization is the dominant force
+freezing the state** (it triples the contraction, dwarfing ρ — which is why subrun 05's ρ sweep did
+nothing), and **subrun 06 first broke the R² ≈ 0 floor** (connectome-only probe, best seed test R² 0.449). *(Prior status retained:)* **Subruns 03 + 04 finished — the connectome FlowRNN floors on EVERY substrate.**
 The yaw-only learnability run completed on the fleet: 20 optic-lobe seeds and 40 mushroom-body seeds
 (`mb_full` + `mb_core_alpn`) all trained to the full 300-epoch budget, and **not one of the 60 networks cleared
 held-out R² ≈ 0** against a GRU ceiling of 0.58 (causal) / 0.76 (bidirectional) on the identical stimulus.
@@ -499,12 +503,28 @@ that early-stop epoch):
 
 - **Norm-off alone (×1) barely lifts off the floor** — test-R² mean 0.055, and no seed exceeds 0.10. So
   normalization was the blocker, but simply removing it only gets you to the edge of the floor.
-- **The strong-R² seeds all need `W_in` ≥ 2**, and **×3 is the sweet spot** (highest test mean 0.113 and
-  the 0.449 top seed). This matches dyn-01's second lever: a stronger input keeps re-perturbing the state
-  so the recurrence can't quietly settle it.
-- **×5 overshoots.** Its median best-val is nominally highest (0.127) but its test mean drops back to
-  0.092 and its training curves are dominated by divergence spikes — exactly the destabilization the
-  2-epoch pre-flight warned about.
+- **The strong-R² seeds all need `W_in` ≥ 2**, and **×3 has the best *snapshot* numbers** (highest test
+  mean 0.113 and the 0.449 top seed). This matches dyn-01's second lever: a stronger input keeps
+  re-perturbing the state so the recurrence can't quietly settle it.
+- **×5 is noisy but NOT saturated — and by the end of training it is the *fastest-climbing* arm** (see the
+  tail analysis below). Its training curves carry more transient downward spikes (why its early-stop test
+  mean, 0.092, sits below ×3's), but those spikes recover; the underlying median keeps rising and is
+  climbing ~2.7× faster than ×3 at epoch 300. So its 300-epoch rank *understates* it — the earlier read
+  of "×5 overshoots / destabilizes" was wrong; it is the most undertrained arm, not the broken one.
+
+**Tail analysis — who is still climbing at the 300-epoch cap (median held-out yaw R² across the 10 seeds):**
+
+| `W_in` | median R² ep100–140 | median R² ep260–300 | tail slope (per 100 ep, last 60) |
+|---|---|---|---|
+| ×1 | 0.031 | 0.048 | +0.003 (flat) |
+| ×2 | 0.035 | 0.058 | +0.002 (flat) |
+| ×3 | 0.038 | 0.063 | +0.006 |
+| **×5** | 0.037 | **0.069** | **+0.016 (steepest)** |
+
+The ×5 median *starts lowest and overtakes* — it ends highest of any arm and is still accelerating, with
+several ×5 seeds peaking at the literal final epoch (u01 peak 0.186 @ep299, u02 0.286 @ep298). ×3 only
+"wins" on the peak/early-stop snapshot, carried by one exceptional seed (u09). By central tendency at the
+cap, **×5 ≥ ×3 and rising faster.** This is the key reason the follow-up must not prematurely lock in ×3.
 
 ![subrun-06 W_in summary](../experiment_vis_01_optic_flow/subruns/06_normoff_win/figures/fig_win_sweep_summary.png)
 
@@ -515,14 +535,16 @@ are well below the ceiling — the win is in the tail, not the center.*
 **The good seeds were still climbing when we cut them off — they are undertrained, not saturated.** The
 training curves make this the clearest single takeaway: in the ×3 panel one seed rises steadily to 0.594
 and is *still ascending at the 300-epoch cap* (best epochs across the strong seeds cluster at 279–299, and
-that seed's last-20-epoch mean is 0.497 — a plateau-in-progress, not an isolated spike). The ×5 panel, by
-contrast, is a wall of downward divergence spikes around a flat median.
+that seed's last-20-epoch mean is 0.497 — a plateau-in-progress, not an isolated spike). The ×5 panel
+looks the noisiest (many transient downward spikes), but read the *trend*, not the spikes: its median rises
+fastest of all arms and several of its seeds are peaking at the very last epoch — it is climbing, not
+diverging.
 
 ![subrun-06 W_in curves](../experiment_vis_01_optic_flow/subruns/06_normoff_win/figures/fig_win_sweep_curves.png)
 
 *Per-W_in validation curves (thin = each seed, bold = median). ×1 hugs zero; ×2/×3 climb (×3 reaches the
-ceiling on one seed and is still rising at the cap); ×5 is dominated by divergence. Best seed per panel
-labeled.*
+ceiling on one seed and is still rising at the cap); ×5 is the noisiest but its median is climbing fastest
+and is still rising hard at the cap — undertrained, not diverging. Best seed per panel labeled.*
 
 **Data:** [`subruns/06_normoff_win/outputs/runs/`](../experiment_vis_01_optic_flow/subruns/06_normoff_win/outputs/)
 (per-run `result.json` + `metrics_epochs.csv`), figures regenerated by
@@ -532,10 +554,117 @@ per-`W_in` breakdown above comes from the raw `result.json` files, which carry `
 
 **What this changes, and what's next.** It flips subrun 05's conclusion: the connectome *can* do this
 regression once it stops over-contracting. This is still a learnability result on one graph, not the fair
-test. The clean follow-up (a **new subrun**, since it changes what's launched): lock in **`W_in` = 3,
-normalization off**, (a) **train longer** — the winners hadn't saturated — and (b) **re-introduce the
-degree-matched control** at that config. There is finally signal above the floor, so the
-connectome-vs-control comparison is now worth running.
+test. The clean follow-up (a **new subrun** — subrun 07 — since it changes what's launched): normalization
+off, **train much longer (750 epochs)** because every strong seed was still climbing at 300, and carry the
+gain forward as a **short bracket `W_in` ∈ {3, 4, 5}** rather than a single locked value — because ×3 wins
+the 300-epoch snapshot but ×5's median is climbing fastest, so which gain wins at convergence is genuinely
+unresolved (×4 is the untested midpoint). Crucially, subrun 07 **re-introduces the degree-matched control**
+at each gain (10 connectome seeds + 10 control graphs per gain = 60 runs), so it is finally the fair
+connectome-vs-control test — subject to the normalize-off control-fairness caveat noted for that subrun
+(with normalization off, the degree control's larger σ_max is no longer bounded by the in-model
+auto-volume, so the arms must be matched on activity another way for the comparison to isolate wiring
+shape).
+
+## Update 2026-07-14 — subrun 07: the fair connectome-vs-control test (norm OFF, 750 epochs) — ran; **connectome ≈ control**
+
+**Purpose.** Subrun 06 broke the floor but was connectome-only (a learnability probe). Now that something
+clears the floor, run the actual question of the whole vis-01 arc: **with normalization off, does the real
+connectome beat a degree-matched random rewiring on yaw regression?** Two design choices carry straight
+from 06's data: **train much longer (750 epochs)** because every strong seed was still climbing at 300, and
+**carry the bracket `W_in` ∈ {3, 4, 5}** because ×3 won the snapshot but ×5's median was climbing fastest —
+which gain wins at convergence is unresolved (×4 is the untested midpoint).
+
+**The fairness fix (why this needed an engine change, in plain terms).** The connectome-vs-control
+comparison used to be made fair by the in-model normalization: it rescales every neuron's activity back to
+the same level each frame, so it doesn't matter that the degree-matched control is wired to amplify signals
+much more strongly (its "transient gain" σ_max is far larger). Turn that normalization **off** — which is
+exactly what let the connectome learn — and nothing bounds the control's hotter activity anymore. On
+`mb_core_alpn` the control's σ_max ≈ **2.23 vs the connectome's 1.08** (~2×). So a raw R² gap could just be
+"the control runs louder," not "the wiring is worse." To keep the test about **wiring shape**, subrun 07
+rescales each control so its actual activity level (pre-normalization activation-RMS) matches the
+connectome's; the connectome itself is left untouched. Because a single volume knob can't hold both the
+activity level and the spectral radius ρ at once, the control's ρ is allowed to drift off 0.95 — the right
+trade here, since with no normalization it is the activity level, not ρ, that the linear readout actually
+sees. (This is the same resolution exp-02 reached for its eigenvector controls.) Implemented as an additive
+engine flag `--match-control-act-rms` (default off ⇒ subruns 01–06 reproduce byte-for-byte); validated on
+the real substrate — the control's activation-RMS gap to the connectome drops from ~42% to <1%.
+
+**Methods.**
+- Substrate `mb_core_alpn` (6,014 neurons); normalization **off**; ρ = 0.95 (connectome); lr = 1e-3.
+- Conditions: **connectome ×10 training seeds** vs **degree_matched ×10 independent control graphs**, at
+  each gain `W_in` ∈ {3, 4, 5} → **60 runs**. Control activation-RMS-matched to the connectome per graph.
+- **750 epochs** (converged-stop only; plateau off). Everything else identical to subruns 04/05/06
+  (yaw-only continuous rotation, T = 32, microsteps = 1, no clutter, hex_rings = 6, score yaw_rate only).
+  Grad-clip (norm 1.0) is on in the engine, as in every prior subrun. GRU ceiling (causal 0.58) shared.
+- Fleet: 60 GPUs, all on-demand (`USE_SPOT=false`). Est. ~430–540 GPU-h ≈ **$390–490** (~4× subrun 06).
+- Launcher + pinned config:
+  [`subruns/07_normoff_control/run.py`](../experiment_vis_01_optic_flow/subruns/07_normoff_control/run.py);
+  figures via [`make_control_compare_figures.py`](../experiment_vis_01_optic_flow/make_control_compare_figures.py).
+
+**Interpretation set in advance.** Per gain, connectome vs degree-matched on held-out yaw R² (permutation
+rank + control-SD effect size, same machinery as the MB experiments). **Connectome > control** at a gain →
+wiring *shape* helps this regression (the vision analogue of the mb-01/exp-02 finding). **Connectome ≈
+control** → the floor-break was about *dynamics* (normalization + drive), not the specific wiring. Both are
+real, reportable answers; n = 1 connectome graph vs 10 control graphs per gain.
+
+### Results (all 60 runs in; ran 2026-07-14, all on-demand, 750 epochs each)
+
+**Headline: the floor stays broken at scale — but the connectome does *not* cleanly beat the control.** This
+lands on the pre-registered **"connectome ≈ control"** branch: the floor-break was about *dynamics*
+(normalization off + strong drive), not the specific optic-lobe wiring. Two things are true at once, and both
+matter.
+
+**1. The subrun-06 win replicates and gets stronger with the longer run.** At `W_in` × 5 the connectome's
+median best-val R² is **0.59 — essentially at the 0.58 causal-GRU ceiling** — and several seeds sit at or
+above it. Turning the RMS activity-normalization off and driving the input hard is a real, reproducible fix,
+not a subrun-06 fluke.
+
+**2. Once the control is fairly activity-matched, a degree-matched random rewiring learns this task about as
+well as the connectome.** Per gain, on held-out **test** R² (10 connectome seeds vs 10 independent control
+graphs):
+
+| gain | connectome (mean ± SD) | degree-matched (mean ± SD) | Δ | Δ in ctrl-SD | perm-rank *p* |
+|---|---|---|---|---|---|
+| `W_in` × 3 | 0.339 ± 0.158 | 0.273 ± 0.163 | +0.066 | +0.40 | 0.55 |
+| `W_in` × 4 | 0.431 ± 0.133 | 0.423 ± 0.087 | +0.009 | +0.10 | 0.55 |
+| `W_in` × 5 | 0.526 ± 0.086 | 0.430 ± 0.147 | +0.096 | +0.66 | 0.36 |
+
+The connectome mean is higher at **every** gain, and at ×5 it is also the **more reliable** arm (SD 0.086 vs
+the control's 0.147 — fewer collapsed seeds). But the two distributions overlap heavily: the single best
+control graph (test 0.620 at ×5) edges out the single best connectome seed (0.617), and 3–5 of 10 control
+graphs clear the connectome mean at each gain. **Permutation rank — the pre-registered primary — is
+non-significant at all three gains** (*p* = 0.36–0.55). The `analysis.json` also reports a rank-sum *p* =
+0.011, but that number is not admissible as primary: all 10 connectome seeds share **one** graph, so it is
+pseudo-replication (10 seeds of the same wiring, not 10 wirings), which `analysis.json` flags itself.
+
+![per-gain connectome vs control, best held-out yaw R²](../experiment_vis_01_optic_flow/subruns/07_normoff_control/figures/fig_control_summary.png)
+
+*Per gain: connectome seeds (blue) vs degree-matched control graphs (grey), each point one seed/graph's best
+held-out yaw R², medians barred. The connectome sits a little higher at all three gains and tightens up at
+×5, but the strips overlap and the best control point beats the best connectome point.*
+
+**3. Both arms are still climbing at the 750-epoch cap** (steepest at ×5), so these are undertrained ceilings
+for *both* — the gap is not frozen and could move either way with more training.
+
+![per-gain training curves, connectome median over control band](../experiment_vis_01_optic_flow/subruns/07_normoff_control/figures/fig_control_curves.png)
+
+*Connectome median (bold blue) over the degree-matched control band (grey min–max). The two track each other
+closely throughout; ×5 shows the connectome nudging above the band late but still rising at epoch 750.*
+
+**What it means, and why it's coherent.** On this vision *regression* task the connectome shows a small,
+consistent, reliability-flavored edge but does **not** separate from a degree-matched shuffle — a genuine
+contrast with mb-01 / mb-02 / mb-06, where the same kind of control was cleanly beaten on
+*classification / integration* tasks. This fits **dyn-01**: the connectome's task advantage was tied to its
+settle-to-an-answer *contraction* regime, and dyn-01 showed that with normalization **off** the connectome
+*ties* its degree-matched shuffle on contraction (it only separates with normalization *on*). Subrun 07 is
+the behavioral echo — remove the contraction that made the wiring special, and the wiring stops being
+special. So the wiring shape is not what let vision be learned here; the *dynamics* (normalization off +
+drive) did.
+
+Two honest limits on the conclusion: **n = 1 connectome graph** vs 10 control graphs (the pseudo-replication
+ceiling is structural — more seeds of one graph can't fix it), and **both arms undertrained** at the cap.
+Data: `subruns/07_normoff_control/outputs/` (per-run `result.json` + `metrics_epochs.csv`), `analysis.json`,
+and `figures/fig_control_*.png`.
 
 ## Open questions flagged for a reviewer
 

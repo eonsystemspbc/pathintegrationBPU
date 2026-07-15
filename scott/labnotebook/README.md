@@ -22,7 +22,7 @@ ID (`mb-03`), not the bare number.
 | mb-04 | 2026-07-01 | Biological MB I/O (ALPN→KC→MBON, DAN) × four learning rules on MQAR — how much does the rule vs the wiring matter? | Concluded 2026-07-04 | [entry](experiment_04_mb_biological_io.md) |
 | mb-05 | 2026-07-04 | The same biological ports × four rules on the natural odor→valence reversal task — does Exp-4's null flip? | Concluded 2026-07-07 | [entry](experiment_05_mb_odor_valence.md) |
 | mb-06 | 2026-07-08 | Does the connectome advantage hold on a task that REQUIRES temporal integration of noisy evidence? | Concluded 2026-07-09 | [entry](experiment_06_mb_evidence_integration.md) |
-| vis-01 | 2026-07-09 | Vision analogue of mb-01: does the optic-lobe connectome beat random rewiring at reading self-motion from a fly-eye movie? | Floor broken 2026-07-13 (norm-off + W_in=3); control test pending | [entry](experiment_vis_01_optic_flow.md) |
+| vis-01 | 2026-07-09 | Vision analogue of mb-01: does the optic-lobe connectome beat random rewiring at reading self-motion from a fly-eye movie? | Concluded 2026-07-14: floor broke with norm-off, but **connectome ≈ control** — the win was dynamics, not wiring | [entry](experiment_vis_01_optic_flow.md) |
 | dyn-01 | 2026-07-13 | Does the connectome-as-RNN globally expand or contract nearby states (largest Lyapunov exponent), and does its wiring differ from a degree-matched shuffle? | MB done; OL pending | [entry](experiment_dyn_01_global_lyapunov.md) |
 
 ## Results
@@ -92,10 +92,18 @@ rerunning the optic lobe (~26 h). First fix tried — a spectral-radius sweep (s
 0.95→1.2) — **floored at every ρ**, falsifying the ρ-curable hypothesis. Second fix (subrun
 06, guided by dyn-01): turn the RMS activity-normalization **off** and drive the input harder.
 **This broke the floor** — best seed reached test R² 0.449 (val-peak 0.594 ≈ the 0.58 GRU
-ceiling), with `W_in` = 3 the sweet spot. It's a high-variance, seed-dependent win (typical
-seed still low; winners still climbing at the 300-epoch cap), so the connectome *can* do this
-regression once it stops over-contracting — but the fair connectome-vs-control test still
-needs a new subrun at `W_in` = 3, longer training, with the degree-matched control.
+ceiling). The fair test followed in **subrun 07** (2026-07-14): 750 epochs, `W_in` ∈ {3,4,5},
+degree-matched control **activation-RMS-matched** to the connectome (since normalization-off no
+longer bounds the control's ~2× larger σ_max). Result — **connectome ≈ control**. The win from
+norm-off replicates and strengthens (×5 median best-val R² **0.59 ≈ the 0.58 GRU ceiling**), but
+the degree-matched shuffle learns the task about as well: the connectome leads in mean at every
+gain and is *more reliable* at ×5 (SD 0.086 vs 0.147), yet the edge is small (Δ ≤ 0.10 test R²,
++0.4–0.7 control-SD) and **non-significant on the pre-registered permutation rank** (p =
+0.36–0.55; the rank-sum p = 0.011 is pseudo-replication — one connectome graph, 10 seeds). So
+the floor-break was about **dynamics** (normalization off + drive), **not the specific wiring** —
+a genuine contrast with mb-01/02/06 (where the connectome cleanly beat the same control on
+*classification/integration*), and coherent with dyn-01 (norm-off, the connectome *ties* its
+shuffle on contraction). Caveats: n = 1 connectome graph, both arms still climbing at the cap.
 [`code`](../experiment_vis_01_optic_flow/)
 
 **dyn-01** — *In progress.* First experiment of a new `dyn` (dynamics) track that characterizes

@@ -85,6 +85,19 @@ region + a different, physically-grounded task class.
   ceiling, drifting *down* with ρ; no divergence at the high end. Falsifies the ρ-curable-fixed-point
   hypothesis; new suspect is the in-model RMS normalization re-imposing contraction independent of ρ. Next:
   ρ-sweep with normalize OFF, then a temporal-difference input channel.
+- **`subruns/06_normoff_win/`** — the **normalization-off + stronger-drive** fix, guided by dyn-01's finding
+  that the in-model RMS normalization (not ρ) is the dominant contraction lever. Connectome-only learnability
+  probe on `mb_core_alpn`: normalization **off**, `W_in` gain ∈ {2,3,5}, 300 epochs, 40 runs. **RAN
+  2026-07-13 and BROKE THE FLOOR** — best seed test R² 0.449 (val-peak 0.594 ≈ the 0.58 GRU ceiling). `W_in`=3
+  won the 300-ep snapshot but `W_in`=5's median climbed fastest at the cap. High-variance, seed-dependent,
+  every strong seed still rising — a *can-it-learn* win, not the control test. Rides the engine's additive
+  `--w-in-gain-grid` axis. Figures: `make_win_sweep_figures.py`.
+- **`subruns/07_normoff_control/`** — **the fair connectome-vs-control test.** Normalization off, 750 epochs,
+  `W_in` ∈ {3,4,5}, **10 connectome seeds vs 10 degree-matched control graphs per gain = 60 runs**, control
+  **activation-RMS-matched** to the connectome (norm-off no longer bounds its ~2× larger σ_max; additive
+  engine flag `--match-control-act-rms`, default off ⇒ subruns 01–06 reproduce byte-for-byte). **RAN
+  2026-07-14: connectome ≈ control** (see Status). Figures: `make_control_compare_figures.py`
+  (`fig_control_summary.png`, `fig_control_curves.png`).
 
 ## Reproduce
 
@@ -117,19 +130,21 @@ uv run python scott/experiment_vis_01_optic_flow/subruns/01_calibration/run.py  
 
 ## Status
 
-**Blocked on a model/training fix — subruns 03 + 04 ran and the connectome FlowRNN floored on EVERY
-substrate (2026-07-12).** The yaw-only learnability run finished on the fleet: 20 optic-lobe + 40
-mushroom-body seeds (`mb_full` + `mb_core_alpn`), all to the full 300-epoch budget, and **none of the 60
-connectome networks cleared held-out R² ≈ 0** (best 0.034 OL / 0.047 MB-full / 0.072 MB-core; test ≈ 0)
-against a GRU ceiling of 0.58 (causal) / 0.76 (bidirectional) on the identical stimulus. Optic lobe and
-mushroom body floor **equally** → the pre-registered *model/training* outcome (these sparse connectome
-FlowRNNs are hard to train on continuous regression — the recurrent state collapses to a fixed point and the
-readout emits the per-episode mean), **not** a vision-specific one. The headline connectome-vs-degree-matched
-test (subrun 02) stays **blocked** until a fix lifts a substrate above floor — develop and validate it on the
-cheap `mb_core_alpn` (~3 h/run) before rerunning the optic lobe (~26 h/run). Figures:
-`figures/fig_yaw1d_training_curves.png`, `figures/fig_yaw1d_summary.png`; full write-up in the
-[notebook entry](../labnotebook/experiment_vis_01_optic_flow.md) → "Update 2026-07-12". *(Prior scaffold/design
-status retained below for the record.)*
+**Concluded on `mb_core_alpn` (2026-07-14): the floor broke, but connectome ≈ control — the win was
+*dynamics*, not the wiring.** The path: subruns 03+04 floored every substrate at R² ≈ 0 (fixed-point state
+collapse); a ρ sweep (subrun 05) failed to lift it; **dyn-01** identified the in-model RMS
+activity-normalization as the dominant contraction lever; **subrun 06** turned normalization off + drove the
+input harder and **broke the floor** (best seed test R² 0.449 ≈ the 0.58 GRU ceiling); **subrun 07** then ran
+the fair test — 750 epochs, `W_in` ∈ {3,4,5}, degree-matched control activity-RMS-matched to the connectome.
+**Outcome: connectome ≈ control.** The norm-off win replicates (×5 median best-val R² 0.59 ≈ ceiling), but a
+degree-matched shuffle learns the task about as well — the connectome leads in mean at every gain and is more
+*reliable* at ×5, yet the edge is small (Δ ≤ 0.10 test R², +0.4–0.7 control-SD) and **non-significant on the
+pre-registered permutation rank** (p = 0.36–0.55). So on this vision *regression* task the specific wiring
+does not separate from random rewiring once the arms are matched on activity — a genuine contrast with
+mb-01/02/06, and coherent with dyn-01. Caveats: n = 1 connectome graph (pseudo-replication ceiling), both
+arms still climbing at the cap; the optic-lobe substrate itself was not re-run at scale (the fair test was
+developed on the cheap `mb_core_alpn`). Full write-up: [notebook entry](../labnotebook/experiment_vis_01_optic_flow.md)
+→ "Update 2026-07-14 — subrun 07". *(Prior scaffold/design status retained below for the record.)*
 
 **Scaffold complete + task redesigned twice after review + three engine fixes validated on the real
 substrate (2026-07-09).** Pipeline passes the smoke test end-to-end (both
