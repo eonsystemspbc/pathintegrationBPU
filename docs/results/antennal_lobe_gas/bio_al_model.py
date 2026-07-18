@@ -123,21 +123,32 @@ class BioALRNN(nn.Module):
             a = a * (1.0 - self.ln_mask) + pre * self.ln_mask                    # graded (linear) LNs
         return a
 
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        # inputs [B, T, input_dim] -> logits [B]
-        if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
-            raise ValueError(f"inputs must be [B,T,{self.input_dim}], got {tuple(inputs.shape)}")
-        B, T, _ = inputs.shape
-        h = inputs.new_zeros((B, self.N))
-        for t in range(T):
-            pre = self._rec(h) + self._inject(inputs[:, t, :]) + self.b_rec
-            upd = self._activate(pre)
-            h = (1.0 - self.leak) * h + self.leak * upd
+    def _readout(self, h: torch.Tensor) -> torch.Tensor:
         read = h.index_select(1, self.pn_idx) if self.bio_io else h
         if self.readout_norm:
             scale = read.detach().pow(2).mean().sqrt()
             read = read / (scale + 1e-8)
-        out = self.readout(read)
+        return self.readout(read)
+
+    def forward(self, inputs: torch.Tensor, return_sequence: bool = False) -> torch.Tensor:
+        """inputs [B, T, input_dim].
+        return_sequence=False -> read out once at the final step (classification);
+        return_sequence=True  -> read out at EVERY step (regression / continuous tracking)."""
+        if inputs.ndim != 3 or inputs.shape[-1] != self.input_dim:
+            raise ValueError(f"inputs must be [B,T,{self.input_dim}], got {tuple(inputs.shape)}")
+        B, T, _ = inputs.shape
+        h = inputs.new_zeros((B, self.N))
+        outs = []
+        for t in range(T):
+            pre = self._rec(h) + self._inject(inputs[:, t, :]) + self.b_rec
+            upd = self._activate(pre)
+            h = (1.0 - self.leak) * h + self.leak * upd
+            if return_sequence:
+                outs.append(self._readout(h))
+        if return_sequence:
+            out = torch.stack(outs, dim=1)                     # [B, T, output_dim]
+            return out.squeeze(-1) if self.output_dim == 1 else out
+        out = self._readout(h)
         return out.squeeze(-1) if self.output_dim == 1 else out
 
 
