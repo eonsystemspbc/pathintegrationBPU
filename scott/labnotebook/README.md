@@ -8,9 +8,9 @@ Convention: one `.md` per experiment (`experiment_NN_<slug>.md`), each with Date
 Purpose / Methods / Results. Add results at the end of a run; don't pre-fill numbers.
 
 Experiments are grouped by **research track**, identified by a prefix on the ID: **`mb`** =
-mushroom body, **`vis`** = optic-flow / vision, **`dyn`** = dynamics / phase-space
-characterization of the connectome-as-RNN (task-independent). Refer to experiments by prefixed
-ID (`mb-03`), not the bare number.
+mushroom body, **`vis`** = optic-flow / vision, **`cx`** = central complex / path integration,
+**`dyn`** = dynamics / phase-space characterization of the connectome-as-RNN (task-independent).
+Refer to experiments by prefixed ID (`mb-03`), not the bare number.
 
 ## Experiments
 
@@ -24,6 +24,8 @@ ID (`mb-03`), not the bare number.
 | mb-06 | 2026-07-08 | Does the connectome advantage hold on a task that REQUIRES temporal integration of noisy evidence? | Concluded 2026-07-09 | [entry](experiment_06_mb_evidence_integration.md) |
 | vis-01 | 2026-07-09 | Vision analogue of mb-01: does the optic-lobe connectome beat random rewiring at reading self-motion from a fly-eye movie? | Concluded 2026-07-14: floor broke with norm-off, but **connectome ≈ control** — the win was dynamics, not wiring | [entry](experiment_vis_01_optic_flow.md) |
 | dyn-01 | 2026-07-13 | Does the connectome-as-RNN globally expand or contract nearby states (largest Lyapunov exponent), and does its wiring differ from a degree-matched shuffle? | MB done; OL pending | [entry](experiment_dyn_01_global_lyapunov.md) |
+| cx-01 | 2026-07-15 | On the central complex's *native* task (path integration), does the connectome beat degree-matched wiring — i.e. is the mb-01/02/06 advantage real task–region alignment, or classification-specific? | **Concluded 2026-07-16 — TIE.** Connectome ≈ degree-matched on both substrates (perm-p 0.38 / 0.52, far from the 0.048 floor), but **at the GRU ceiling (~0.047 rad), not a floor** → the mb-advantage is classification-specific; a *clean* null (cf. vis-01's floored null). Dynamics probe added 2026-07-17. | [entry](experiment_cx_01_path_integration.md) |
+| cx-02 | 2026-07-17 | Does the connectome floor as the heading target speeds up — isolating the low-pass / target-spectrum leg from drive strength that cx-01 vs vis-01 confounded? | **Built & smoke-green — ready to launch (not run).** Tempo knob = shorten runs / turns intact, so ω drive rises *conservatively* → the two legs predict opposite signs; connectome only, no control; norm on/off; GRU curve per tempo point. 144 runs (~$550–920). | [entry](experiment_cx_02_stimulus_spectrum.md) |
 
 ## Results
 
@@ -105,6 +107,53 @@ a genuine contrast with mb-01/02/06 (where the connectome cleanly beat the same 
 *classification/integration*), and coherent with dyn-01 (norm-off, the connectome *ties* its
 shuffle on contraction). Caveats: n = 1 connectome graph, both arms still climbing at the cap.
 [`code`](../experiment_vis_01_optic_flow/)
+
+**cx-01** — *Concluded 2026-07-16 — the pre-registered tie.* First experiment of a new `cx` (central
+complex) track, and the sharpest available test of the question the whole arc turns on: **is the
+connectome advantage genuine task–region alignment, or classification-specific?** The central complex is
+the one circuit whose computation *is* its topology on a *tracking* task — a ring attractor — so if any
+connectome beats its degree-matched shuffle on regression, it is this one on its native dead-reckoning
+task. **It does not.** With ρ=0.95 and normalization matched, the connectome ties its shuffle on both
+substrates (permutation-p 0.38 `signed_full` / 0.52 `unsigned_full`, both far from the 1/21 ≈ 0.048
+floor; connectome mean inside the control band). Crucially the tie is **at the GRU ceiling (~0.047 rad
+≈ 2.7°), not a floor** — so unlike vis-01 (which floored 60/60, a null nobody could interpret) this is a
+*clean* null: both arms genuinely solve the task and the connectome still doesn't win. The mb-01/02/06
+advantage is therefore **classification-specific**, and the reconciliation with vis-01/dyn-01 is that
+contraction acts as a low-pass filter — benign for cx-01's slow, piecewise-constant heading target,
+fatal for vis-01's fast optic-flow target (target spectrum, not task category). The connectome's one
+real effect is **reliability** (tight vs a control fat tail, worse when inhibition is removed), though
+that partly reflects faster grokking within the 300-epoch cap. Built fresh from FlyWire 783 (100%
+sign-covered / 55.3% inhibitory, where the repo's prior hemibrain CX had `sign_coverage: 0.0`), sharing
+no code with that lineage; the GRU gate (0.047 rad) is what makes the ceiling reading unambiguous. A
+**dynamics follow-up (2026-07-17)** ran dyn-01's Lyapunov probe on the CX: the unsigned arm reproduces
+the MB (connectome contracts *less* than its shuffle, z +107), but **inhibition reverses it** (signed
+connectome contracts *more*, z −1.8) — a regime dyn-01 could never test — and a global λ does not
+predict which shuffle fails, so the connectome's edge is "a moderate, inhibition-robust contraction
+band," not "less contraction." Next: target-spectrum sweep and long-horizon (T=200) tests, where the
+contraction story predicts a connectome advantage could finally emerge on regression. n=1 biological
+graph → "this connectome," not "topology as a class."
+[`code`](../experiment_cx_01_path_integration/)
+
+**cx-02** — *Scaffold (2026-07-17); design locked, implementation pending.* The first of cx-01's
+proposed follow-ups: the **stimulus-spectrum sweep**. cx-01 tied at the ceiling, and the theory for why
+it succeeded where vis-01 floored is that **contraction is a low-pass filter** — fine for cx-01's slow
+heading target, fatal for vis-01's fast one. But cx-01 vs vis-01 confounds *target spectrum* with *drive
+strength* (cx-01 has both a slow target and a strong low-dimensional drive). cx-02 isolates the
+target-spectrum leg: hold task, model and substrate fixed, and sweep only how fast the heading target
+changes — the "tempo" knob **shortens the runs while leaving turns intact** (same-size heading steps,
+more often). You can't hold the ω drive fixed at fixed step size (ω is the derivative of the target), so
+ω rises — but *conservatively*: a bigger drive should *help* the state stay alive, so the two hypotheses
+predict **opposite signs** (low-pass → worse as target speeds up; drive-strength → better). A degradation
+that also **diverges from a dense GRU** on identical data therefore implicates low-pass; flat/improving
+indicts drive strength. Speed channel held fixed so only ω co-varies. Connectome only —
+the degree-matched **control is dropped** (cx-01 settled that), with the **GRU gate at every tempo point**
+taking over as both learnability reference and comparison curve; normalization on and off; the realized
+stimulus spectrum is *measured* per point (autocorrelation time, PSD centroid, drive RMS) so plots use
+the measured spectrum, not the nominal knob. **Built and CPU-smoke-tested 2026-07-17** (tempo/normalize
+plan axes, per-tempo GRU gate, spectrum metrics all green — the knob shortens the heading autocorrelation
+time and raises ω drive while holding speed, as designed); `run.py` is launch-ready, 144 runs (~$550–920),
+not yet run.
+[`code`](../experiment_cx_02_stimulus_spectrum/)
 
 **dyn-01** — *In progress.* First experiment of a new `dyn` (dynamics) track that characterizes
 the connectome-as-RNN's phase space directly, independent of any task. Question: on average, does
