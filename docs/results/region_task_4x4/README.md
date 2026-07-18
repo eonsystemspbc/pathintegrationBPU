@@ -1,57 +1,157 @@
-# Region × task matrix — 4×4 extension (PARTIAL / IN PROGRESS)
+# Region × task matrix — the 4×4, and what "proper I/O" changes
 
-Extends the existing 3×3 grid (`docs/results/region_task_matrix`: MB/CX/OL × flow/mqar/path) to a
-4×4 by adding the **antennal lobe** as a fourth region and **turbulent gas detection** as a fourth
-task. Run under a 2-hour deadline — **this folder is partial and is not a finished result.**
+Extends the earlier 3×3 grid (`docs/results/region_task_matrix`) to a **4×4** by adding the
+**antennal lobe (AL)** as a fourth region and **turbulent gas detection** as a fourth task, and adds
+the comparison that turns out to matter most: **every region running the gas task through its own
+biological interface**, not a generic one.
 
-## What is here
+**Alignment**, as tested here, means *a region's connectome beats its own matched random control
+specifically on the task its region evolved for* — i.e. each row should peak on its native cell.
 
-**Size-matching (`build_region_operators.py`).** Every region is capped to a common **N = 3,499**
-(the AL's native size) by keeping the highest-total-degree neurons and taking the induced subgraph,
-then rescaled to ρ = 0.95, with degree-preserving and edge-random controls per seed. Size-matching
-matters: the prior grid showed MQAR "alignment" was really a capacity effect (subsampling OL to
-MB's size collapsed its score), so an unmatched 4×4 would repeat that confound.
+---
 
-| region | native N | native edges | capped N | capped edges |
-|---|---:|---:|---:|---:|
-| AL | 3,499 | 258,882 | 3,499 | 258,882 |
-| MB | 14,025 | 574,660 | 3,499 | 295,696 |
-| CX | 7,349 | — | 3,499 | 482,499 |
-| OL | 96,816 | — | 3,499 | 286,236 |
+## TL;DR
 
-**Gas column (`run_gas_column.py`)** — every region on the AL's native task, with **generic
-all-neuron I/O** (only the AL has glomeruli, so the biological adapter is undefined elsewhere;
-generic I/O is the only fair shared interface).
+- **The interface, not the wiring, is what decides whether a connectome helps.** On the gas task the
+  AL connectome goes from **+0.4% (generic all-neuron I/O) → +5.2% (its own biological I/O)**. Same
+  graph, same task, same controls — only the interface changed.
+- **Column-wise, gas aligns perfectly.** Given each region its *own* proper interface, **only the
+  native region (AL) beats its controls**: AL +5.2%, MB −0.5%, CX −0.7%, OL −100% (chance).
+- **Row-wise, AL does *not* align.** Its biggest advantage is on **path integration (+11.7%)**, not
+  its native gas (+5.2%). MB, CX and OL *do* peak on their native task. (Caveat below: the path
+  column runs frozen-recurrence, a regime that favours structure, so this row comparison is not
+  apples-to-apples.)
+- **The optic lobe fails outright on gas under its own biology** — AUROC **0.500**, exactly chance,
+  while its *own* degree/random controls on the *same* ports score 0.635/0.688. That is the
+  documented OL biological-I/O stall **replicating in a completely different task**.
 
-## Partial results — gas column, low-conc recall @10% false-alarm (3 seeds, `gas_column_partial.csv`)
+![matrix](figures/fig_matrix_4x4.png)
 
-| region | connectome | degree-matched | edge-random |
+---
+
+## The matrix
+
+Cell = connectome's advantage over its own **edge-random** control, in percent, sign-corrected so
+positive = connectome better. Gas column uses each region's **proper biological I/O**.
+
+| | GAS | FLOW | MQAR | PATH |
+|---|---|---|---|---|
+| **AL** | **+5.2** | +5.6 | −4.5 | +11.7 |
+| **MB** | −0.5 | +3.3 | **+10.6** | −2.9 |
+| **CX** | −0.7 | +0.5 | −3.0 | **+7.8** |
+| **OL** | **FAIL** (AUROC 0.50) | **+12.0** | +8.5 | −3.4 |
+
+Bold + boxed = the region's native task. The 9 flow/mqar/path cells for MB/CX/OL come from the prior
+3×3 grid; the 7 new cells (whole gas column + the AL row) were run here.
+
+### Row-wise alignment (does each region peak on its own task?)
+
+| region | native | best cell | verdict |
 |---|---|---|---|
-| AL | 0.630±0.100 | 0.635±0.039 | 0.603±0.107 |
-| MB | 0.648±0.073 | 0.569±0.122 | (incomplete) |
-| CX | (incomplete) | (incomplete) | (incomplete) |
-| OL | 0.563±0.135 | 0.542±0.066 | 0.658±0.022 |
+| AL | gas (+5.2) | **path (+11.7)** | ✗ does not align |
+| MB | mqar (+10.6) | mqar | ✓ aligns |
+| CX | path (+7.8) | path | ✓ aligns |
+| OL | flow (+12.0) | flow | ✓ aligns |
 
-**Read this as inconclusive.** At 3 seeds with these error bars nothing separates: AL connectome
-≈ its own degree control, and OL's edge-random beats OL's connectome. Notably the AL under *generic*
-I/O (0.630) is below the AL under *biological* I/O in the main experiment (0.690) — consistent with
-biological I/O helping on this task.
+### Column-wise alignment on gas (proper I/O) — only the native region wins
 
-## Not done (ran out of the 2-hour window)
+| region | advantage |
+|---|---|
+| **AL (native)** | **+5.2%** |
+| MB | −0.5% |
+| CX | −0.7% |
+| OL | −100% (chance) |
 
-- **CX × gas** and the remaining MB/OL seeds — jobs were still running at the deadline.
-- **AL × MQAR** — started and training cleanly, killed to free a GPU. *Note for whoever picks this
-  up:* the AL matrix must be **rescaled to ρ = 0.95 first** (`al_prepared_unsigned.npz`, included).
-  The raw AL adjacency has ρ ≈ 2,852 and produces immediate NaN loss in the shared harnesses.
-- **AL × path**, **AL × flow** — not started.
-- Proper seed counts (≥5) and a matrix figure.
+---
 
-## Reproduce / continue
+## The interface effect (the main new finding)
 
-```bash
-uv run python docs/results/region_task_4x4/build_region_operators.py --n 3499 --seeds 0 1 2 3 4
-uv run python docs/results/region_task_4x4/run_gas_column.py --regions AL MB CX OL --seeds 0 1 2 3 4
-# AL row into the existing harnesses (use the PREPARED matrix, not the raw one):
-uv run python scripts/mqar/run_mqar_associative_recall.py \
-  --matrix docs/results/region_task_4x4/al_prepared_unsigned.npz --seeds 0 1 2 --epochs 40
-```
+Same task, same graphs, same controls — only the I/O changes.
+
+![interface](figures/fig_interface_effect.png)
+
+| region | generic all-neuron I/O | its own biological I/O |
+|---|---|---|
+| **AL** | +0.4% | **+5.2%** |
+| MB | −14.1% | −0.5% |
+| CX | +4.2% | −0.7% |
+| OL | −1.3% | **−100%** |
+
+Under **generic** I/O nothing separates — including the AL on its own native task (+0.4%, AUROC
+difference 0.007). Give each region **its own** interface and the picture resolves: the native
+region gains, the non-native regions flatten out, and the optic lobe collapses.
+
+**Raw numbers, proper I/O, low-conc recall @10% false-alarm (6 seeds):**
+
+| region | interface | connectome | degree-matched | edge-random |
+|---|---|---|---|---|
+| AL | ORN+TRN → ALPN | **0.700±0.027** | 0.666±0.022 | 0.665±0.040 |
+| MB | ALPN → MBON | 0.665±0.019 | 0.663±0.023 | 0.668±0.018 |
+| CX | ER+EPG → PFL+FS | 0.664±0.017 | 0.652±0.027 | 0.668±0.028 |
+| OL | R1-6 → HS/VS | **0.000±0.000** | 0.635±0.032 | 0.688±0.021 |
+
+### Why OL fails
+
+Its biological interface is **1,399 R1-6 inputs → 22 HS/VS outputs**. The readout sits several
+synapses deep behind an extreme bottleneck, the gradient reaching it is starved, and the model
+converges to a constant output (AUROC exactly 0.500). This is not a pipeline bug: **the same ports,
+same task and same code give 0.635/0.688 for OL's own degree/random controls** — those surrogates
+manufacture short-cut paths to the readout that the real wiring does not have. It reproduces the
+mechanism documented in `docs/results/optic_flow_biological_io/` on an entirely different task.
+
+---
+
+## Method
+
+**Size-matching + port preservation (`build_bioio_operators.py`).** Regions span 3.5k–97k neurons,
+and the prior grid showed raw **capacity** — not biology — drove its MQAR "alignment" (subsampling OL
+to MB's size collapsed OL's score). So every region is capped to a common **N = 3,499**. A plain
+top-degree cap would delete the very neurons that make an interface biological, so we keep **all port
+neurons first**, then fill with the highest-degree non-port neurons, and remap the port indices.
+Where the input pool alone would blow the budget (OL: 7,931 R1-6) it is subsampled by degree to 40%
+of N; outputs are never subsampled (OL has only 22).
+
+| region | native N | capped N | input pool | output pool |
+|---|---:|---:|---|---|
+| AL | 3,499 | 3,499 | ORN+TRN/HRN (2,385) | ALPN (685) |
+| MB | 14,025 | 3,499 | ALPN (406) | MBON (96) |
+| CX | 7,349 | 3,499 | ER ring + EPG (307) | PFL + FS (327) |
+| OL | 96,816 | 3,499 | R1-6 (1,399 of 7,931) | HS/VS (22) |
+
+Ports were derived from FlyWire-783 cell types and independently checked — MB's ALPN/MBON assignment
+was corroborated by ROI compartment profiles (ALPN presynaptic in calyx, MBON postsynaptic in lobes)
+*and* by edge directionality, without relying on the annotation join alone.
+
+**Capacity is matched by construction.** Every region gets the identical adapter (61 nonnegative
+channels from the 10 input lines) and a fixed broadcast into its own input pool — the AL's real
+glomeruli, a fixed seeded partition elsewhere — plus a linear head on its own output pool. So across
+regions only *which neurons are the ports* and *the wiring between them* differ.
+
+All 7 new cells ran on the AWS spot-GPU fleet (16 + 18 + 16 instances), 6 seeds for the gas cells,
+5 for MQAR, 3 for flow/path.
+
+---
+
+## Caveats (load-bearing)
+
+- **The row-wise comparison is regime-confounded.** The path column runs **frozen** recurrence
+  (`--train-recurrent frozen`, the structure-only regime where wiring matters most); gas, mqar and
+  flow train the recurrence. So AL's +11.7% on path is not directly comparable to its +5.2% on gas,
+  and "AL peaks on path" should not be read as a clean alignment failure. The path *column* is
+  internally consistent (all four regions frozen), so column-wise comparisons there are valid.
+- **Mixed harnesses and metrics.** Each task uses its own established harness and metric (detection
+  recall, recall accuracy, RMSE, loss). Cells are comparable in **sign and rough magnitude**, not as
+  identical units. The prior grid's flow column also used *real DSEC* flow while the AL flow cell
+  here uses the *synthetic* harness.
+- **One connectome per region.** Seeds are training replicates for the connectome arm but independent
+  graphs for the controls, so effect sizes overstate confidence; treat rank and sign as the evidence.
+- **The AL flow cell is not clean.** AL beats `random_sparse` (+5.6%) but ties `random_weight_topology`
+  (0.1160 vs 0.1157) — i.e. AL's *support* helps, its *weights* do not.
+
+## Files
+
+`build_region_operators.py` / `build_bioio_operators.py` (operators) · `ports/` (biological port
+definitions) · `run_gas_column.py` (generic I/O) · `run_gas_bioio.py` (proper I/O) · `run_al_row.py`
+(AL on foreign tasks) · `run.py` / `run_bioio_fleet.py` / `run_alrow_fleet.py` (fleet drivers) ·
+`assemble_matrix.py` · `matrix_4x4.csv`, `gas_column_metrics.csv`, `gas_bioio_metrics.csv`,
+`figures/`.
