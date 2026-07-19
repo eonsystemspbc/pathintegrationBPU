@@ -1,0 +1,94 @@
+{
+  "substrate": "cx_flywire783",
+  "release": "783",
+  "source": "FlyWire 783 proofread connections (local, pinned) -- NOT hemibrain/neuPrint",
+  "cx_rois": [
+    "EB",
+    "PB",
+    "FB",
+    "NO"
+  ],
+  "N_full": 6195,
+  "edges_full": 304027,
+  "N_core": 2874,
+  "edges_core": 290118,
+  "core_rule": "Schlegel-2024 cell_class == 'CX'",
+  "orientation": "M[post_index, pre_index]  (rec = M @ h flows pre->post)",
+  "stored_matrix": "SIGNED, FULL. unsigned = |M|; core = M[core][:, core] (derived at load).",
+  "sign_coverage_edges": 1.0,
+  "sign_labelled_pre_neurons": 4811,
+  "inhibitory_edge_fraction": 0.5532,
+  "raw_spectral_radius": {
+    "full_signed": 650.3893,
+    "full_unsigned": 896.1534,
+    "core_signed": 650.2883,
+    "core_unsigned": 895.9422
+  },
+  "rho_target_at_runtime": 0.95,
+  "weight": "summed syn_count, signed by presynaptic dominant fast NT (ACh +, GABA/Glut -)",
+  "celltype_join": {
+    "joined": true,
+    "source": "/tmp/flywire_cell_types_783.tsv",
+    "url": "https://raw.githubusercontent.com/flyconnectome/flywire_annotations/main/supplemental_files/Supplemental_file1_neuron_annotations.tsv",
+    "matched": 6195,
+    "matched_frac": 1.0
+  },
+  "halo_composition_cell_class": {
+    "CX": 2874,
+    "unlabelled": 2483,
+    "Kenyon_Cell": 454,
+    "DAN": 80,
+    "TuBu": 77,
+    "ALPN": 63,
+    "olfactory": 39,
+    "AN": 37,
+    "MBON": 20,
+    "pars_intercerebralis": 19,
+    "ocellar": 16,
+    "ALLN": 14,
+    "bilateral": 7,
+    "pars_lateralis": 5,
+    "MBIN": 4,
+    "LHCENT": 1,
+    "unknown_sensory": 1,
+    "LO": 1
+  },
+  "pools": {
+    "EPG": {
+      "n": 51
+    },
+    "PEN": {
+      "n": 42
+    },
+    "PFN": {
+      "n": 443
+    },
+    "PFL": {
+      "n": 50
+    },
+    "PFR": {
+      "n": 31
+    },
+    "ER": {
+      "n": 278
+    },
+    "ExR": {
+      "n": 26
+    },
+    "Delta7": {
+      "n": 42
+    },
+    "hDelta": {
+      "n": 189
+    },
+    "vDelta": {
+      "n": 391
+    },
+    "FC": {
+      "n": 235
+    },
+    "FS": {
+      "n": 293
+    }
+  }
+}

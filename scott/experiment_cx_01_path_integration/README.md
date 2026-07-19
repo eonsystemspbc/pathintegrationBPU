@@ -20,8 +20,13 @@ degree-matched shuffle on regression, it is this one on this task.
 | outcome | reading |
 |---|---|
 | connectome **<** control (lower heading error) | genuine task–region alignment; a clean dissociation from vis-01 |
-| **← connectome ≈ control  ✓ OBSERVED** | **the advantage is classification-specific — a real narrowing, consistent with vis-01 + dyn-01. And it landed at the *ceiling* (both arms ~0.047 rad), not the floor below — a clean null, stronger than vis-01's floored one.** |
+| **← connectome ≈ control  ✓ OBSERVED (on accuracy)** | **the accuracy advantage is classification-specific — a real narrowing, consistent with vis-01 + dyn-01. And it landed at the *ceiling* (both arms ~0.047 rad), not the floor below — a clean null, stronger than vis-01's floored one.** |
 | both at chance (π/2) | *not observed* — the CX did **not** floor like the optic lobe; contraction is benign for this slow-target integration task |
+
+**The outcome table above scores accuracy only, and that is not the whole result.** On **time to reach
+that shared ceiling** the connectome does separate from its shuffle — by more than it separates on
+anything else in this experiment (+1.26/+1.51 control-SD on `signed_full`), though underpowered
+(perm-p 0.143). See *Result* below.
 
 ## What's new vs the prior CX work (`docs/results/cx_*`)
 
@@ -122,26 +127,52 @@ Progress: `uv run python scott/experiment_cx_01_path_integration/subruns/01_main
 
 ## Results — the pre-registered tie (middle row)
 
-Full writeup + figures: [notebook entry](../labnotebook/experiment_cx_01_path_integration.md). Headline:
-with ρ=0.95 and normalization matched, the connectome **ties** its degree-matched shuffle on both
-substrates — but **at the GRU ceiling, not a floor**, so this is a clean null localizing the
-mb-01/02/06 advantage to classification.
+Full writeup + figures: [notebook entry](../labnotebook/experiment_cx_01_path_integration.md).
+**Headline (revised 2026-07-18): same answer, reached faster.** With ρ=0.95 and normalization matched,
+the connectome **ties** its degree-matched shuffle on final accuracy — **at the GRU ceiling, not a
+floor**, a clean null localizing the mb-01/02/06 *accuracy* advantage to classification — but it
+**reaches that ceiling substantially faster**, which is the experiment's largest connectome-vs-control
+effect and was under-reported in the original writeup.
 
-| substrate | connectome (rad) | degree-matched (rad) | perm-p (floor 0.048) |
-|---|---:|---:|---:|
-| `signed_full` | 0.0477 ± 0.0020 | 0.0546 ± 0.0135 | 0.381 |
-| `unsigned_full` | 0.0540 ± 0.0132 | 0.0999 ± 0.0962 | 0.524 |
+**Accuracy — a tie.**
 
-- **Tie, not a win:** connectome mean inside the control p05–p95 band on both; perm-p far from the floor.
+| substrate | connectome (rad) | degree-matched (rad) | perm-p (floor 0.048) | effect (ctrl-SD) |
+|---|---:|---:|---:|---:|
+| `signed_full` | 0.0477 ± 0.0020 | 0.0546 ± 0.0135 | 0.381 | 0.51 |
+| `unsigned_full` | 0.0540 ± 0.0132 | 0.0999 ± 0.0962 | 0.524 | 0.48 |
+
+**Speed — a lead** ([`speed_analysis.py`](speed_analysis.py); median epochs to criterion, censored runs
+scored at 301):
+
+| substrate | criterion | connectome | degree-matched | effect (ctrl-SD) | perm-p |
+|---|---|---:|---:|---:|---:|
+| `signed_full` | 1.00 rad *(pre-registered)* | **9.5** (20/20) | 29.0 (20/20) | **+1.26** | 0.143 |
+| `signed_full` | 0.05 rad *(ceiling)* | **146.5** (20/20) | 231.0 (15/20) | **+1.51** | 0.143 |
+| `unsigned_full` | 1.00 rad *(pre-registered)* | **30.5** (20/20) | 38.5 (20/20) | +0.78 | 0.381 |
+| `unsigned_full` | 0.05 rad *(ceiling)* | **215.5** (15/20) | 301.0 (8/20) | +0.74 | 0.333 |
+
+- **Tie on accuracy, not a win:** connectome mean inside the control p05–p95 band on both; perm-p far
+  from the floor.
 - **Not a floor (unlike vis-01):** both arms reach ~0.047 rad → a *clean* null. Contraction acts as a
   low-pass filter, benign for this slow, piecewise-constant heading target.
-- **Connectome's real effect is reliability** (tight vs a control fat tail, worse when inhibition is
-  removed) — though partly faster grokking within the 300-epoch cap.
+- **Faster to criterion, at both ends of training** — ~3× through early descent and ~1.6× to the
+  ceiling on `signed_full`, agreeing across a pre-registered threshold and a post-hoc one, so not a
+  threshold artifact. **Underpowered: perm-p 0.143** (2/20 control graphs beat the connectome mean);
+  reported as a strong observation, *not* as significant. No prediction was pre-registered for speed.
+- **Not a conditioning artifact** ([`sigma_max_check.py`](sigma_max_check.py)): on `signed_full` the
+  connectome converges faster at **0.61×** the σ_max of its shuffles (1.900 vs 3.133 ± 0.276), so the
+  gain confound runs *against* the finding. On `unsigned_full` the connectome has 1.20× the gain, so
+  conditioning stays live there — but that is the weak arm.
 - **Dynamics follow-up** ([`lyapunov_cx.py`](lyapunov_cx.py), 2026-07-17): dyn-01's Lyapunov probe on the
   CX. Unsigned reproduces the MB (connectome contracts *less*, z +107); **inhibition reverses it**
   (signed connectome contracts *more*, z −1.8); a global λ doesn't predict which shuffle fails → the edge
-  is "a moderate, inhibition-robust contraction band," not "less contraction."
+  is "a moderate, inhibition-robust contraction band," not "less contraction." The speed lead lives on
+  the same substrate as that moderate band, not on the huge-λ-separation one.
+- **Instrumentation lesson:** `common.GROK_THRESHOLDS = (1.40, 1.20, 1.00)` was set when a **floor** was
+  a live outcome; 1.40/1.20 sit just under chance and saturated at epoch 1, so the recorded `grok` field
+  looked degenerate and went unread after the GRU gate moved the operating point to 0.047. **Re-scale
+  criterion thresholds whenever a gate moves the expected operating point.**
 
-Figures: [`figures/`](figures/) — `learning_curves_conn_vs_control.png`, `lyapunov_asymmetry.png`,
-`lyapunov_pergraph_scatter.png`, `lyapunov_transient_curves.png`
-(regenerate: `plot_learning_curves.py`, `plot_lyapunov.py`).
+Figures: [`figures/`](figures/) — `learning_curves_conn_vs_control.png`, `time_to_criterion.png`,
+`lyapunov_asymmetry.png`, `lyapunov_pergraph_scatter.png`, `lyapunov_transient_curves.png`
+(regenerate: `plot_learning_curves.py`, `speed_analysis.py`, `plot_lyapunov.py`).

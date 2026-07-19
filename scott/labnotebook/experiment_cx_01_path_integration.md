@@ -1,16 +1,32 @@
 # Experiment cx-01 — CX connectome vs degree-matched controls on path integration
 
 **Date started:** 2026-07-15
-**Status:** **Subrun 01 complete (2026-07-16); dynamics follow-up added (2026-07-17).** Headline: the
-**pre-registered tie**. On the central complex's *own* dead-reckoning task, with ρ=0.95 and
-normalization matched across arms, the connectome does **not** beat its degree-matched shuffle on the
-primary permutation test on either substrate (perm-p 0.38 `signed_full` / 0.52 `unsigned_full`, both
-far from the 1/21 ≈ 0.048 floor; the connectome mean sits inside the control p05–p95 band). Crucially
-this is a tie **at the ceiling, not a floor**: both arms reach the GRU's ~0.047 rad (~2.7°). So the
-mb-01/02/06 connectome advantage is **classification-specific** and does not carry to this regression
-task — and unlike vis-01 that conclusion rests on a clean null (both arms succeed), not on everybody
-flooring. A follow-up ran dyn-01's Lyapunov probe on the CX substrate to connect the result to the
-dynamics; it complicated the tidy contraction story rather than confirming it (see Results → Dynamics).
+**Status:** **Subrun 01 complete (2026-07-16); dynamics follow-up added (2026-07-17); speed analysis
+added (2026-07-18).** The result has **two halves, and the second was missed on first reading.**
+
+**(1) Accuracy — the pre-registered tie.** On the central complex's *own* dead-reckoning task, with
+ρ=0.95 and normalization matched across arms, the connectome does **not** beat its degree-matched
+shuffle on final heading error (perm-p 0.38 `signed_full` / 0.52 `unsigned_full`, both far from the
+1/21 ≈ 0.048 floor; the connectome mean sits inside the control p05–p95 band). This is a tie **at the
+ceiling, not a floor**: both arms reach the GRU's ~0.047 rad (~2.7°), so it is a *clean* null, unlike
+vis-01's floored one.
+
+**(2) Speed — where the connectome does separate.** On **how fast** the two arms get to that shared
+ceiling, the connectome leads by **+1.26 to +1.51 control-SD on `signed_full`** — roughly 3× faster
+through early descent (median 9.5 vs 29 epochs) and ~1.6× faster to the ceiling (147 vs 231 epochs),
+with 20/20 connectome seeds arriving against 15/20 shuffles. **This is the largest connectome-vs-control
+effect in the experiment**, ~3× the accuracy effect (0.51 SD), and it is *not* explained by conditioning
+(see Results → Speed). It is, however, **underpowered: perm-p 0.143 — 2 of 20 control graphs still beat
+the connectome mean**, and with 20 control graphs the test cannot resolve it further.
+
+So the honest one-line summary is **not** "no advantage." It is: **the connectome does not reach a
+better answer, but it reaches the same answer faster and more reliably than degree-matched wiring —
+suggestively, not significantly.** The original entry recorded this only as a caveat inside a
+reliability sentence; it is a primary finding and is now written as one. See *Results → Speed* for why
+it was nearly missed (a threshold-scaling bug in the instrumentation, worth its own note).
+
+A follow-up ran dyn-01's Lyapunov probe on the CX substrate to connect the result to the dynamics; it
+complicated the tidy contraction story rather than confirming it (see Results → Dynamics).
 **Code:** [`../experiment_cx_01_path_integration/`](../experiment_cx_01_path_integration/) ·
 launcher [`subruns/01_main/run.py`](../experiment_cx_01_path_integration/subruns/01_main/run.py) ·
 README [`README.md`](../experiment_cx_01_path_integration/README.md).
@@ -56,6 +72,12 @@ here or whether the CX needs a different one. The GRU gate is what makes that re
 **Scope:** n=1 biological graph → "this connectome," not "topology as a class." The connectome arm is
 20 **training-seed replicates of one graph** (pseudo-replication) against 20 **independent** control
 graphs, so the permutation rank is primary and the rank-sum is not.
+
+**Note on what the hypothesis covers.** Both the hypothesis and the falsification above are stated over
+**final heading error only**. Time-to-criterion was instrumented (see *Optimisation + protocol*) but no
+prediction was registered for it. The speed result in *Results → Speed* is therefore reported as a
+strong observation on a planned measurement, **not** as a pre-registered test — the distinction matters
+for how much weight it can carry, and this experiment exists partly to correct a lineage that blurred it.
 
 ## Methods
 
@@ -173,6 +195,11 @@ informative, not because the run was gated on it. Result in Results → Gate.
   late-grokking control graphs and manufactured a bimodality artifact). Converged-stop only.
 - Adam, constant lr = 1e-3, grad-clip 1.0. Best-by-**validation** (minimum heading error), never test.
 - Per-epoch atomic checkpoint + resume; idempotent (finished runs short-circuit on `result.json`).
+- **Time-to-criterion was instrumented before launch:** `common.GROK_THRESHOLDS = (1.40, 1.20, 1.00)`
+  records, for every run, the epoch / gradient-step / wall-second at which val heading error first
+  crosses *downward* through each level. So speed is a planned measurement, not a post-hoc one — but
+  the levels were chosen when a **floor** was a live outcome, and they turned out to be badly scaled
+  for the regime the run landed in (see Results → Speed).
 - **Stats:** permutation rank primary (`higher_is_better=False` — the engine supports it natively, so
   no metric is negated anywhere), led by **effect size in control-SD** and **min/max separation**. The
   perm floor is recorded explicitly: with 20 control graphs the +1-smoothed p cannot go below
@@ -255,7 +282,7 @@ Two consequences:
    integrating at all, ~30× off what the task admits. (Recorded as context for why cx-01 exists, not
    as a claim about that experiment's own regime.)
 
-### Main contrast — the pre-registered tie (in, 2026-07-16)
+### Accuracy — the pre-registered tie (in, 2026-07-16)
 
 All 80 runs finished (58 converged, 22 hit the 300-epoch cap); the shipped
 [`analysis.json`](../experiment_cx_01_path_integration/subruns/01_main/outputs/analysis.json) matches
@@ -279,21 +306,97 @@ graphs is what counts, and it is a tie.
 
 ![learning curves — connectome vs degree-matched, per substrate](../experiment_cx_01_path_integration/figures/learning_curves_conn_vs_control.png)
 
-Two things the curves make plain. **(1) A tie at the ceiling, not a floor.** Both medians settle onto
-the GRU's 0.047 rad — the connectome's classification advantage simply does not reproduce here, and it
-fails to reproduce because the task is *solved*, not because it is unlearnable. **(2) The connectome's
-one real effect is reliability, not accuracy.** Its 20 seeds cluster tightly at the ceiling; the
-shuffles have a fat right tail (unsigned controls strand at 0.10–0.33). *Caveat that bounds this:* every
-tail run hit the **300-epoch cap still descending** (best-epoch 258–300), and all the bad controls are
-among the 22 cap-runs — so the honest claim is "the connectome groks faster and more reliably *within
-budget*," not "reaches a better asymptote." The forward-filled medians in the figure hold each converged
-run at its final value to avoid a survivorship artifact at the tail.
+**A tie at the ceiling, not a floor.** Both medians settle onto the GRU's 0.047 rad — the connectome's
+classification advantage does not reproduce here on *accuracy*, and it fails to reproduce because the
+task is *solved*, not because it is unlearnable. The forward-filled medians in the figure hold each
+converged run at its final value to avoid a survivorship artifact at the tail.
+
+What the curves also show — and what this entry originally recorded only as a caveat — is that the two
+arms **get to that shared ceiling at very different rates**. The connectome's 20 seeds cluster tightly
+and early; the shuffles have a fat right tail (unsigned controls strand at 0.10–0.33), and every tail
+run hit the **300-epoch cap still descending** (best-epoch 258–300). Reading that as a small
+reliability footnote was the mistake: on the speed axis it is the largest effect in the experiment.
+That analysis is next.
+
+### Speed — the connectome reaches criterion faster (in, 2026-07-18)
+
+Scoring **time-to-criterion** instead of final error separates the arms far more cleanly than accuracy
+does. Code: [`speed_analysis.py`](../experiment_cx_01_path_integration/speed_analysis.py); data:
+[`outputs/speed_analysis.json`](../experiment_cx_01_path_integration/outputs/speed_analysis.json).
+
+Two criteria, deliberately at opposite ends of training:
+
+- **early descent — first epoch below 1.00 rad.** *Pre-registered* (`common.GROK_THRESHOLDS`), read
+  straight out of each run's recorded `grok` field.
+- **the ceiling — first epoch below 0.05 rad.** *Post-hoc*: this level could only be picked once the
+  GRU gate (0.0473 rad) had run.
+
+Same statistic as the accuracy analysis — permutation rank of the connectome mean against the 20
+independent control **graphs**. Runs that never cross are scored at 301 epochs, the *minimum* their true
+value could take, so the control arm's slowness is understated rather than inflated.
+
+![time-to-criterion, connectome vs degree-matched, both criteria × both substrates](../experiment_cx_01_path_integration/figures/time_to_criterion.png)
+
+| substrate | criterion | connectome (median ep) | degree-matched (median ep) | effect (ctrl-SD) | perm-p |
+|---|---|---:|---:|---:|---:|
+| `signed_full` | 1.00 rad (pre-reg) | **9.5** (20/20) | 29.0 (20/20) | **+1.26** | 0.143 |
+| `signed_full` | 0.05 rad (ceiling) | **146.5** (20/20) | 231.0 (15/20) | **+1.51** | 0.143 |
+| `unsigned_full` | 1.00 rad (pre-reg) | **30.5** (20/20) | 38.5 (20/20) | +0.78 | 0.381 |
+| `unsigned_full` | 0.05 rad (ceiling) | **215.5** (15/20) | 301.0 (8/20) | +0.74 | 0.333 |
+
+Four things follow.
+
+1. **It is the experiment's largest connectome-vs-control effect.** +1.51 control-SD on `signed_full`
+   against +0.51 for accuracy — roughly 3×. On the same substrate every connectome seed reaches the
+   ceiling and a quarter of the shuffles never do.
+2. **It is not a threshold artifact.** The two criteria sit at opposite ends of training — one just
+   below chance, one at the GRU ceiling — and agree on both direction and substrate ordering
+   (signed ≫ unsigned). A speed difference visible at both ends is not an artifact of where the line
+   was drawn.
+3. **It is not conditioning.** Both arms are rescaled to ρ=0.95, but ρ does not pin σ_max, and σ_max is
+   what sets transient one-step gain — exactly the early-training regime in question (the Exp-2
+   eigenvector-control lesson: ρ and σ_max decouple). Measured on the operators the runs actually used
+   ([`sigma_max_check.py`](../experiment_cx_01_path_integration/sigma_max_check.py) →
+   [`outputs/sigma_max_check.json`](../experiment_cx_01_path_integration/outputs/sigma_max_check.json)):
+
+   | substrate | connectome σ_max | control σ_max (n=20) | ratio |
+   |---|---:|---:|---:|
+   | `signed_full` | 1.900 | 3.133 ± 0.276 | **0.61** |
+   | `unsigned_full` | 1.379 | 1.150 ± 0.005 | 1.20 |
+
+   On `signed_full` — the substrate carrying the strong effect — the connectome learns faster while
+   operating at **0.61× the gain** of its shuffles. The conditioning confound runs *against* the
+   finding there, which strengthens the topological reading. On `unsigned_full` the connectome does
+   have more gain (1.20×), so conditioning stays a live alternative on that arm — but that is also the
+   arm where the speed effect is weak (+0.74 SD, perm-p 0.33). **The clean effect and the clean
+   confound-check coincide on `signed_full`.**
+4. **It is underpowered, and that is the honest limit.** perm-p 0.143 on `signed_full` — 2 of 20
+   control graphs still beat the connectome mean. It does not clear the pre-registered bar and is not
+   claimed as significant. With 20 control graphs the +1-smoothed p floor is 0.048, so resolving this
+   is a matter of **more control graphs**, not more training seeds (the connectome arm is already 20
+   seeds of *one* graph — adding seeds only sharpens a pseudo-replicated mean).
+
+**Also worth recording: why this was nearly missed.** `GROK_THRESHOLDS = (1.40, 1.20, 1.00)` was
+instrumented before launch, but the levels were scaled for a run that might **floor** — 1.40 and 1.20
+sit just under chance (1.5708), and once both arms sailed past them at epoch 1, the `grok` field looked
+degenerate and went unread. Nobody rescaled the thresholds after the GRU gate showed 0.047 was
+reachable, and no time-to-criterion statistic entered `analysis.json`. The instrumentation was built for
+the wrong regime and then not revisited when the regime turned out otherwise. **Lesson for later
+subruns: when a gate moves the expected operating point, re-scale the criterion thresholds with it.**
+This compounds the Exp-5 pre-flight lesson (band-setting checks must run to the epoch cap) — both are
+failures to re-tune instrumentation after the target range moved.
 
 **Signed vs unsigned — the CX and its inhibition.** Both connectome arms solve the task; `signed_full`
 is far tighter (±0.002 vs ±0.013), and the fat tail is much worse in `unsigned_full` (control mean 0.100
 vs 0.055) than `signed_full`. Inhibition mainly buys **stability**, not a topology-specific accuracy
 edge — the ring-attractor's inhibition keeps both arms, and especially the random shuffles, out of the
 bad tail.
+
+The speed analysis sharpens this: `signed_full` is where the connectome-vs-shuffle speed gap is strong
+(+1.26/+1.51 SD) and `unsigned_full` is where it is weak (+0.78/+0.74). **Inhibition is what makes the
+connectome's wiring advantage visible at all** on this task — with signs stripped, the connectome and
+its shuffles converge at similar rates. That is the opposite of the accuracy picture, where signed and
+unsigned both tie, and it is the first result in the arc that turns on the E/I structure specifically.
 
 ### Why it did not floor — the reading against vis-01 / dyn-01
 
@@ -367,9 +470,30 @@ band that is robust to structural perturbation* — **not** "contracting less" (
 separation but not the individual failures, which likely live in specific low-D modes a global λ averages
 over (the ring subspace) rather than in the mean contraction rate.
 
+**How this lines up with the speed result (added 2026-07-18).** The two analyses point at the same
+substrate. `signed_full` is both where the connectome sits in the moderate, inhibition-robust
+contraction band *and* where it converges fastest relative to its shuffles; `unsigned_full` is where the
+λ asymmetry is enormous (z +107) but the speed gap is weak. So the large *global* λ separation on
+`unsigned` does **not** buy convergence speed, while the modest, well-placed contraction on `signed`
+coincides with it. That is consistent with the reading above — a scalar λ is the wrong summary — and it
+suggests the mechanism behind the speed effect is *where* the operator contracts (which modes), not *how
+much*. The bump-subspace probe below is the way to test that directly.
+
 ### What's next
 
-The dynamics point to two mechanism tests that could turn this tie into a win, both on `cx_polar_bump`:
+**First priority — power the speed finding.** It is the largest effect in the experiment and it sits at
+perm-p 0.143 purely for lack of resolution: with 20 control graphs the p-floor is 0.048 and 2 controls
+beat the connectome mean. The fix is **more independent control graphs on `signed_full`** (the strong,
+confound-clean arm) — not more training seeds, which only sharpen a pseudo-replicated mean. This is
+cheap relative to a new experiment and would settle whether the effect is real.
+
+**This bears directly on cx-02, which is staged but not launched.** cx-02 currently **drops** the
+degree-matched control on the grounds that "cx-01 settled that." That was written when the tie on
+accuracy was the whole result. It is no longer accurate: cx-01 settled the *accuracy* question and left
+the *speed* question open and underpowered. Dropping the control forecloses the cheapest route to
+resolving the experiment's strongest signal. **Open decision — revisit before cx-02 launches.**
+
+The dynamics also point to two mechanism tests, both on `cx_polar_bump`:
 
 1. **Target-spectrum sweep** — speed up the walk / raise the angular-velocity bandwidth so heading varies
    faster. If contraction-as-low-pass is the mechanism, both arms should degrade toward the vis-01 floor
@@ -380,7 +504,9 @@ The dynamics point to two mechanism tests that could turn this tie into a win, b
    the contraction story, not in spite of it.
 
 A per-graph dynamical probe targeted at the bump subspace (leading Jacobian spectrum / participation in
-the ring modes) is the right tool if we want the mechanism behind the individual control failures.
+the ring modes) is the right tool both for the mechanism behind the individual control failures and for
+the "which modes, not how much" question the speed result raises.
 
 Monitor / reproduce: `uv run python scott/experiment_cx_01_path_integration/subruns/01_main/run.py --status`;
-figures via `plot_learning_curves.py` and `plot_lyapunov.py`; dynamics via `lyapunov_cx.py`.
+figures via `plot_learning_curves.py`, `plot_lyapunov.py` and `speed_analysis.py`; dynamics via
+`lyapunov_cx.py`; conditioning check via `sigma_max_check.py`.

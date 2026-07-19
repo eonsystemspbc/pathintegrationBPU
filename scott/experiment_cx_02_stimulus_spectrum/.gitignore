@@ -1,0 +1,5 @@
+# run outputs (rebuildable; not the record)
+outputs/
+_smoke/
+__pycache__/
+*.pyc
