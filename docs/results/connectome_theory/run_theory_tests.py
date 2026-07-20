@@ -145,6 +145,13 @@ def jobs_for(args):
         for sg in args.sigmas:
             for arm in ("connectome", "degree", "random"):
                 for s in args.seeds: J.append(dict(mode="nuisance", region="AL", arm=arm, seed=s, gain=1.0, sigma=sg))
+    elif args.mode == "recipsweep":
+        # RECIPROCITY DOSE-RESPONSE: does performance track reciprocal-loop density?
+        arms = ["random", "recipsweep0.0", "recipsweep0.25", "recipsweep0.5",
+                "recipsweep0.75", "recipsweep1.0", "connectome"]
+        for arm in arms:
+            for s in args.seeds:
+                J.append(dict(mode="recipsweep", region="AL", arm=arm, seed=s, gain=1.0, sigma=0.0))
     elif args.mode == "snr":
         for reg in args.regions:
             for arm in ("connectome", "degree", "random"):
@@ -154,7 +161,7 @@ def jobs_for(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--mode", required=True, choices=("gain", "nuisance", "snr"))
+    ap.add_argument("--mode", required=True, choices=("gain", "nuisance", "snr", "recipsweep"))
     ap.add_argument("--output-dir", type=Path, default=HERE / "outputs")
     ap.add_argument("--gains", nargs="+", type=float, default=[0.25, 0.5, 1, 2, 4, 8, 16, 32])
     ap.add_argument("--sigmas", nargs="+", type=float, default=[0.0, 0.25, 0.5, 1.0, 1.5, 2.0])

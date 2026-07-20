@@ -1,5 +1,10 @@
-outputs_gain/
-outputs_nuisance/
-outputs_snr/
+outputs_*/
 fleet_config_*.env
 __pycache__/
+*.npz
+recip_a.csv
+recip_b.csv
+al_recip/path_out/
+al_recip/flow_out/
+al_recip/graph_*/
+al_recip/outputs/

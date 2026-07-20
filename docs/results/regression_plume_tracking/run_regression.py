@@ -204,6 +204,9 @@ def analyze(out: Path):
 def parse_args(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--output-dir", type=Path, default=HERE / "fleet_outputs")
+    p.add_argument("--ops-dir", type=Path, default=None,
+                   help="override the operator directory used by common.load_operator (e.g. the "
+                        "4x4 bio-I/O AL set, which also holds the reciprocity-matched graphs)")
     p.add_argument("--ios", nargs="+", default=["bio", "generic"])
     p.add_argument("--arms", nargs="+", default=list(ARMS))
     p.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2, 3, 4, 5])
@@ -227,6 +230,9 @@ def parse_args(argv=None):
 
 def main(argv=None):
     a = parse_args(argv)
+    if a.ops_dir is not None:
+        CM.OPS = a.ops_dir.resolve()
+        print(f"operator dir overridden -> {CM.OPS}", flush=True)
     dev = torch.device("cuda" if (a.device != "cpu" and torch.cuda.is_available()) else "cpu")
     if a.device_ids:
         dev = torch.device(f"cuda:{a.device_ids[0]}")

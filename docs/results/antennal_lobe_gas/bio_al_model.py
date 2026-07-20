@@ -99,11 +99,20 @@ class BioALRNN(nn.Module):
     def trainable_parameter_count(self) -> int:
         return int(sum(p.numel() for p in self.parameters() if p.requires_grad))
 
-    def _rec(self, h: torch.Tensor) -> torch.Tensor:
+    def _build_W(self, device):
+        """Materialise the sparse recurrent operator ONCE per forward pass. It depends only on
+        W_val, so rebuilding it inside the timestep loop is pure overhead (~40x the cost of the
+        matmul itself); the math is identical."""
+        if self.dense:
+            return None
+        return torch.sparse_coo_tensor(self.edge_idx, self.W_val, size=(self.N, self.N),
+                                       device=device).coalesce()
+
+    def _rec(self, h: torch.Tensor, W=None) -> torch.Tensor:
         if self.dense:
             return h @ self.W_dense.t()
-        W = torch.sparse_coo_tensor(self.edge_idx, self.W_val, size=(self.N, self.N),
-                                    device=h.device).coalesce()
+        if W is None:
+            W = self._build_W(h.device)
         return torch.sparse.mm(W, h.t()).t()
 
     def _inject(self, x_t: torch.Tensor) -> torch.Tensor:
@@ -139,8 +148,9 @@ class BioALRNN(nn.Module):
         B, T, _ = inputs.shape
         h = inputs.new_zeros((B, self.N))
         outs = []
+        Wsp = self._build_W(inputs.device)
         for t in range(T):
-            pre = self._rec(h) + self._inject(inputs[:, t, :]) + self.b_rec
+            pre = self._rec(h, Wsp) + self._inject(inputs[:, t, :]) + self.b_rec
             upd = self._activate(pre)
             h = (1.0 - self.leak) * h + self.leak * upd
             if return_sequence:

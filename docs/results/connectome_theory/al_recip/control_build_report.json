@@ -1,0 +1,88 @@
+{
+  "source": "docs/results/region_task_4x4/al_prepared_unsigned.npz",
+  "N": 3499,
+  "connectome": {
+    "nnz": 258882,
+    "reciprocity": 0.45020511275407327
+  },
+  "controls": [
+    {
+      "nnz": 246583,
+      "reciprocity": 0.49486785382609505,
+      "kind": "recipmatched",
+      "seed": 0,
+      "swaps_accepted": 676110,
+      "swaps_attempted": 853992,
+      "edge_ratio": 0.9524918688823479,
+      "degree_corr_out": 0.9995065295160137,
+      "degree_corr_in": 0.9993305581975286,
+      "selfloops": 0,
+      "rho_before_rescale": 0.9872796737213377
+    },
+    {
+      "nnz": 258882,
+      "reciprocity": 0.21377307035637858,
+      "kind": "degreematched",
+      "seed": 0,
+      "swaps_accepted": 796804,
+      "swaps_attempted": 1553292,
+      "edge_ratio": 1.0,
+      "degree_corr_out": 1.0,
+      "degree_corr_in": 1.0,
+      "selfloops": 0,
+      "rho_before_rescale": 0.5043302361448714
+    },
+    {
+      "nnz": 246528,
+      "reciprocity": 0.4953757788161994,
+      "kind": "recipmatched",
+      "seed": 1,
+      "swaps_accepted": 675822,
+      "swaps_attempted": 853992,
+      "edge_ratio": 0.9522794168771873,
+      "degree_corr_out": 0.9995048385324314,
+      "degree_corr_in": 0.9992574989309909,
+      "selfloops": 0,
+      "rho_before_rescale": 0.9879899245722533
+    },
+    {
+      "nnz": 258882,
+      "reciprocity": 0.21462287837702118,
+      "kind": "degreematched",
+      "seed": 1,
+      "swaps_accepted": 796536,
+      "swaps_attempted": 1553292,
+      "edge_ratio": 1.0,
+      "degree_corr_out": 1.0,
+      "degree_corr_in": 1.0,
+      "selfloops": 0,
+      "rho_before_rescale": 0.5225901505456034
+    },
+    {
+      "nnz": 246477,
+      "reciprocity": 0.49518616341484195,
+      "kind": "recipmatched",
+      "seed": 2,
+      "swaps_accepted": 676450,
+      "swaps_attempted": 853992,
+      "edge_ratio": 0.9520824159269474,
+      "degree_corr_out": 0.9995515576570343,
+      "degree_corr_in": 0.9993266772758874,
+      "selfloops": 0,
+      "rho_before_rescale": 0.9870309249804459
+    },
+    {
+      "nnz": 258882,
+      "reciprocity": 0.21383487457606168,
+      "kind": "degreematched",
+      "seed": 2,
+      "swaps_accepted": 797543,
+      "swaps_attempted": 1553292,
+      "edge_ratio": 1.0,
+      "degree_corr_out": 1.0,
+      "degree_corr_in": 1.0,
+      "selfloops": 0,
+      "rho_before_rescale": 0.5115801282305528
+    }
+  ]
+}

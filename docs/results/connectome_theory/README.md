@@ -142,3 +142,57 @@ and the program should stop generalising from it.
 
 `run_theory_tests.py` (gain / nuisance / snr modes) · `run.py` (fleet driver) ·
 `gain_metrics.csv` (144) · `nuisance_metrics.csv` (108) · `snr_metrics.csv` (54) · `figures/`.
+
+---
+
+## 5. The reciprocity hypothesis — proposed, tested, REFUTED
+
+**The idea.** Since trained weights travel 4–9× their initial norm, only the *edge support* survives.
+The one structural property that survives degree-matching is **reciprocity** (mutual A↔B pairs — the
+shortest possible feedback loops): connectome 0.45 vs degree 0.21 vs edge-random 0.02, in all 4
+regions. So we built a control matching degree **AND** reciprocity (keep the reciprocal pairs, rewire
+the rest; degree correlation 0.9997).
+
+**First result looked decisive** — reciprocity-matched 0.663 vs degree 0.637 vs connectome 0.678,
+apparently recovering ~65% of the advantage.
+
+**It did not survive its own dose-response.** A reciprocity ladder (42 runs, 0.02 → 0.50) was flat and
+non-monotone, and the *highest*-reciprocity point scored *lowest*. An independent rebuild of the
+identical control landed at 0.635 instead of 0.663 — the entire claimed effect is build-to-build noise.
+
+**Pooled over 4 independent experiment runs:**
+
+| arm | recall @10%FA | n |
+|---|---|---|
+| connectome | **0.6910 ± 0.028** | 24 |
+| reciprocity-matched | 0.6493 ± 0.030 | 12 |
+| degree-matched | 0.6487 ± 0.025 | 18 |
+
+- connectome vs degree: Δ = **+0.0423**, *t* = **+5.08** → the effect is real and replicates
+- reciprocity-matched vs degree: Δ = **+0.0006**, *t* = **+0.06** → reciprocity explains **0%**
+
+![reciprocity](figures/fig_reciprocity_mechanism.png)
+
+### The one real thing this bought: contraction is NOT sufficient
+
+Reciprocity-matched graphs reproduce the connectome's contractive operating point *almost exactly*
+(readout activity **0.095 vs 0.097**; degree 0.259, random 0.584) — and get **none** of the benefit.
+So contraction and the advantage are **decoupled**. Scott's contraction result (`dyn-01`, vis-01)
+explains why connectomes are hard to **train**; it does not explain why the AL **wins**. Two separate
+phenomena, and this is the experiment that separates them.
+
+### Where that leaves the mechanism
+
+The AL × gas effect is now the best-established result in the corpus (*t* = +5.08 over 4 runs), and
+**nine** candidate mechanisms are ruled out: reciprocity, level-invariance, change-SNR, transient
+amplification, flat minima, discriminative-direction invariance, degree heterogeneity, capacity, and
+contraction-alone. Whatever it is, it survives degree-, reciprocity-, spectrum- and density-matching,
+so it lives in **higher-order structure** — motifs beyond 2-cycles, community structure, or the
+specific port-to-port pathway organisation. It also lives entirely in the **generalisation** term
+(train losses identical: 0.115 / 0.113 / 0.126).
+
+### Method lesson (costly, worth recording)
+
+With an effect of ~0.04 and build-to-build sd ~0.03, **six seeds of a single graph build is not
+enough**. The 65% result and the 0% result differ only by which build you happened to run. Always
+rebuild the control independently and pool before believing a structural claim.
