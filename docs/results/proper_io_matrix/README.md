@@ -1,4 +1,40 @@
-# The proper-I/O matrix — the alignment thesis fails its decisive test
+# The proper-I/O matrix — a decisive test that was CONFOUNDED (see correction)
+
+> ## ⚠️ CORRECTION (post-hoc audit) — the headline conclusion below is NOT SUPPORTED
+>
+> An adversarial audit of the operators found a **systematic anti-connectome handicap** that
+> invalidates the non-AL cells. Degree-preserving shuffling of a *layered* graph manufactures direct
+> input→output shortcuts that the real wiring forbids:
+>
+> | region | connectome direct in→out edges | degree control | handicap | mean hop (con vs deg) |
+> |---|---:|---:|---:|---|
+> | **AL** | 21,382 | 25,428 | **1.2×** | 1.03 vs 1.02 |
+> | CX | 279 | 6,054 | **21.7×** | 1.81 vs 1.00 |
+> | MB | 32 | 2,680 | **83.8×** | 2.14 vs 1.02 |
+> | OL | 0 | 51 | **∞** | 3.00 vs 1.18 |
+>
+> The deeper a region's native pathway, the more the shuffle shortens it — and **AL is the only
+> region immune, because its pathway is already 1 hop.** This design would therefore yield
+> "connectome wins only on AL" *even if wiring were irrelevant everywhere*.
+>
+> **What that means for the claims below:**
+> - ❌ "**Alignment fails**" is **NOT established**. MB×mqar and CX×path lost to controls that were
+>   handed a 84× / 22× shortcut advantage. Their losses may be entirely artifactual.
+> - ❌ "**Interface width predicts the advantage**" is **confounded**: readout width, pathway depth and
+>   shortcut handicap all co-vary perfectly across these 4 regions and cannot be separated here.
+> - ✅ **AL × gas and AL × flow remain valid** — AL is the one cell with no handicap (1.2×).
+> - ⚠️ Secondary: `random_control_matrix` is not degree-matched (it flattens fan-out), so the
+>   edge-random arm differs from the connectome in degree as well as wiring.
+>
+> **The fix** is a *path-matched* control that preserves the input→output hop distribution (or at
+> minimum does not create direct in→out edges beyond the connectome's own count). Until that is run,
+> treat the non-AL cells as **not evaluable**, exactly like the OL row.
+>
+> This also generalises a known one-off: the optic-lobe stall write-up already noted its
+> "degree-matched control wins via shortcuts" — that is this same artifact, now quantified in every
+> region. **Degree-preserving rewiring is not a fair control for deep/layered circuits.**
+
+---
 
 *Every region, every task, each through **its own biological interface**. 216 runs, 6 seeds, AWS
 fleet. This is the experiment `DIAGONAL.md` named as decisive.*
