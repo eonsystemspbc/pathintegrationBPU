@@ -15,15 +15,17 @@ specifically on the task its region evolved for* — i.e. each row should peak o
 - **The interface, not the wiring, is what decides whether a connectome helps.** On the gas task the
   AL connectome goes from **+0.4% (generic all-neuron I/O) → +5.2% (its own biological I/O)**. Same
   graph, same task, same controls — only the interface changed.
-- **Column-wise, gas aligns perfectly.** Given each region its *own* proper interface, **only the
-  native region (AL) beats its controls**: AL +5.2%, MB −0.5%, CX −0.7%, OL −100% (chance).
+- **Column-wise, gas aligns** among the three *evaluable* regions: given each its own proper
+  interface, **only the native region (AL) beats its controls** — AL +5.2%, MB −0.5%, CX −0.7%
+  (OL not evaluable, see above). Caveat: CX later flipped sign (+2.3%) in a replication, so it sits
+  at noise level.
 - **Row-wise, AL does *not* align.** Its biggest advantage is on **path integration (+11.7%)**, not
   its native gas (+5.2%). MB, CX and OL *do* peak on their native task. (Caveat below: the path
   column runs frozen-recurrence, a regime that favours structure, so this row comparison is not
   apples-to-apples.)
-- **The optic lobe fails outright on gas under its own biology** — AUROC **0.500**, exactly chance,
-  while its *own* degree/random controls on the *same* ports score 0.635/0.688. That is the
-  documented OL biological-I/O stall **replicating in a completely different task**.
+- **The OL × gas cell is INVALID — a size-matching artifact** (corrected after follow-up). Its readout
+  is left *disconnected* from its input by the N=3,499 cap (0/22 reachable; 3 hops in the full OL), so
+  AUROC = 0.500 is forced. Treat that cell as "not evaluable", not as a biological failure.
 
 ![matrix](figures/fig_matrix_4x4.png)
 
@@ -39,7 +41,7 @@ positive = connectome better. Gas column uses each region's **proper biological 
 | **AL** | **+5.2** | +5.6 | −4.5 | +11.7 |
 | **MB** | −0.5 | +3.3 | **+10.6** | −2.9 |
 | **CX** | −0.7 | +0.5 | −3.0 | **+7.8** |
-| **OL** | **FAIL** (AUROC 0.50) | **+12.0** | +8.5 | −3.4 |
+| **OL** | *n/a* (cap artifact) | **+12.0** | +8.5 | −3.4 |
 
 Bold + boxed = the region's native task. The 9 flow/mqar/path cells for MB/CX/OL come from the prior
 3×3 grid; the 7 new cells (whole gas column + the AL row) were run here.
@@ -60,7 +62,7 @@ Bold + boxed = the region's native task. The 9 flow/mqar/path cells for MB/CX/OL
 | **AL (native)** | **+5.2%** |
 | MB | −0.5% |
 | CX | −0.7% |
-| OL | −100% (chance) |
+| OL | *not evaluable* (readout disconnected by the cap) |
 
 ---
 
@@ -75,7 +77,7 @@ Same task, same graphs, same controls — only the I/O changes.
 | **AL** | +0.4% | **+5.2%** |
 | MB | −14.1% | −0.5% |
 | CX | +4.2% | −0.7% |
-| OL | −1.3% | **−100%** |
+| OL | −1.3% | *not evaluable* |
 
 Under **generic** I/O nothing separates — including the AL on its own native task (+0.4%, AUROC
 difference 0.007). Give each region **its own** interface and the picture resolves: the native
@@ -90,14 +92,21 @@ region gains, the non-native regions flatten out, and the optic lobe collapses.
 | CX | ER+EPG → PFL+FS | 0.664±0.017 | 0.652±0.027 | 0.668±0.028 |
 | OL | R1-6 → HS/VS | **0.000±0.000** | 0.635±0.032 | 0.688±0.021 |
 
-### Why OL fails
+### Why OL fails — CORRECTED: this cell is a size-matching artifact, not biology
 
-Its biological interface is **1,399 R1-6 inputs → 22 HS/VS outputs**. The readout sits several
-synapses deep behind an extreme bottleneck, the gradient reaching it is starved, and the model
-converges to a constant output (AUROC exactly 0.500). This is not a pipeline bug: **the same ports,
-same task and same code give 0.635/0.688 for OL's own degree/random controls** — those surrogates
-manufacture short-cut paths to the readout that the real wiring does not have. It reproduces the
-mechanism documented in `docs/results/optic_flow_biological_io/` on an entirely different task.
+**Do not cite this cell as a biological result.** Follow-up analysis (`docs/results/connectome_theory/`)
+found that in the **size-matched** OL the 22 HS/VS output neurons are **completely unreachable** from
+the R1-6 input pool (0/22 within 6 hops), which forces AUROC = 0.500 — the model literally cannot
+compute anything. In the **full, uncapped** OL the pathway is intact and short: R1-6 → HS/VS in
+exactly **3 hops**. The N=3,499 degree-based cap deleted the pathway, because the R1-6 → HS/VS route
+runs through numerous *low-degree* retinotopic relay cells (R1-6 average only ~3.4 partners each) that
+a degree-ranked cap systematically discards. The degree/random controls score 0.635/0.688 precisely
+because rewiring **reconnects** the readout.
+
+It was also wrong to call this a replication of the optic-lobe biological-I/O stall in
+`docs/results/optic_flow_biological_io/`: that failure was *gradient starvation at depth* in the full
+48k left OL, a different mechanism from outright disconnection here. Re-running OL × gas requires a
+**pathway-preserving cap** (BFS along the R1-6 → HS/VS route) instead of a degree-ranked one.
 
 ---
 
@@ -129,6 +138,11 @@ regions only *which neurons are the ports* and *the wiring between them* differ.
 
 All 7 new cells ran on the AWS spot-GPU fleet (16 + 18 + 16 instances), 6 seeds for the gas cells,
 5 for MQAR, 3 for flow/path.
+
+**Metrics caveat:** a tie-handling bug meant a *constant-output* model scored AUPRC = 1.000 / F1 = 1.000
+(fixed in `antennal_lobe_gas/common.py`). AUROC and recall@fixed-FPR were always correct, and all
+figures/rankings here use those. Any AUPRC/F1 value for a **collapsed** arm in the committed CSVs is
+not trustworthy.
 
 ---
 

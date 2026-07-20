@@ -1,0 +1,5 @@
+outputs_gain/
+outputs_nuisance/
+outputs_snr/
+fleet_config_*.env
+__pycache__/

@@ -94,17 +94,27 @@ def roc_auc(scores: np.ndarray, y: np.ndarray) -> float:
 
 
 def average_precision(scores: np.ndarray, y: np.ndarray) -> float:
-    """Area under the precision-recall curve (AUPRC), interpolation-free (sklearn convention)."""
+    """Area under the precision-recall curve (AUPRC), interpolation-free (sklearn convention).
+
+    TIE-AWARE. A degenerate model that emits a CONSTANT score must not be rewarded: with tied
+    scores a stable sort preserves input order, so if the positives happen to be listed first the
+    naive computation returns AUPRC = 1.0 for a model that has learned nothing. (This really
+    happened: the OL x gas arm collapsed to all-positive and scored AUPRC = 1.000 / F1 = 1.000 in
+    all 6 seeds while its AUROC was exactly 0.500.) We therefore only evaluate precision/recall at
+    the END of each group of equal scores, which is the standard convention and makes a constant
+    predictor score the positive base rate."""
     y = y.astype(int)
     if y.sum() == 0:
         return float("nan")
     order = np.argsort(-scores, kind="mergesort")
-    ys = y[order]
+    ys, ss = y[order], scores[order]
     tp = np.cumsum(ys)
     fp = np.cumsum(1 - ys)
+    # keep only the last index of each tie-group (thresholds are only meaningful between groups)
+    last = np.r_[ss[1:] != ss[:-1], True]
+    tp, fp = tp[last], fp[last]
     precision = tp / np.maximum(tp + fp, 1)
     recall = tp / max(int(y.sum()), 1)
-    # sum precision * delta-recall
     dr = np.diff(np.concatenate([[0.0], recall]))
     return float(np.sum(precision * dr))
 
@@ -137,6 +147,10 @@ def best_f1(scores: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     ys = y[order]; ss = scores[order]
     tp = np.cumsum(ys); fp = np.cumsum(1 - ys)
     fn = int(y.sum()) - tp
+    # TIE-AWARE (see average_precision): only tie-group boundaries are real thresholds, otherwise a
+    # constant-output model is scored F1 = 1.0.
+    last = np.r_[ss[1:] != ss[:-1], True]
+    tp, fp, fn, ss = tp[last], fp[last], fn[last], ss[last]
     f1 = 2 * tp / np.maximum(2 * tp + fp + fn, 1)
     k = int(np.argmax(f1))
     return float(f1[k]), float(ss[k])
