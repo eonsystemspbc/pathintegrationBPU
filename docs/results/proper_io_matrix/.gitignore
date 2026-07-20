@@ -1,0 +1,4 @@
+operators_pathway/
+outputs/
+fleet_config.env
+__pycache__/
