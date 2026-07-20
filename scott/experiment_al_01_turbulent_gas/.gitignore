@@ -1,0 +1,5 @@
+outputs/
+_preflight/
+fleet_config.env
+__pycache__/
+substrate/task_cache.npz

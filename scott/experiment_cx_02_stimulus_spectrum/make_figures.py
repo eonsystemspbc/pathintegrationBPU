@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""cx-02 figures. Four panels carrying the audit's findings:
+"""cx-02 figures. Panels carrying the audit's findings:
   fig1  the converge-stop censors the primary metric (why the sweep reads "flat")
   fig2  time-to-criterion -- the one uncensored readout
   fig3  the tempo knob moved amplitude, not bandwidth
   fig4  run coverage (the unsigned x norm=ON arm is absent)
+  fig5  learning curves per tempo -- where every run stopped, and the uncensored home-R2 channel
+  fig6  learning curves vs wall clock, pooled across tempo
 Run: uv run python scott/experiment_cx_02_stimulus_spectrum/make_figures.py
 """
 from __future__ import annotations
@@ -225,10 +227,143 @@ def fig4(rows):
     plt.close(fig)
 
 
+# --- learning curves -------------------------------------------------------
+# Three regimes, fixed colour order; substrate is the secondary (linestyle) encoding
+# because the substrate contrast is unestimable at this coverage (see fig4).
+ARMS = [
+    ("GRU-256 (dense reference)", BLUE,
+     lambda r: r.get("condition") == "gru_ceiling"),
+    ("connectome, normalization OFF", ORANGE,
+     lambda r: r.get("condition") == "connectome" and not r.get("normalize")),
+    ("connectome, normalization ON (contracting)", GREEN,
+     lambda r: r.get("condition") == "connectome" and r.get("normalize")),
+]
+
+
+def curves(rows):
+    """Attach each run's per-epoch history. Returns rows that have one."""
+    import csv
+    out = []
+    for r in rows:
+        p = HERE / "outputs/runs" / r["run_id"] / "metrics_epochs.csv"
+        if not p.exists():
+            continue
+        with open(p) as fh:
+            h = list(csv.DictReader(fh))
+        if not h:
+            continue
+        r = dict(r)
+        r["_ep"] = np.array([float(d["epoch"]) for d in h])
+        r["_err"] = np.array([float(d["val_heading_error"]) for d in h])
+        r["_r2"] = np.array([float(d["val_home_r2"]) for d in h])
+        r["_wall"] = np.array([float(d["cum_wall_s"]) for d in h])
+        out.append(r)
+    return out
+
+
+def _draw_run(ax, r, color, x, y):
+    ls = "-" if r.get("substrate") != "unsigned_full" else (0, (3, 1.5))
+    ax.plot(x, y, color=color, lw=1.1, ls=ls, alpha=0.62, zorder=3,
+            solid_capstyle="round")
+    # terminal marker: how the run ended is the whole point of fig1
+    cap = r.get("stopped_reason") == "epoch_cap"
+    ax.plot(x[-1], y[-1], marker="X" if cap else "o", ms=5.5 if cap else 4,
+            mfc=CRIT if cap else color, mec=SURFACE, mew=0.8, zorder=4)
+
+
+def fig5(rows):
+    """Small multiples: one column per tempo, error above, uncensored home R2 below.
+    Curves that touch the dashed line simply END -- that is the censoring, drawn."""
+    rows = curves(rows)
+    fig, axes = plt.subplots(2, len(TEMPOS), figsize=(14.2, 5.6),
+                             sharex=True, sharey="row")
+    for j, t in enumerate(TEMPOS):
+        cell = [r for r in rows if _tempo(r) == t]
+        for _, color, pred in ARMS:
+            for r in [r for r in cell if pred(r)]:
+                _draw_run(axes[0, j], r, color, r["_ep"], r["_err"])
+                _draw_run(axes[1, j], r, color, r["_ep"], r["_r2"])
+        axes[0, j].axhline(CONVERGE, color=INK, lw=1.0, ls="--", zorder=2)
+        axes[0, j].set_title(f"tempo {t}   (n={len(cell)})", loc="left", fontsize=9)
+        for a in (axes[0, j], axes[1, j]):
+            a.grid(True, alpha=0.5, lw=0.6)
+            a.set_axisbelow(True)
+            a.set_xlim(0, 300)
+            a.set_xticks([0, 150, 300])
+        axes[1, j].set_xlabel("epoch")
+
+    axes[0, 0].set_yscale("log")
+    axes[0, 0].set_ylim(0.03, 2.0)
+    axes[0, 0].set_ylabel("val heading error (rad)")
+    axes[1, 0].set_ylim(0, 1.02)
+    axes[1, 0].set_ylabel("val home-vector $R^2$")
+    # label the threshold on the axis rather than in the plot body -- the panels are dense
+    axes[0, 0].set_yticks([CONVERGE, 0.1, 1.0])
+    axes[0, 0].set_yticklabels(["0.05\nstop", "0.1", "1.0"])
+    axes[0, 0].yaxis.set_minor_locator(matplotlib.ticker.NullLocator())
+
+    handles = [plt.Line2D([], [], color=c, lw=2, label=l) for l, c, _ in ARMS] + [
+        plt.Line2D([], [], color=MUTED, lw=1.6, ls="-", label="signed substrate"),
+        plt.Line2D([], [], color=MUTED, lw=1.6, ls=(0, (3, 1.5)), label="unsigned substrate"),
+        plt.Line2D([], [], color=CRIT, lw=0, marker="X", ms=6, label="hit 300-epoch cap"),
+    ]
+    fig.legend(handles=handles, frameon=False, fontsize=8, ncol=6,
+               loc="lower left", bbox_to_anchor=(0.005, -0.02))
+    fig.suptitle("Learning curves — top row ends at the stopping rule; bottom row is what "
+                 "the model was still learning", x=0.005, ha="left", weight="bold", fontsize=11)
+    fig.tight_layout(rect=(0, 0.045, 1, 0.945))
+    fig.savefig(FIG / "fig5_learning_curves.png", bbox_inches="tight")
+    plt.close(fig)
+
+
+def fig6(rows):
+    """Pooled across tempo: median curve per arm, IQR band. LEFT vs epochs (what the
+    optimizer saw), RIGHT vs wall clock (the practical cost-to-accuracy readout)."""
+    rows = curves(rows)
+    fig, axes = plt.subplots(1, 2, figsize=(9.4, 3.9))
+
+    for ax, xkey, xlabel, xmax in [
+        (axes[0], "_ep", "epoch", 300),
+        (axes[1], "_wall", "wall-clock seconds (cumulative)", None),
+    ]:
+        for label, color, pred in ARMS:
+            sel = [r for r in rows if pred(r)]
+            if not sel:
+                continue
+            hi_x = max(r[xkey][-1] for r in sel)
+            grid = np.linspace(0, min(hi_x, xmax or hi_x), 160)
+            # step-hold past a run's stop: its error never got worse, it just froze
+            M = np.array([np.interp(grid, r[xkey], r["_err"],
+                                    left=r["_err"][0], right=r["_err"][-1]) for r in sel])
+            med, q1, q3 = (np.percentile(M, p, axis=0) for p in (50, 25, 75))
+            ax.fill_between(grid, q1, q3, color=color, alpha=0.15, lw=0)
+            ax.plot(grid, med, color=color, lw=2, label=label, zorder=3)
+        ax.axhline(CONVERGE, color=INK, lw=1.0, ls="--", zorder=2)
+        ax.set_yscale("log")
+        ax.set_ylim(0.03, 2.0)
+        ax.set_xlabel(xlabel)
+        ax.grid(True, alpha=0.5, lw=0.6)
+        ax.set_axisbelow(True)
+    axes[1].set_xscale("log")
+    axes[0].set_ylabel("val heading error (rad, median + IQR)")
+    axes[0].set_title("per epoch", loc="left", weight="bold")
+    axes[1].set_title("per second of training", loc="left", weight="bold")
+    axes[0].legend(frameon=False, fontsize=8, loc="lower left")
+
+    fig.suptitle("Pooled learning curves (all tempos, all substrates) — flat after the dashed "
+                 "line is the stopping rule, not a plateau",
+                 x=0.005, ha="left", weight="bold", fontsize=11)
+    fig.tight_layout(rect=(0, 0, 1, 0.9))
+    fig.savefig(FIG / "fig6_learning_curves_pooled.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 if __name__ == "__main__":
     rows = load()
     fig1(rows)
     fig2(rows)
     fig3()
     fig4(rows)
-    print(f"wrote 4 figures to {FIG}")
+    fig5(rows)
+    fig6(rows)
+    print(f"wrote 6 figures to {FIG}")

@@ -74,7 +74,16 @@ actually moves; run the primary comparison in the contracting regime and checkpo
 to the norm-ON wall clock so teardown doesn't censor the slow arm again.
 
 Figures: `figures/` (regenerate with `uv run python make_figures.py`). Per-run table:
-`outputs/metrics_by_run.csv`.
+`outputs/metrics_by_run.csv`; per-epoch histories in `outputs/runs/<run_id>/metrics_epochs.csv`.
+
+| figure | what it shows |
+|---|---|
+| `fig1_censored_metric` | every run's endpoint sits on the 0.05 stopping line — the metric is a rule, not a level |
+| `fig2_time_to_criterion` | epochs-to-criterion (left) and reach rate for norm-ON (right) — the uncensored readouts |
+| `fig3_manipulation_check` | the tempo knob raised amplitude ~2.5–2.8× while bandwidth stayed flat |
+| `fig4_coverage` | completed runs per substrate × normalization × tempo cell (6 planned each) |
+| `fig5_learning_curves` | per-epoch curves by tempo: error curves terminate mid-descent at the threshold; home-R² row is uncensored |
+| `fig6_learning_curves_pooled` | pooled median + IQR curves, per epoch and per second of wall clock (~600× GRU/connectome gap) |
 
 ## Build status — built and smoke-tested (pre-launch record)
 

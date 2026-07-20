@@ -1,0 +1,35 @@
+{
+  "train": {
+    "n_windows": 5104,
+    "pos_frac": 0.727,
+    "n_trials": 88,
+    "n_pos_trials": 64,
+    "n_neg_trials": 24
+  },
+  "val": {
+    "n_windows": 638,
+    "pos_frac": 0.727,
+    "n_trials": 22,
+    "n_pos_trials": 16,
+    "n_neg_trials": 6
+  },
+  "test_iid": {
+    "n_windows": 638,
+    "pos_frac": 0.727,
+    "n_trials": 22,
+    "n_pos_trials": 16,
+    "n_neg_trials": 6
+  },
+  "test_low": {
+    "n_windows": 1566,
+    "pos_frac": 0.889,
+    "n_trials": 54,
+    "n_pos_trials": 48,
+    "n_neg_trials": 6
+  },
+  "W": 50,
+  "channels": 10,
+  "decimate": 2,
+  "source": "/home/mrsco/Documents/eon/repos/pathintegrationBPU/data/gas/turbulent/dataset_twosources_downsampled",
+  "url": "https://archive.ics.uci.edu/static/public/309/gas+sensor+array+exposed+to+turbulent+gas+mixtures.zip"
+}

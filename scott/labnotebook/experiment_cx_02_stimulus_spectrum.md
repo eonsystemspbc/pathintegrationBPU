@@ -149,6 +149,39 @@ discretization cancels, and an oracle decode returns exactly 0.000000 rad. For c
 N(0, 0.05) noise to the target bump gives 0.026 rad and copying the previous step's bump gives 0.110 rad.
 0.047 rad is a genuine, informative performance level — it is simply unreachable-past by the stop rule.
 
+#### The same point as learning curves
+
+Added 2026-07-19 (figures only; no new runs). Every run wrote a per-epoch history, so the censoring can
+be shown directly rather than inferred from endpoint scatter — a curve that reaches the dashed line
+simply *stops*, mid-descent.
+
+![learning curves](../experiment_cx_02_stimulus_spectrum/figures/fig5_learning_curves.png)
+
+Top row: validation heading error, one line per run, terminal dot = where training halted. In every
+tempo panel the blue (GRU) and orange (normalization-OFF) curves are still falling steeply when they
+touch 0.05 and terminate — none of them plateaus first. That is what makes the endpoint "flat 0.047"
+uninformative. The green (normalization-ON) curves descend visibly more slowly and stay noisier, and at
+the fast tempos several are still descending at the 300-epoch cap (red ×) — the same reach-rate effect
+reported in §3, here as trajectories rather than a rate.
+
+Bottom row: validation home-vector R², which no stopping rule touches. It saturates early — within
+~30 epochs for the GRU, ~60 for the connectome — and then separates the arms by *stability* rather than
+level: final median 0.993 (GRU) vs 0.967 / 0.972 (connectome OFF / ON), with the connectome showing
+large transient dropouts throughout training (tail SD 0.038 / 0.026 vs the GRU's 0.006). So home R² is
+uncensored but nearly as saturated; a re-run needs a criterion set well below 0.05, not just a second
+metric.
+
+![pooled learning curves](../experiment_cx_02_stimulus_spectrum/figures/fig6_learning_curves_pooled.png)
+
+Pooled across tempo and substrate (median + IQR; runs held at their last value after stopping, so the
+flat right-hand tails are the stopping rule, not convergence). Per epoch the connectome with
+normalization off is *ahead of* the GRU for the first ~100 epochs and reaches criterion in slightly
+fewer epochs (median 116 vs 134); the contracting arm needs ~168. Per second of training that ordering
+is irrelevant: the GRU reaches criterion in a median 20 s against the connectome's 12,192 s
+(normalization off) and 17,590 s (on) — a ~600× wall-clock gap at comparable epoch counts, which is the
+practical cost of the sparse substrate at this scale and belongs in the re-run's pre-registration
+alongside epochs-to-criterion.
+
 ### 2. The tempo knob moved amplitude, not bandwidth
 
 The knob was designed to speed up the target's *temporal spectrum* while leaving turns intact. Measuring

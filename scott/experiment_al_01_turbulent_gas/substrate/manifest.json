@@ -1,0 +1,21 @@
+{
+  "substrate": "antennal_lobe_flywire783",
+  "selection": "ROI-anchored: proofread neurons with >=1 synapse in AL_L/AL_R, induced subgraph",
+  "rois": [
+    "AL_L",
+    "AL_R"
+  ],
+  "release": "783",
+  "source_feather": "connectomes/flywire_mushroom_body/flywire_release_783/proofread_connections_783.feather",
+  "zenodo_record": "10676866",
+  "N": 4947,
+  "edges": 276366,
+  "total_synapses": 1487993,
+  "orientation": "M[post, pre] (rec = M @ h)",
+  "stored": "RAW (unscaled); rho rescale happens at run time in common.py",
+  "raw_spectral_radius_signed": 2867.6931,
+  "raw_spectral_radius_unsigned": 2867.6931,
+  "sign_coverage_edges": 1.0,
+  "frac_inhibitory_edges": 0.353,
+  "n_pre_neurons_nt_labelled": 4267
+}

@@ -26,6 +26,8 @@ Refer to experiments by prefixed ID (`mb-03`), not the bare number.
 | dyn-01 | 2026-07-13 | Does the connectome-as-RNN globally expand or contract nearby states (largest Lyapunov exponent), and does its wiring differ from a degree-matched shuffle? | MB done; OL pending | [entry](experiment_dyn_01_global_lyapunov.md) |
 | cx-01 | 2026-07-15 | On the central complex's *native* task (path integration), does the connectome beat degree-matched wiring — i.e. is the mb-01/02/06 advantage real task–region alignment, or classification-specific? | **Concluded 2026-07-16 — TIE on accuracy, FASTER on speed (rev. 2026-07-18).** Same *answer* as degree-matched (perm-p 0.38 / 0.52) but reached **~1.6–3× faster** on `signed_full` (+1.26/+1.51 ctrl-SD, 20/20 vs 15/20 arriving) — the experiment's largest effect, and **underpowered (perm-p 0.143)**, not significant. Tie is **at the GRU ceiling (~0.047 rad), not a floor**. σ_max check clears the conditioning confound on `signed`. Dynamics probe 2026-07-17. | [entry](experiment_cx_01_path_integration.md) |
 | cx-02 | 2026-07-17 | Does the connectome floor as the heading target speeds up — isolating the low-pass / target-spectrum leg from drive strength that cx-01 vs vis-01 confounded? | **Ran 2026-07-18 — NON-RESULT, re-run required.** The apparent "flat at 0.047 = low-pass falsified" is an artifact: the converge-stop at 0.05 rad halted 92/102 runs *at the threshold*, so the metric could not show gradation. Independently, the tempo knob moved stimulus **amplitude** (power 2.8×) not **bandwidth** (hi-freq fraction flat) — i.e. the opposing hypothesis — and `unsigned`×norm-ON landed 2/36 runs. Only clean finding: faster targets cost more epochs for *every* architecture (GRU ρ=−0.94). | [entry](experiment_cx_02_stimulus_spectrum.md) |
+| al-01 | 2026-07-18 | Does the antennal-lobe connectome beat degree-matched wiring at detecting a faint target gas in turbulent air — re-running a collaborator's under-powered result at house protocol? | **Concluded 2026-07-19 — clean NULL at the GRU ceiling.** Connectome ties its shuffle (perm-p 0.433 / 0.548 vs floors 0.033 / 0.032), direction sign-flips between fractions, all 14 secondaries null. Tie is **at a ceiling, not a floor** (every GRU seed beats all 118 recurrent runs). The pre-registered **classification-specificity prediction failed**. But the design resolves only ~1.7 ctrl-SD (~+0.18) while the target effect was +0.038 — **4.6× too small to ever detect** — and al-01 scores ~0.27 *below* the collaborator on both arms, so this is a null on a weaker configuration, not a refutation. Analysis + figs generated 2026-07-19, reproduce exactly. ⚠️ Activation-scale confound still unaudited. | [entry](experiment_al_01_turbulent_gas.md) |
+| al-02 | 2026-07-19 | Does restoring **biological I/O** (sensor→ORN by glomerulus, readout←PN) recover the effect al-01's generic all-neuron I/O did not find? | **Built and verified 2026-07-19; not yet launched.** ⚠️ Premise already in tension with the evidence: the collaborator's own grid ran both I/O regimes and the connectome−control gap is *larger* under generic I/O (+0.046 vs +0.038), and their generic-I/O connectome scores AUROC 0.892 where al-01's scores 0.825 on a verified-identical split — so al-01's deficit is **not** the I/O. Built anyway as an in-house replication, with H_io pre-registered as disfavoured. | [entry](experiment_al_02_biological_io.md) |
 
 ## Results
 
@@ -199,6 +201,87 @@ and `unsigned`×norm-ON rebuilt. *Process note:* this entry's own pre-launch war
 the current justification without choosing" whether to keep the degree-matched control — was never
 resolved, and it launched anyway.
 [`code`](../experiment_cx_02_stimulus_spectrum/)
+
+**al-01** — *Concluded 2026-07-19 — clean null, and a failed prediction.* First experiment of a new
+`al` (antennal lobe) track, and the first here to re-run someone else's experiment rather than start
+fresh. Question: does the antennal-lobe connectome detect a faint target gas (ethylene in turbulent
+air, against a methane or CO distractor, having trained only on strong whiffs) better than the same
+graph degree-rewired at ρ = 0.95? A collaborator's study (`docs/results/antennal_lobe_gas`) reported a
+small edge — 0.690 vs 0.652 detection at a fixed 10% false-alarm rate — but used only **6 control
+graphs**, which pins the permutation floor at 0.143 and makes significance unreachable, and led with
+Cohen's *d* over pseudo-replicated runs. Its sparse arms were *not* differentially truncated by its
+30-epoch cap, so the direction is sound; its dense arms were, so its loudest claim ("dense controls
+cannot learn the task") is confounded and was **not** re-tested. al-01 re-ran only the sound
+comparison — connectome vs degree-matched, 30 graphs each, 150 epochs with plateau-stop off, house
+ReLU dynamics, generic I/O, self-contained in `scott/`, on an ROI-anchored `AL_L`/`AL_R` substrate
+(N = 4,947, 276,366 edges, 35.3% inhibitory). **Answer: no.** The connectome sits in the dead centre
+of the control distribution at both data fractions — 0.356 vs 0.332 (rank 13/30, perm-p 0.433) at
+10%, 0.416 vs 0.419 (rank 17/31, perm-p 0.548) at 100% — with the direction **flipping sign** between
+fractions and all 14 secondary metrics null (p 0.45–0.74). Unlike vis-01's uninterpretable double
+floor, this is a **tie at a ceiling**: every GRU seed (0.62–0.70) beats every one of the 118 recurrent
+runs, using *fewer* parameters and 150–190× less wall-clock. Censoring is clean — no run peaked near
+the 150-epoch cap (max `best_epoch` 97), and the 8 divergences are symmetric across arms (Fisher
+p = 0.71). Since every connectome *win* so far came on classification and cx-01 found only a tie on
+regression, al-01 was a direct test of whether the advantage is classification-specific — and that
+**pre-registered prediction failed**, pushing the explanation toward region×task alignment or
+substrate identity. Two things bound how far that reading goes. **(1) The design was underpowered for
+its own target.** Clearing the floor required beating all 30 controls, ~+0.177 ≈ 1.7 control-SD, while
+the effect being chased was +0.038 — **4.6× smaller than this design could ever declare significant**.
+Going from 6 to 30 controls fixed the *floor* but not the *resolution*, which is set by control-SD
+(~0.11) and dominated by training noise and the 6-negative-trial test split. The honest claim is "no
+effect detectable at this resolution," though the observed difference is ~0 and sign-flipping, so
+there is no positive evidence for one either. **(2) It is not a refutation of the prior study.** al-01
+scores ~0.27 *lower on both arms* (0.416/0.419 vs 0.690/0.652) and its GRU ceiling (0.62) falls below
+the collaborator's connectome — this configuration runs the task worse, leaving less room for topology
+to matter — and it changed four things at once (substrate, biological→generic I/O, leaky-tanh→ReLU,
+Cohen's *d*→permutation). Leading hypothesis, speculative: generic all-neuron I/O discards the
+glomerular channel structure that *is* much of the topology under test. Next: one variable — al-01's
+statistics with the collaborator's `cell_class` biological I/O restored. *Closed out 2026-07-19:*
+`analysis.json`, `metrics_by_run.csv` (124 runs) and figs 1–4 were generated and **reproduce the audit
+exactly** (f100 p_perm 0.5484, 16/31 controls beating, floor 0.0323); `fig4` confirms no censoring.
+The `common.py` metric bug — a strict `>` that zeroed saturated runs (5 runs at 0.0 despite AUROC
+0.72–0.81; 23% of the grid at 5% FAR) — is **fixed** by ROC interpolation, verified a no-op on
+well-behaved scores. The landed grid keeps the old definition and cannot be recomputed (raw scores
+were never saved), so the conclusion is unchanged but the stated resolution limit is *pessimistic*:
+the fix removes ~2× of arm-SD inflation, so a re-run would resolve a smaller effect. ⚠️ Still open:
+shard 15 missing (124/126), and the mb-06 activation-scale confound remains **unaudited**.
+[`code`](../experiment_al_01_turbulent_gas/)
+
+**al-02** — *Built and verified 2026-07-19; not yet launched.* The direct follow-up to al-01's null:
+does the antennal-lobe connectome beat matched control wiring when input enters through **olfactory
+receptor neurons** organized by glomerulus and the answer is read from **projection neurons** — the
+way the real circuit is wired — instead of through al-01's generic all-neuron I/O? The hypothesis is
+that generic I/O discards the **glomerular channel structure**, and that structure is much of the
+topology under test. That structure is real and large: measured here, a uniglomerular PN draws
+**86.9%** of its receptor input from its own glomerulus (97.6% synapse-weighted) against 2.1%
+chance — a **42× enrichment**. ⚠️ **But the premise is already in tension with the evidence, and
+this is pre-registered rather than discovered later.** The collaborator's study ran *both* I/O
+regimes, and its own metrics show the connectome−control gap is **larger under generic I/O**
+(+0.0461) than bio (+0.0379); on AUROC it flips (+0.0166 vs +0.0092) but both are under one
+control-SD. More damning: their **generic**-I/O connectome scores AUROC **0.892** where al-01's
+**generic**-I/O connectome scores **0.825**, on a verified-identical test split — so al-01's ~0.07
+deficit is **not** attributable to the I/O, and al-01's connectome sat barely above their
+*circuit-free* baseline (0.798). Built anyway as a deliberate call — an in-house replication at
+house protocol has value regardless, and no in-house experiment has run biological I/O on the AL —
+with H_io recorded as **already disfavoured**; if it nulls, the next move is a dynamics/substrate
+reconciliation screen, not another I/O variant. Substrate is al-01's, unchanged (N = 4,947), with
+cell-class labels *added* (100% join): 2,279 ORN in, 683 PN out. Input is a glomerulus-tied learned
+fan-out — a trainable [53,8] non-negative matrix giving one drive per glomerulus, broadcast to every
+ORN in it — 440 params vs al-01's 49,470-param `W_in`. Four methodological upgrades over al-01, none
+of which change the question: a **second control** (`block_matched`, a block-restricted rewire
+preserving the 4×4 RN/LN/PN/halo edge matrix *exactly* while scrambling within it, so "wiring alone"
+separates from "wiring + routing" — a global rewire hands the control 1.23× more direct RN→PN drive
+and destroys ~30% of the LN stage, which would rig the comparison); **AUROC as primary** (recall@FAR
+has CV 0.32 vs AUROC's 0.025 — 13× noisier off a 6-negative-trial threshold — a 3.7× resolution gain
+for free); **5 training seeds per control graph** averaged within graph before permuting (al-01's
+control spread was almost entirely *training* noise: graph-only SD ~0.021 vs control SD ~0.069, and
+statistically zero at f10 — more graphs lower the p-floor but not the resolution); and **raw scores
+saved**, since al-01 could not correct a known metric bug on its landed grid without retraining. A
+**readout-pool** activation-RMS match is mandatory here and measured, not assumed: global RMS reads
+1.03× and would have declared the arms fair, but the PN pool the loss actually sees sits at 0.674×
+for the global rewire (6/6 graphs below) and 1.530× for the block-restricted one (0/6 below) — the
+two controls need gains on opposite sides of 1. Subrun 01 = 333 runs at 10% data, ~10 GPU-h (~$9).
+[`code`](../experiment_al_02_biological_io/)
 
 **dyn-01** — *In progress.* First experiment of a new `dyn` (dynamics) track that characterizes
 the connectome-as-RNN's phase space directly, independent of any task. Question: on average, does
