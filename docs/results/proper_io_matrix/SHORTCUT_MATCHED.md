@@ -19,17 +19,20 @@ So I built a control that is **degree-matched *and* shortcut-matched** (`degree_
 ### The headline
 
 > **The shortcut confound changes real conclusions — and it distorts in *both* directions.**
-> Across **8 complete cells** (3 arms × 6 seeds each), giving the control a fair shortcut count
-> **flipped the significance of two verdicts, one a win and one a loss**, and both were in the
-> most-handicapped region:
+> Across the **full 3 × 3 grid — 9 cells, 162 runs** (3 arms × 6 seeds each), giving the control a
+> fair shortcut count **flipped the significance of three verdicts: two losses and one win.**
 >
 > | cell | vs **shuffle** (has shortcuts) | vs **fair** control | what changed |
 > |---|---|---|---|
 > | **MB × mqar** (84×) | **+0.0103**, p = 0.031 | **+0.0031**, p = 0.094 | a connectome **win** evaporates |
 > | **MB × path** (84×) | **−0.0267**, p = 0.031 | **−0.0054**, p = 0.312 | a connectome **loss** evaporates |
+> | **CX × path** (22×) | **−0.0206**, p = 0.031 | **−0.0049**, p = 0.562 | a connectome **loss** evaporates |
 >
-> The fair control pulls the verdict **toward zero from both sides**. Roughly **80% of MB × path's
-> apparent deficit** was the control's manufactured shortcuts.
+> The fair control pulls the verdict **toward zero from both sides**, erasing ~80% of MB × path's and
+> ~76% of CX × path's apparent deficit. **A bias that merely flattered the connectome could not do
+> this** — it would not erase a loss *and* a win. A generic input→output express lane can, because it
+> helps whichever side the control is on. **Every flip is a case where the published-style comparison
+> would have reported a significant result that a fair control does not support.**
 
 ![all cells](figures/fig_all_cells.png)
 
@@ -37,32 +40,38 @@ So I built a control that is **degree-matched *and* shortcut-matched** (`degree_
 
 | group | cells | mean \|change in verdict\| |
 |---|---|---|
-| **layered** (MB, CX — 22–84×) | 5 | **0.0101** |
+| **layered** (MB, CX — 22–84×) | 6 | **0.0110** |
 | **shallow** (AL — 1.19×) | 3 | **0.0010** |
 
-A **10× difference**, but Mann-Whitney one-sided **p = 0.071 at n = 5 vs 3 cells — suggestive, not
-significant.** And it is **not proportional to the handicap**: MB (84×) moves 0.0103 while CX (22×)
-moves 0.0097 — essentially the same. Spearman on log-handicap is ρ = +0.69, **p = 0.057**, carried
-almost entirely by AL sitting low rather than by any MB-vs-CX gradient. **AL is unmoved in all three
-of its cells** (0.0010, 0.0018, 0.0003), which is the shallow-region control behaving as predicted.
+An **11× difference**, Mann-Whitney one-sided **p = 0.048** — but read that as *marginal*: it is
+6 vs 3 cells, the smallest n at which this test can clear 0.05 at all, and it is uncorrected.
+
+It is **not proportional to the handicap**: MB (84×) moves **0.0103** and CX (22×) moves **0.0117** —
+CX moves *slightly more* despite a 4× smaller ratio. Spearman on log-handicap is ρ = +0.63,
+**p = 0.068**, carried by AL sitting low rather than by any MB-vs-CX gradient. **AL is unmoved in all
+three of its cells** (0.0010, 0.0018, 0.0003) — the shallow-region control behaving as predicted.
 
 ### Which direction do the shortcuts push?
 
-**Mostly they help the control**, which is the original hypothesis: **5 of 8 cells** shift negative
-(removing shortcuts made the control *worse*), and **both cells that reach significance** do:
+**They help the control** — the original hypothesis. **6 of 9 cells** shift negative (removing
+shortcuts made the control *worse*), and **all three cells that reach significance** do, each with
+**0/6 seeds** dissenting:
 
 | cell | control shift | p | seeds |
 |---|---|---|---|
-| **MB × path** | **−0.0213** | **0.031** | 0/6 positive |
-| **CX × flow** | **−0.0185** | **0.031** | 0/6 positive |
+| **MB × path** (84×) | **−0.0213** | **0.031** | 0/6 positive |
+| **CX × flow** (22×) | **−0.0185** | **0.031** | 0/6 positive |
+| **CX × path** (22×) | **−0.0157** | **0.031** | 0/6 positive |
 
 > **A correction to an earlier draft of this document.** With only MB × mqar and AL × flow in hand,
 > MB × mqar's **+0.0072** shift looked like evidence that the shortcuts were *hurting* the control,
-> and this file said so. With six more cells that reading is wrong: MB × mqar is the **only** layered
-> cell pointing that way, its shift is **not significant** (p = 0.31, 4/6 seeds), and **78% of it
-> comes from a single anomalous run** (`degree` seed 0 = 0.1593 vs 0.1811–0.1923 for the other five,
-> val-patience-stopped at 31 epochs vs 40 for its pair). The two cells that *do* reach significance
-> both point the other way.
+> and this file said so. With seven more cells that reading is wrong: MB × mqar is the **only**
+> layered cell pointing that way, its shift is **not significant** (p = 0.31, 4/6 seeds), and **78%
+> of it comes from a single anomalous run** (`degree` seed 0 = 0.1593 vs 0.1811–0.1923 for the other
+> five, val-patience-stopped at 31 epochs vs 40 for its pair). All three cells that *do* reach
+> significance point the other way, unanimously across seeds. The lesson recorded for next time: the
+> first cell I happened to run was the one that disagreed with the other eight, and I generalised
+> from it.
 
 **Still not established:** that the effect is *graded* in the shortcut ratio (it isn't, within
 MB vs CX), and any per-cell claim resting on n = 6 training seeds over one connectome graph.
@@ -133,7 +142,7 @@ between them cannot be attributed to the handicap alone.
 
 ## 3. Results
 
-**8 complete cells** (3 arms × 6 seeds). Unit of analysis is the **cell**, not the seed: within a
+**9 complete cells — the full 3 × 3 region × task grid, 162 runs** (3 arms × 6 seeds). Unit of analysis is the **cell**, not the seed: within a
 cell, seeds are paired across arms and summarised by an exact paired Wilcoxon; across cells we ask
 whether the layered regions moved more. Pooling seeds across cells would treat correlated runs as
 independent.
@@ -147,21 +156,20 @@ independent.
 | **MB × path** | 84× | **−0.0267\*** | **−0.0054** | **−0.0213\*** | **0.0213** |
 | **CX × flow** | 22× | −0.0135 | +0.0050 | **−0.0185\*** | **0.0185** |
 | CX × mqar | 22× | −0.0004 | +0.0004 | −0.0008 | 0.0008 |
+| **CX × path** | 22× | **−0.0206\*** | **−0.0049** | **−0.0157\*** | **0.0157** |
 | AL × flow | 1.19× | +0.0198\* | +0.0189\* | +0.0010 | 0.0010 |
 | AL × mqar | 1.19× | +0.0006 | +0.0024 | −0.0018 | 0.0018 |
 | AL × path | 1.19× | +0.0003 | +0.0000 | +0.0003 | 0.0003 |
 
-Two verdicts flipped significance, both in MB, **in opposite directions** — a win became n.s. and a
-loss became n.s. A control artefact that only inflated the connectome would not do that; one that
-adds a generic input→output shortcut would, because such a shortcut helps the control on whichever
-side it lands.
+Three verdicts flipped significance — **two losses and one win**. A control artefact that only
+inflated the connectome could not do that; one that adds a generic input→output shortcut would,
+because such a shortcut helps the control on whichever side it lands. Note the three flips span
+**both** layered regions and **both** signs.
 
 **Source hygiene.** Local (RTX Blackwell) and fleet (L4) runs are **never mixed within a cell** —
 each cell is taken whole from one source, since a hardware difference inside a paired comparison
 would land in the difference. Per-cell source is recorded in `all_cells_summary.csv`
-(local: MB×mqar, AL×flow; fleet: the other six).
-
-**CX × path is still missing** — it is the ninth cell and was still training when this was written.
+(local: MB×mqar, AL×flow, CX×path; fleet: the other six).
 
 ## 4. Limits
 
@@ -175,8 +183,8 @@ would land in the difference. Per-cell source is recorded in `all_cells_summary.
 - **Uncorrected.** 2 cells × 2 comparisons, nominal p-values.
 - **Ratios are unstable.** MB's leave-one-out shrink ranges **−32% to −80%** across the six seeds.
   Read "−70%" as a point estimate with that spread, not a measurement.
-- **Eight cells, one missing.** CX×path has not finished. n = 5 vs 3 cells makes the layered-vs-shallow
-  test (p = 0.071) suggestive only.
+- **Nine cells is still nine cells.** The layered-vs-shallow test is 6 vs 3 units at p = 0.048 — the
+  smallest n that can clear 0.05, uncorrected. Treat it as marginal.
 - **Not graded.** MB (84×) and CX (22×) move by the same amount, so the shortcut *ratio* does not
   predict the size of the effect within the layered regions. "Layered or not" is the supported
   distinction; a dose-response is not.
