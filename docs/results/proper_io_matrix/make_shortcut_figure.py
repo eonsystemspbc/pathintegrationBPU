@@ -43,7 +43,7 @@ def main():
     ax1.set_yscale("log")
     ax1.set_xticks(x); ax1.set_xticklabels([f"{r}\n{HANDICAP[r][0]/HANDICAP[r][1]:.0f}×" for r in regs])
     ax1.set_ylabel("direct input→output edges (log)")
-    ax1.set_title("The handicap: shortcuts a degree shuffle\ninvents that the real wiring forbids",
+    ax1.set_title("The structural fact: shortcuts a degree shuffle\ninvents that the real wiring forbids",
                   fontsize=11, fontweight="bold")
     ax1.legend(fontsize=9)
     for xi, (c, d) in enumerate(zip(conn, degr)):
@@ -58,16 +58,18 @@ def main():
     ax2.axhline(0, color="black", lw=1)
     ax2.set_xticks(x); ax2.set_xticklabels(lab, fontsize=9)
     ax2.set_ylabel("connectome − control  (seed-paired mean)")
-    ax2.set_title("The result: the margin collapses where the\nhandicap was large, holds where it wasn't",
+    ax2.set_title("The result: MB's margin does not survive a fair\ncontrol (p=0.094); AL's is unchanged",
                   fontsize=11, fontweight="bold")
     ax2.legend(fontsize=9)
     for xi, (_, r) in enumerate(R.iterrows()):
-        ax2.text(xi - w/2, r.vs_degree, f"{r.vs_degree:+.4f}", ha="center",
+        pd_ = r.get("p_degree", float("nan")); ps_ = r.get("p_degree_sm", float("nan"))
+        ax2.text(xi - w/2, r.vs_degree, f"{r.vs_degree:+.4f}\np={pd_:.3f}", ha="center",
                  va="bottom" if r.vs_degree >= 0 else "top", fontsize=8)
-        ax2.text(xi + w/2, r.vs_degree_sm, f"{r.vs_degree_sm:+.4f}", ha="center",
+        tag = "" if ps_ < 0.05 else "  (n.s.)"
+        ax2.text(xi + w/2, r.vs_degree_sm, f"{r.vs_degree_sm:+.4f}\np={ps_:.3f}{tag}", ha="center",
                  va="bottom" if r.vs_degree_sm >= 0 else "top", fontsize=8)
 
-    fig.suptitle("Is the connectome's edge real, or an artifact of a sabotaged control?",
+    fig.suptitle("Does the connectome's margin survive a shortcut-matched control?",
                  fontsize=13, fontweight="bold")
     fig.tight_layout()
     (HERE / "figures").mkdir(exist_ok=True)

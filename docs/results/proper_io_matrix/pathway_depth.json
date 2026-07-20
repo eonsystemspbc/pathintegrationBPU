@@ -1,0 +1,30 @@
+{
+  "AL": {
+    "n_out": 685,
+    "reached": 685,
+    "median_hop": 1.0,
+    "mean_hop": 1.0248175182481751,
+    "outputs_at_1_hop": 668
+  },
+  "MB": {
+    "n_out": 96,
+    "reached": 96,
+    "median_hop": 2.0,
+    "mean_hop": 1.8958333333333333,
+    "outputs_at_1_hop": 10
+  },
+  "CX": {
+    "n_out": 327,
+    "reached": 327,
+    "median_hop": 2.0,
+    "mean_hop": 1.8073394495412844,
+    "outputs_at_1_hop": 63
+  },
+  "OL": {
+    "n_out": 22,
+    "reached": 22,
+    "median_hop": 3.0,
+    "mean_hop": 3.0,
+    "outputs_at_1_hop": 0
+  }
+}
