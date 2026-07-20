@@ -30,7 +30,7 @@ from bio_al_model import BioALRNN                    # noqa: E402
 
 OPS = HERE/"operators_pathway"
 G_CH = 61                       # identical adapter capacity for every region
-REGIONS = ("AL","MB","CX","OL"); ARMS = ("connectome","degree","random")
+REGIONS = ("AL","MB","CX","OL"); ARMS = ("connectome","degree","random","degree_sm")
 TASKS = ("mqar","path","flow")
 NATIVE = {"mqar":"MB","path":"CX","flow":"OL","gas":"AL"}
 EPOCHS = {"mqar":40,"path":30,"flow":30}

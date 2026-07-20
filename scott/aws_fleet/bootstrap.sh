@@ -104,11 +104,13 @@ SYNC_PID=$!
 
 # --- 6. run this instance's worker process(es) ---------------------------------------
 NUM_SHARDS=$(( FLEET_SIZE * WORKERS_PER_INSTANCE ))
+NGPU=$(nvidia-smi -L 2>/dev/null | wc -l); [ "$NGPU" -lt 1 ] && NGPU=1
+echo "[bootstrap] $NGPU GPU(s) visible; $WORKERS_PER_INSTANCE workers"
 pids=()
 for w in $(seq 0 $((WORKERS_PER_INSTANCE - 1))); do
   SHARD=$(( FLEET_INDEX * WORKERS_PER_INSTANCE + w ))
   echo "[bootstrap] launching worker shard $SHARD / $NUM_SHARDS"
-  CUDA_VISIBLE_DEVICES=0 uv run python "$EXP_RUN_SCRIPT" $EXP_ARGS \
+  CUDA_VISIBLE_DEVICES=$(( w % NGPU )) uv run python "$EXP_RUN_SCRIPT" $EXP_ARGS \
       --shard "$SHARD" --num-shards "$NUM_SHARDS" \
       --output-dir "$EXP_OUTPUT_DIR" \
       > "/tmp/worker_${SHARD}.log" 2>&1 &

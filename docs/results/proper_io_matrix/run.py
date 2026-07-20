@@ -16,15 +16,15 @@ def substrate():
     return [str(p.relative_to(REPO_ROOT)) for p in f if p.exists()]
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument("--fleet-size",type=int,default=27)
+    ap=argparse.ArgumentParser(); ap.add_argument("--fleet-size",type=int,default=27); ap.add_argument("--exp-args",default=None)
     g=ap.add_mutually_exclusive_group()
     g.add_argument("--collect",action="store_true"); g.add_argument("--status",action="store_true")
     a=ap.parse_args()
     gen=HERE/"fleet_config.env"
     subs=substrate()
-    ov={"S3_PREFIX":"pathint-properio-matrix","FLEET_SIZE":str(a.fleet_size),
-        "WORKERS_PER_INSTANCE":"1","EXP_RUN_SCRIPT":"docs/results/proper_io_matrix/run_matrix.py",
-        "EXP_OUTPUT_DIR":OUTDIR,"EXP_ARGS":"--device cuda --seeds 0 1 2 3 4 5",
+    ov={"S3_PREFIX":os.environ.get("S3P","pathint-properio-matrix"),"FLEET_SIZE":str(a.fleet_size),
+        "WORKERS_PER_INSTANCE":os.environ.get("WPI","1"),"EXP_RUN_SCRIPT":"docs/results/proper_io_matrix/run_matrix.py",
+        "EXP_OUTPUT_DIR":OUTDIR,"EXP_ARGS":(a.exp_args or "--device cuda --seeds 0 1 2 3 4 5"),
         "SUBSTRATE_FILES":" ".join(subs)}
     seen,out=set(),["# GENERATED",""]
     for line in BASE.read_text().splitlines():
