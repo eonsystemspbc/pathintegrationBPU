@@ -16,42 +16,56 @@ bypassing the Kenyon-cell layer — bypassing the computation the circuit exists
 
 So I built a control that is **degree-matched *and* shortcut-matched** (`degree_sm`), and trained it.
 
-### The one claim that is solidly supported
+### The headline
 
-> A shortcut-matched control shrinks **MB × mqar**'s margin from **+0.0103 (p = 0.031)** to
-> **+0.0031 (p = 0.094 — no longer significant)**, and leaves **AL × flow**'s **+0.019 (p = 0.031,
-> 6/6 seeds)** essentially intact.
+> **The shortcut confound changes real conclusions — and it distorts in *both* directions.**
+> Across **8 complete cells** (3 arms × 6 seeds each), giving the control a fair shortcut count
+> **flipped the significance of two verdicts, one a win and one a loss**, and both were in the
+> most-handicapped region:
+>
+> | cell | vs **shuffle** (has shortcuts) | vs **fair** control | what changed |
+> |---|---|---|---|
+> | **MB × mqar** (84×) | **+0.0103**, p = 0.031 | **+0.0031**, p = 0.094 | a connectome **win** evaporates |
+> | **MB × path** (84×) | **−0.0267**, p = 0.031 | **−0.0054**, p = 0.312 | a connectome **loss** evaporates |
+>
+> The fair control pulls the verdict **toward zero from both sides**. Roughly **80% of MB × path's
+> apparent deficit** was the control's manufactured shortcuts.
 
-| region × task | handicap | vs **old** control | vs **fair** control |
+![all cells](figures/fig_all_cells.png)
+
+### It's "layered or not", not a graded dose
+
+| group | cells | mean \|change in verdict\| |
+|---|---|---|
+| **layered** (MB, CX — 22–84×) | 5 | **0.0101** |
+| **shallow** (AL — 1.19×) | 3 | **0.0010** |
+
+A **10× difference**, but Mann-Whitney one-sided **p = 0.071 at n = 5 vs 3 cells — suggestive, not
+significant.** And it is **not proportional to the handicap**: MB (84×) moves 0.0103 while CX (22×)
+moves 0.0097 — essentially the same. Spearman on log-handicap is ρ = +0.69, **p = 0.057**, carried
+almost entirely by AL sitting low rather than by any MB-vs-CX gradient. **AL is unmoved in all three
+of its cells** (0.0010, 0.0018, 0.0003), which is the shallow-region control behaving as predicted.
+
+### Which direction do the shortcuts push?
+
+**Mostly they help the control**, which is the original hypothesis: **5 of 8 cells** shift negative
+(removing shortcuts made the control *worse*), and **both cells that reach significance** do:
+
+| cell | control shift | p | seeds |
 |---|---|---|---|
-| **MB × mqar** | **84×** | +0.0103, 6/6 seeds, p = 0.031 | **+0.0031, 5/6 seeds, p = 0.094 (n.s.)** |
-| **AL × flow** | **1.19×** | +0.0198, 6/6 seeds, p = 0.031 | **+0.0189, 6/6 seeds, p = 0.031** |
+| **MB × path** | **−0.0213** | **0.031** | 0/6 positive |
+| **CX × flow** | **−0.0185** | **0.031** | 0/6 positive |
 
-### What is NOT established
+> **A correction to an earlier draft of this document.** With only MB × mqar and AL × flow in hand,
+> MB × mqar's **+0.0072** shift looked like evidence that the shortcuts were *hurting* the control,
+> and this file said so. With six more cells that reading is wrong: MB × mqar is the **only** layered
+> cell pointing that way, its shift is **not significant** (p = 0.31, 4/6 seeds), and **78% of it
+> comes from a single anomalous run** (`degree` seed 0 = 0.1593 vs 0.1811–0.1923 for the other five,
+> val-patience-stopped at 31 epochs vs 40 for its pair). The two cells that *do* reach significance
+> both point the other way.
 
-**Why** MB's margin shrank is *not* resolved by these data. The obvious story — "the shortcuts were
-helping the control, so removing them should hurt it" — is not what the numbers show, and the
-opposite story is not supported either:
-
-- The control's shift on MB is **+0.0072, 95% CI [−0.0070, +0.0214], Wilcoxon p = 0.31, only 4/6
-  seeds positive.** It is **not distinguishable from zero.**
-- **78% of that shift comes from a single run.** Per-seed shifts are
-  `[+0.0337, +0.0072, −0.0040, +0.0030, +0.0036, −0.0002]`. Drop seed 0 and the shift is **+0.0019**,
-  and the headline "−70% shrink" becomes **−32%**.
-- **That one run is itself suspect**: MB `degree` seed 0 scored **0.1593** when the other five
-  `degree` runs sit at 0.1811–0.1923, and it val-patience-stopped at **31 epochs** vs 40 for its
-  `degree_sm` partner.
-- The **MB-vs-AL contrast** — the "dose-response" — is **Welch p = 0.32** (p = 0.71 without seed 0).
-  The apparent "7× more" is a **ratio of two quantities that individually cannot be told from zero**.
-  **CX (21.7×), the middle dose that would actually test this, was never trained.**
-
-**Corrected bottom line:** the shortcut confound is a **real structural fact** (84× / 21.7× / 1.19×,
-independently recounted from the operator matrices). Its **training consequence is not yet measured**.
-What these two cells show is that MB×mqar's advantage does not survive a fair control, while AL×flow's
-does. With one connectome graph per region and six training seeds, **this is a consistency check, not
-a test.**
-
-![per-seed paired](figures/fig_per_seed_paired.png)
+**Still not established:** that the effect is *graded* in the shortcut ratio (it isn't, within
+MB vs CX), and any per-cell claim resting on n = 6 training seeds over one connectome graph.
 
 ---
 
@@ -119,39 +133,35 @@ between them cannot be attributed to the handicap alone.
 
 ## 3. Results
 
-6 seeds per arm, biological I/O ports, size-matched substrates. Epoch counts vary (MB 31–40) because
-training early-stops on **validation** patience with best-val weights restored — short runs are
-model-selected, not truncated budgets. Early stops are **not** concentrated in the controls (MB:
-connectome 3/6, degree 2/6, degree_sm 1/6).
+**8 complete cells** (3 arms × 6 seeds). Unit of analysis is the **cell**, not the seed: within a
+cell, seeds are paired across arms and summarised by an exact paired Wilcoxon; across cells we ask
+whether the layered regions moved more. Pooling seeds across cells would treat correlated runs as
+independent.
 
-### MB × mqar — 84× ratio
+`*` = p < 0.05 (the n=6 exact-Wilcoxon floor is 0.031).
 
-| arm | mean | per-seed |
-|---|---|---|
-| connectome | **0.1920** | 0.1910 0.1979 0.1923 0.1856 0.1874 0.1976 |
-| degree | 0.1817 | **0.1593** 0.1864 0.1896 0.1812 0.1811 0.1923 |
-| degree_sm | **0.1889** | 0.1930 0.1936 0.1856 0.1842 0.1847 0.1921 |
+| region × task | handicap | vs shuffle | vs fair control | control shift | verdict move |
+|---|---|---|---|---|---|
+| MB × flow | 84× | −0.0403 | −0.0379 | −0.0024 | 0.0024 |
+| **MB × mqar** | 84× | **+0.0103\*** | **+0.0031** | +0.0072 | **0.0072** |
+| **MB × path** | 84× | **−0.0267\*** | **−0.0054** | **−0.0213\*** | **0.0213** |
+| **CX × flow** | 22× | −0.0135 | +0.0050 | **−0.0185\*** | **0.0185** |
+| CX × mqar | 22× | −0.0004 | +0.0004 | −0.0008 | 0.0008 |
+| AL × flow | 1.19× | +0.0198\* | +0.0189\* | +0.0010 | 0.0010 |
+| AL × mqar | 1.19× | +0.0006 | +0.0024 | −0.0018 | 0.0018 |
+| AL × path | 1.19× | +0.0003 | +0.0000 | +0.0003 | 0.0003 |
 
-- connectome − degree = **+0.0103**, 6/6, **p = 0.031** (the n=6 floor)
-- connectome − degree_sm = **+0.0031**, 5/6, **p = 0.094 — not significant**
-- control shift = **+0.0072**, 4/6, **p = 0.31**, CI **[−0.0070, +0.0214]** — **null**
+Two verdicts flipped significance, both in MB, **in opposite directions** — a win became n.s. and a
+loss became n.s. A control artefact that only inflated the connectome would not do that; one that
+adds a generic input→output shortcut would, because such a shortcut helps the control on whichever
+side it lands.
 
-### AL × flow — 1.19× ratio
+**Source hygiene.** Local (RTX Blackwell) and fleet (L4) runs are **never mixed within a cell** —
+each cell is taken whole from one source, since a hardware difference inside a paired comparison
+would land in the difference. Per-cell source is recorded in `all_cells_summary.csv`
+(local: MB×mqar, AL×flow; fleet: the other six).
 
-| arm | mean | per-seed |
-|---|---|---|
-| connectome | **0.2861** | 0.3027 0.2668 0.2945 0.2850 0.2787 0.2891 |
-| degree | 0.2663 | 0.2845 0.2455 0.2633 0.2697 0.2578 0.2770 |
-| degree_sm | **0.2673** | 0.2879 0.2438 0.2703 0.2666 0.2556 0.2794 |
-
-- connectome − degree = **+0.0198**, 6/6, p = 0.031
-- connectome − degree_sm = **+0.0189**, 6/6, p = 0.031, **Cohen dz = 3.3**
-- control shift = **+0.0010**, 3/6, p = 0.56 — null, all 6 runs at 30/30 epochs
-
-![margin shrink](figures/fig_margin_shrink.png)
-![dose response](figures/fig_dose_response.png)
-
----
+**CX × path is still missing** — it is the ninth cell and was still training when this was written.
 
 ## 4. Limits
 
@@ -165,8 +175,13 @@ connectome 3/6, degree 2/6, degree_sm 1/6).
 - **Uncorrected.** 2 cells × 2 comparisons, nominal p-values.
 - **Ratios are unstable.** MB's leave-one-out shrink ranges **−32% to −80%** across the six seeds.
   Read "−70%" as a point estimate with that spread, not a measurement.
-- **Two cells.** MB×mqar and AL×flow only. **CX×path — the middle dose — has not been trained**, and
-  it is the single most valuable missing run.
+- **Eight cells, one missing.** CX×path has not finished. n = 5 vs 3 cells makes the layered-vs-shallow
+  test (p = 0.071) suggestive only.
+- **Not graded.** MB (84×) and CX (22×) move by the same amount, so the shortcut *ratio* does not
+  predict the size of the effect within the layered regions. "Layered or not" is the supported
+  distinction; a dose-response is not.
+- **Region and task are confounded with handicap.** AL differs from MB/CX in region *and* task
+  coverage as well as in handicap, so this is a plausibility check, not a one-factor manipulation.
 - **Small effects.** Margins 0.003–0.02 on scores of 0.18–0.29; MQAR sits near the weakly-learned
   regime (chance = 1/32).
 
